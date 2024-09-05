@@ -1,0 +1,3 @@
+[run]
+omit =
+    src/llm_quant_eval/tests/*

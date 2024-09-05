@@ -1,0 +1,11 @@
+#!/bin/sh -e
+
+rootdir=`git rev-parse --show-toplevel`
+(
+    cd $rootdir
+    python -m venv .pre-commit-venv
+    .pre-commit-venv/bin/python -m pip install tox
+    rm -rf dist .cache *.egg-info _build
+    find ./ -name '*.pyc' -delete
+    .pre-commit-venv/bin/tox $@
+)
