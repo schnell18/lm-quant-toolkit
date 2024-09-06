@@ -40,7 +40,7 @@ QUANT_METRICS_FILE_MAP = {
     "meta-llama/Meta-Llama-3-8B": "data/fnorm-Llama-3-8B.csv",
 }
 
-HHQ_CONFIGS = [
+HQQ_CONFIGS = [
     ("b4g32", HQQQuantConfig(nbits=4, group_size=32)),
     ("b4g64", HQQQuantConfig(nbits=4, group_size=64)),
     ("b4g128", HQQQuantConfig(nbits=4, group_size=128)),
@@ -120,7 +120,7 @@ def experiment_debug():
         "HQQ": {
             "create_fn": create_hqq_model,
             "quantize_fn": quantize_hqq_model,
-            "configs": HHQ_CONFIGS[-1:],
+            "configs": HQQ_CONFIGS[-1:],
         },
     }
     do_expermient("debug_hqq_auto", models, tasks, quant_dir="snapshots-hqq")
@@ -187,7 +187,7 @@ def experiment_quant_mxq_boost():
             "type": "quant",
             "create_fn": create_hqq_model,
             "quantize_fn": quantize_hqq_model,
-            "configs": HHQ_CONFIGS[-3:],
+            "configs": HQQ_CONFIGS[-3:],
         },
     }
     do_expermient(
@@ -225,7 +225,7 @@ def experiment_quant_eval_mxq_comprise():
 def experiment_quant_eval_mxq_equiv():
     models = ALL_MODELS
     equiv_mxq_configs = []
-    for cfg in HHQ_CONFIGS:
+    for cfg in HQQ_CONFIGS:
         if cfg[0].startswith("b"):
             bits = calc_bits(
                 cfg[1]["weight_quant_params"]["nbits"],
@@ -260,7 +260,7 @@ def experiment_quantize_405B():
             "type": "quant",
             "create_fn": create_hqq_model,
             "quantize_fn": quantize_hqq_model,
-            "configs": HHQ_CONFIGS[1:2],
+            "configs": HQQ_CONFIGS[1:2],
         },
     }
     do_expermient(
@@ -284,22 +284,45 @@ def experiment_llm_leaderboard_autogptq():
     do_expermient("gptq_leaderboard", models, tasks)
 
 
-# def experiment_autoawq():
-#     models = ALL_MODELS
-#     tasks = {
-#         'AWQ': {
-#             "create_fn": create_autoawq_model,
-#             "quantize_fn": quantize_autoawq_model,
-#             "configs": AUTOAWQ_CONFIGS,
-#         }
-#     }
-#     do_expermient(
-#         "awq_benchmark",
-#         models,
-#         tasks,
-#         save_dir="snapshots"
-#     )
-#
+def experiment_llm_leaderboard_fp16():
+    models = [ALL_MODELS[0], ALL_MODELS[2]]
+    tasks = {
+        "FP16": {
+            "type": "eval_leaderboard",
+            "create_fn": create_autogptq_model,
+            "quantize_fn": None,
+            "configs": [
+                ("base", {}),
+            ],
+        },
+    }
+    do_expermient("fp16_leaderboard", models, tasks)
+
+
+def experiment_llm_leaderboard_hqq():
+    models = ALL_MODELS[:-1]
+    tasks = {
+        "HQQ": {
+            "type": "eval_leaderboard",
+            "create_fn": create_hqq_model,
+            "quantize_fn": quantize_hqq_model,
+            "configs": HQQ_CONFIGS,
+        },
+    }
+    do_expermient("hqq_leaderboard", models, tasks)
+
+
+def experiment_llm_leaderboard_autoawq():
+    models = ALL_MODELS[:-1]
+    tasks = {
+        "AWQ": {
+            "type": "eval_leaderboard",
+            "create_fn": create_autoawq_model,
+            "quantize_fn": quantize_autoawq_model,
+            "configs": AUTOAWQ_CONFIGS,
+        },
+    }
+    do_expermient("awq_leaderboard", models, tasks)
 
 
 def experiment_fp16_baseline():
@@ -407,6 +430,7 @@ def do_expermient(
         spec = tasks[algo]
         config = [c for c in spec["configs"] if c[0] == cfg][0]
         exp_result_name = f"{experiment_name}-{row['algo']}-{row['cfg']}"
+        quant_fn = spec["quantize_fn"]
         metric = _init_metrics(model_id, algo, config)
         print("*" * 72)
         if task_type == "quant":
@@ -421,7 +445,6 @@ def do_expermient(
 
         if task_type != "eval_leaderboard":
             create_fn = spec["create_fn"]
-            quant_fn = spec["quantize_fn"]
             model, tokenizer, quantized = create_fn(
                 model_id, config[1], cfg, quant_fn is not None, quant_dir
             )
@@ -460,7 +483,13 @@ def do_expermient(
             cleanup(model)
         else:
             metric = eval_llm_leaderboard(
-                experiment_name, model_id, algo, cfg, quant_dir, metric
+                experiment_name,
+                model_id,
+                algo,
+                cfg,
+                quant_fn is not None,
+                quant_dir,
+                metric,
             )
         save_partial_metric(experiment_name, algo, model_id, cfg, metric, result_dir)
         persist_progress(model_id, cfg, algo, task_type, progress_path)
@@ -541,7 +570,8 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    experiment_llm_leaderboard_autogptq()
+    # experiment_llm_leaderboard_autogptq()
+    experiment_llm_leaderboard_fp16()
 
 
 if __name__ == "__main__":
