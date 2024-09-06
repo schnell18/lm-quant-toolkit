@@ -119,6 +119,7 @@ def eval_ppls(model, tokenizer, metric):
     ppl_wikitext, duration_wikitext = eval_wikitext2(model, tokenizer, verbose=True)
     ppl_c4, duration_c4 = eval_c4(model, tokenizer, verbose=True)
     metric["ppl_wikitext"] = ppl_wikitext
+    metric["ppl_c4"] = ppl_c4
     metric["duration_wikitext"] = duration_wikitext
     metric["duration_c4"] = duration_c4
     return metric

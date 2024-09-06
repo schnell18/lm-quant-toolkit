@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import time
 from pathlib import Path
 
 import numpy as np
@@ -117,6 +118,7 @@ def eval_llm_leaderboard(
     else:
         model_args = f"pretrained={model_id}"
 
+    t1 = time.time()
     task_manager = TaskManager(verbosity)
     results = evaluator.simple_evaluate(
         model="hf",
@@ -142,6 +144,7 @@ def eval_llm_leaderboard(
         torch_random_seed=1234,
         fewshot_random_seed=1234,
     )
+    t2 = time.time()
 
     if results is not None:
         lm_eval_result_fp = os.path.join(
@@ -169,6 +172,7 @@ def eval_llm_leaderboard(
     metric["gpqa"] = gpqa
     metric["musr"] = musr
     metric["mmlupro"] = mmlupro
+    metric["duration_leaderboard"] = t2 - t1
     return metric
 
 
@@ -264,6 +268,7 @@ def _cal_normalized_score(value, lower_bound, higher_bound=1.0):
 
 def _prepare_tokenizer_files(model_id, quant_dir):
     files = [
+        "config.json",
         "tokenizer.model",
         "tokenizer.json",
         "special_tokens_map.json",
