@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python -m pdb bench.py
+python -m pdb lm_quant_toolkit/eval/bench.py

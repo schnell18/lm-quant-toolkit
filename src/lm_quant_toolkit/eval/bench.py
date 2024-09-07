@@ -335,9 +335,6 @@ def do_expermient_fdata(
     experiment_name,
     models,
     tasks,
-    quant_dir="snapshots",
-    result_dir="results",
-    log_dir="logs",
 ):
     do_expermient(
         experiment_name,
@@ -363,13 +360,25 @@ def experiment_debug():
 
 
 def experiment_quant_awq():
-    models = ALL_MODELS
+    models = [ALL_MODELS[0], ALL_MODELS[2]]
     tasks = {
         "awq": {
-            "configs": AWQ_CONFIGS,
+            "type": "quant",
+            "configs": AUTOAWQ_CONFIGS,
         },
     }
-    do_expermient("quant_awq", models, tasks)
+    do_expermient_fdata("quant_awq", models, tasks)
+
+
+def experiment_quant_gptq():
+    models = ALL_MODELS
+    tasks = {
+        "gptq": {
+            "type": "quant",
+            "configs": GPTQ_CONFIGS,
+        },
+    }
+    do_expermient_fdata("quant_gptq", models, tasks)
 
 
 def experiment_redo_autogptq_benchmark():
@@ -381,17 +390,6 @@ def experiment_redo_autogptq_benchmark():
         },
     }
     do_expermient("eval_redo_autogptq_benchmark", models, tasks)
-
-
-def experiment_quant_autogptq():
-    models = ALL_MODELS
-    tasks = {
-        "gptq": {
-            "type": "quant",
-            "configs": GPTQ_CONFIGS[3:],
-        },
-    }
-    do_expermient("eval_autogptq_redo_b3", models, tasks)
 
 
 # def experiment_eval_autoawq_g32():
@@ -590,7 +588,9 @@ def main():
     # experiment_llm_leaderboard_hqq()
     # experiment_llm_leaderboard_autoawq()
     # experiment_quant_hqq()
-    experiment_quant_mxq()
+    # experiment_quant_mxq()
+    # experiment_quant_awq()
+    experiment_quant_gptq()
 
 
 if __name__ == "__main__":
