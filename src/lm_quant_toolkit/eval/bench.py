@@ -267,8 +267,9 @@ def persist_progress(
     if not Path(progress_path).exists():
         with open(progress_path, "w") as f:
             f.write("model,cfg,algo,task_type,status\n")
-        with open(progress_path, "a") as f:
-            f.write(f"{model},{cfg},{algo},{task_type},1\n")
+
+    with open(progress_path, "a") as f:
+        f.write(f"{model},{cfg},{algo},{task_type},1\n")
 
 
 def _setup_fn(algo, spec):
