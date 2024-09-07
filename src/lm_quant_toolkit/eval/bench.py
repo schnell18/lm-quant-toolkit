@@ -46,6 +46,9 @@ HQQ_CONFIGS = [
     ("b3g32", HQQQuantConfig(nbits=3, group_size=32)),
     ("b3g64", HQQQuantConfig(nbits=3, group_size=64)),
     ("b3g128", HQQQuantConfig(nbits=3, group_size=128)),
+    ("b2g16", HQQQuantConfig(nbits=2, group_size=16)),
+    ("b2g32", HQQQuantConfig(nbits=2, group_size=32)),
+    ("b2g64", HQQQuantConfig(nbits=2, group_size=64)),
     ("mxq-3_00", HQQQuantConfig(mixed=True, budget=3.00, quant_scale=True)),
     ("mxq-4_01", HQQQuantConfig(mixed=True, budget=4.01, quant_scale=True)),
     ("mxq-3_76", HQQQuantConfig(mixed=True, budget=3.76, quant_scale=True)),
@@ -56,9 +59,6 @@ HQQ_CONFIGS = [
     ("mxq-4_50", HQQQuantConfig(mixed=True, budget=4.50, quant_scale=True)),
     ("mxq-4_75", HQQQuantConfig(mixed=True, budget=4.75, quant_scale=True)),
     ("mxq-5_00", HQQQuantConfig(mixed=True, budget=5.00, quant_scale=True)),
-    ("b2g16", HQQQuantConfig(nbits=2, group_size=16)),
-    ("b2g32", HQQQuantConfig(nbits=2, group_size=32)),
-    ("b2g64", HQQQuantConfig(nbits=2, group_size=64)),
     ("mxq-3_00", HQQQuantConfig(mixed=True, budget=3.00, quant_scale=True)),
 ]
 
@@ -115,129 +115,6 @@ def calc_bits(b1, g1, b2, g2):
     return b1 + 2 * b2 / g1 + 32 / g1 / g2
 
 
-def experiment_quant_eval_mxq_comprise():
-    models = ALL_MODELS
-    equiv_mxq_configs = []
-    nbits = [4.06, 4.10, 4.15, 4.19, 4.24, 4.28, 4.33]
-    for bits in nbits:
-        cfg_name = f"mxq-{str(bits).replace('.', '_')}"
-        equiv_mxq_configs.append(
-            (cfg_name, HQQQuantConfig(mixed=True, budget=bits, quant_scale=True))
-        )
-    tasks = {
-        "hqq": {
-            "type": "eval_ppl",
-            "configs": equiv_mxq_configs,
-        },
-    }
-    do_expermient("eval_mxq_compromise", models, tasks)
-
-
-def experiment_quant_eval_mxq_equiv():
-    models = ALL_MODELS
-    equiv_mxq_configs = []
-    for cfg in HQQ_CONFIGS:
-        if cfg[0].startswith("b"):
-            bits = calc_bits(
-                cfg[1]["weight_quant_params"]["nbits"],
-                cfg[1]["weight_quant_params"]["group_size"],
-                8,
-                128,
-            )
-            bits = round(bits, 2)
-            cfg_name = f"mxq-{str(bits).replace('.', '_')}"
-            equiv_mxq_configs.append(
-                (cfg_name, HQQQuantConfig(mixed=True, budget=bits, quant_scale=True))
-            )
-
-    tasks = {
-        "hqq": {
-            "type": "eval_ppl",
-            "configs": equiv_mxq_configs,
-        },
-    }
-    do_expermient("eval_mxq_extra", models, tasks)
-
-
-def experiment_quantize_405B():
-    models = [
-        "meta-llama/Meta-Llama-3.1-405B-Instruct",
-    ]
-
-    tasks = {
-        "hqq": {
-            "type": "quant",
-            "configs": HQQ_CONFIGS[1:2],
-        },
-    }
-    do_expermient(
-        "quant_hqq_405B",
-        models,
-        tasks,
-        quant_dir="/data/gqq-eval/snapshots/",
-    )
-
-
-def experiment_llm_leaderboard_autogptq():
-    # models = ALL_MODELS[:-1]
-    models = ALL_MODELS
-    tasks = {
-        "gptq": {
-            "type": "eval_leaderboard",
-            "configs": GPTQ_CONFIGS,
-        },
-    }
-    do_expermient("gptq_leaderboard", models, tasks)
-
-
-def experiment_llm_leaderboard_fp16():
-    models = [ALL_MODELS[0], ALL_MODELS[2]]
-    tasks = {
-        "fp16": {
-            "type": "eval_leaderboard",
-            "configs": [
-                ("base", {}),
-            ],
-        },
-    }
-    do_expermient("fp16_leaderboard", models, tasks)
-
-
-def experiment_llm_leaderboard_hqq():
-    models = ALL_MODELS[0:1]
-    tasks = {
-        "hqq": {
-            "type": "eval_leaderboard",
-            "configs": HQQ_CONFIGS[1:2],
-        },
-    }
-    do_expermient("hqq_leaderboard", models, tasks)
-
-
-def experiment_llm_leaderboard_autoawq():
-    models = ALL_MODELS[0:1]
-    tasks = {
-        "awq": {
-            "type": "eval_leaderboard",
-            "configs": AUTOAWQ_CONFIGS[0:2],
-        },
-    }
-    do_expermient("awq_leaderboard", models, tasks)
-
-
-def experiment_fp16_baseline():
-    models = ALL_MODELS
-    tasks = {
-        "FP16": {
-            "type": "eval_ppl",
-            "configs": [
-                ("base", {}),
-            ],
-        },
-    }
-    do_expermient("fp16_baseline", models, tasks)
-
-
 def gen_experiment_items(models, tasks):
     dikts = []
     for algo, spec in tasks.items():
@@ -266,10 +143,11 @@ def persist_progress(
     Path(progress_path).parent.mkdir(parents=True, exist_ok=True)
     if not Path(progress_path).exists():
         with open(progress_path, "w") as f:
-            f.write("model,cfg,algo,task_type,status\n")
+            f.write("model,cfg,algo,task_type,status,completion_time\n")
 
+    ts_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(progress_path, "a") as f:
-        f.write(f"{model},{cfg},{algo},{task_type},1\n")
+        f.write(f"{model},{cfg},{algo},{task_type},1,{ts_str}\n")
 
 
 def _setup_fn(algo, spec):
@@ -309,6 +187,12 @@ def do_expermient(
         df2 = df2.query("status != status or status != 1")
     else:
         df2 = all_df
+    if df2.empty:
+        print("*" * 72)
+        print("Tasks completed!")
+        print("*" * 72)
+        return
+
     df2 = df2.sort_values(by=["model", "cfg"])
     print("*" * 72)
     print("Sub-task list:")
@@ -322,7 +206,6 @@ def do_expermient(
         spec = tasks[algo]
         _setup_fn(algo, spec)
         config = [c for c in spec["configs"] if c[0] == cfg][0]
-        exp_result_name = f"{experiment_name}-{row['algo']}-{row['cfg']}"
         quant_fn = spec["quantize_fn"]
         metric = _init_metrics(model_id, algo, config)
         print("*" * 72)
@@ -384,7 +267,7 @@ def do_expermient(
         save_partial_metric(experiment_name, algo, model_id, cfg, metric, result_dir)
         persist_progress(model_id, cfg, algo, task_type, progress_path)
     # combine metrics
-    combine_metrics(experiment_name, exp_result_name, result_dir)
+    combine_metrics(experiment_name, result_dir)
 
 
 def _init_metrics(model_id, algo, config):
@@ -425,17 +308,16 @@ def save_partial_metric(experiment_name, algo, model_id, config, metric, result_
     df.to_csv(file_name, index=False)
 
 
-def combine_metrics(experiment_name, exp_result_name, result_dir):
+def combine_metrics(experiment_name, result_dir):
     dfs = []
-    iters = glob.iglob(f"./{result_dir}/{experiment_name}/partial-*.csv")
+    iters = glob.iglob(f"{result_dir}/{experiment_name}/partial-*.csv")
     for it in iters:
         df = pd.read_csv(it)
         dfs.append(df)
     combined = pd.concat(dfs)
     ts_str = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_name = f"{result_dir}/result-{exp_result_name}-{ts_str}.xlsx"
-    combined.to_excel(file_name, index=False)
-    file_name = f"{result_dir}/result-{exp_result_name}-{ts_str}.csv"
+    file_name = f"{result_dir}/{experiment_name}/result-{experiment_name}-{ts_str}.csv"
+    Path(file_name).parent.mkdir(parents=True, exist_ok=True)
     combined.to_csv(file_name, index=False)
 
 
@@ -447,6 +329,24 @@ def cleanup(model):
 
 def get_memory_metrics():
     return torch.cuda.memory_allocated(), torch.cuda.memory_reserved()
+
+
+def do_expermient_fdata(
+    experiment_name,
+    models,
+    tasks,
+    quant_dir="snapshots",
+    result_dir="results",
+    log_dir="logs",
+):
+    do_expermient(
+        experiment_name,
+        models,
+        tasks,
+        quant_dir="/fdata/llm/mxq/snapshots",
+        result_dir="/fdata/llm/mxq/results",
+        log_dir="/fdata/llm/mxq/logs",
+    )
 
 
 def experiment_debug():
@@ -525,6 +425,159 @@ def experiment_quant_mxq_boost():
     )
 
 
+def experiment_quant_eval_mxq_comprise():
+    models = ALL_MODELS
+    equiv_mxq_configs = []
+    nbits = [4.06, 4.10, 4.15, 4.19, 4.24, 4.28, 4.33]
+    for bits in nbits:
+        cfg_name = f"mxq-{str(bits).replace('.', '_')}"
+        equiv_mxq_configs.append(
+            (cfg_name, HQQQuantConfig(mixed=True, budget=bits, quant_scale=True))
+        )
+    tasks = {
+        "hqq": {
+            "type": "eval_ppl",
+            "configs": equiv_mxq_configs,
+        },
+    }
+    do_expermient("eval_mxq_compromise", models, tasks)
+
+
+def experiment_quant_eval_mxq_equiv():
+    models = ALL_MODELS
+    equiv_mxq_configs = []
+    for cfg in HQQ_CONFIGS:
+        if cfg[0].startswith("b"):
+            bits = calc_bits(
+                cfg[1]["weight_quant_params"]["nbits"],
+                cfg[1]["weight_quant_params"]["group_size"],
+                8,
+                128,
+            )
+            bits = round(bits, 2)
+            cfg_name = f"mxq-{str(bits).replace('.', '_')}"
+            equiv_mxq_configs.append(
+                (cfg_name, HQQQuantConfig(mixed=True, budget=bits, quant_scale=True))
+            )
+
+    tasks = {
+        "hqq": {
+            "type": "eval_ppl",
+            "configs": equiv_mxq_configs,
+        },
+    }
+    do_expermient("eval_mxq_extra", models, tasks)
+
+
+def experiment_quantize_405B():
+    models = [
+        "meta-llama/Meta-Llama-3.1-405B-Instruct",
+    ]
+
+    tasks = {
+        "hqq": {
+            "type": "quant",
+            "configs": HQQ_CONFIGS[1:2],
+        },
+    }
+    do_expermient(
+        "quant_hqq_405B",
+        models,
+        tasks,
+        quant_dir="/data/gqq-eval/snapshots/",
+    )
+
+
+def experiment_llm_leaderboard_autogptq():
+    # models = ALL_MODELS[:-1]
+    models = ALL_MODELS
+    tasks = {
+        "gptq": {
+            "type": "eval_leaderboard",
+            "configs": GPTQ_CONFIGS,
+        },
+    }
+    do_expermient_fdata("gptq_leaderboard", models, tasks)
+
+
+def experiment_llm_leaderboard_fp16():
+    models = [ALL_MODELS[0], ALL_MODELS[2]]
+    tasks = {
+        "fp16": {
+            "type": "eval_leaderboard",
+            "configs": [
+                ("base", {}),
+            ],
+        },
+    }
+    do_expermient_fdata("fp16_leaderboard", models, tasks)
+
+
+def experiment_llm_leaderboard_hqq():
+    models = ALL_MODELS[0:1]
+    tasks = {
+        "hqq": {
+            "type": "eval_leaderboard",
+            "configs": HQQ_CONFIGS[1:2],
+        },
+    }
+    do_expermient_fdata("hqq_leaderboard", models, tasks)
+
+
+def experiment_llm_leaderboard_autoawq():
+    models = ALL_MODELS[0:1]
+    tasks = {
+        "awq": {
+            "type": "eval_leaderboard",
+            "configs": AUTOAWQ_CONFIGS[0:2],
+        },
+    }
+    do_expermient_fdata("awq_leaderboard", models, tasks)
+
+
+def experiment_fp16_baseline():
+    models = ALL_MODELS
+    tasks = {
+        "FP16": {
+            "type": "eval_ppl",
+            "configs": [
+                ("base", {}),
+            ],
+        },
+    }
+    do_expermient_fdata("fp16_baseline", models, tasks)
+
+
+def experiment_quant_hqq():
+    models = ALL_MODELS
+    tasks = {
+        "hqq": {
+            "type": "quant",
+            "configs": HQQ_CONFIGS[:9],
+        },
+    }
+    do_expermient_fdata(
+        "quant_hqq",
+        models,
+        tasks,
+    )
+
+
+def experiment_quant_mxq():
+    models = ALL_MODELS
+    tasks = {
+        "hqq": {
+            "type": "quant",
+            "configs": HQQ_CONFIGS[9:],
+        },
+    }
+    do_expermient_fdata(
+        "quant_mxq",
+        models,
+        tasks,
+    )
+
+
 def main():
     logging.basicConfig(
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
@@ -532,10 +585,12 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    experiment_llm_leaderboard_autogptq()
+    # experiment_llm_leaderboard_autogptq()
     # experiment_llm_leaderboard_fp16()
     # experiment_llm_leaderboard_hqq()
     # experiment_llm_leaderboard_autoawq()
+    # experiment_quant_hqq()
+    experiment_quant_mxq()
 
 
 if __name__ == "__main__":
