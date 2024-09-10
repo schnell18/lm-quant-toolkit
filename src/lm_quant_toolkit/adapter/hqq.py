@@ -1,5 +1,6 @@
 import os
 import time
+
 from hqq.engine.hf import AutoTokenizer as hggAutoTokenizer
 from hqq.engine.hf import HQQModelForCausalLM
 
@@ -21,10 +22,7 @@ def quantize_hqq_model(model, tokenizer, quant_config, model_id, config_id, save
     t1 = time.time()
     model.quantize_model(quant_config=quant_config)
     t2 = time.time()
-    print('Took ' + str(t2 - t1) + ' seconds to quantize the model with HQQ')
+    print("Took " + str(t2 - t1) + " seconds to quantize the model with HQQ")
     quant_path = f"{save_dir}/{model_id}-{config_id}-hqq"
     model.save_quantized(quant_path)
     return model, t2 - t1
-
-
-

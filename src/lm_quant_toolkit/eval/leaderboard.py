@@ -104,8 +104,9 @@ def eval_llm_leaderboard(
     quant_method,
     confg_name,
     quantized,
-    quant_base_dir,
     metric,
+    quant_base_dir,
+    result_dir,
     verbosity="INFO",
 ):
     if quantized:
@@ -148,7 +149,7 @@ def eval_llm_leaderboard(
 
     if results is not None:
         lm_eval_result_fp = os.path.join(
-            "results",
+            result_dir,
             experiment_name,
             f"{model_id.split('/')[1]}-{confg_name}-{quant_method.lower()}-results.json",
         )

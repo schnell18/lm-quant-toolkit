@@ -1,2 +1,7 @@
-b /home/justin/work/AutoAWQ/awq/quantize/quantizer.py:568
-b /home/justin/work/AutoAWQ/awq/models/base.py:518
+#b /home/justin/work/AutoAWQ/awq/quantize/quantizer.py:568
+#b /home/justin/work/AutoAWQ/awq/models/base.py:518
+b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/eval/perplexity.py:99
+# b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/transformers/models/llama/modeling_llama.py:151
+# b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/transformers/models/llama/modeling_llama.py:117
+b /home/justin/work/hqq/hqq/models/base.py:482, 'rotary_emb' in module.name
+# b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/eval/bench.py:248
