@@ -517,13 +517,13 @@ def experiment_llm_leaderboard_autogptq():
 
 
 def experiment_llm_leaderboard_hqq():
-    models = ALL_MODELS[0:1]
+    models = ALL_MODELS
     type = "eval_leaderboard"
     algo = "hqq"
     tasks = {
         algo: {
             "type": type,
-            "configs": HQQ_CONFIGS[1:2],
+            "configs": HQQ_CONFIGS,
         },
     }
     do_expermient_fdata(f"{type}_{algo}", models, tasks)
@@ -581,13 +581,13 @@ def main():
 
     # experiment_llm_leaderboard_autogptq()
     # experiment_llm_leaderboard_fp16()
-    # experiment_llm_leaderboard_hqq()
+    experiment_llm_leaderboard_hqq()
     # experiment_llm_leaderboard_autoawq()
     # experiment_quant_hqq()
     # experiment_quant_mxq()
     # experiment_quant_awq()
     # experiment_quant_gptq()
-    experiment_ppl_eval_hqq()
+    # experiment_ppl_eval_hqq()
 
 
 if __name__ == "__main__":
