@@ -5,3 +5,14 @@ b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/eval/perplexity.py:99
 # b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/transformers/models/llama/modeling_llama.py:117
 b /home/justin/work/hqq/hqq/models/base.py:482, 'rotary_emb' in module.name
 # b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/eval/bench.py:248
+
+# b /home/justin/work/AutoAWQ/awq/models/base.py:454
+# b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/accelerate/big_modeling.py:607
+# b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/accelerate/utils/modeling.py:1763
+# b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/accelerate/utils/modeling.py:1736, 'qzeros' in param_name
+# b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/accelerate/utils/modeling.py:358
+
+
+b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/eval/bench.py:244
+b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/adapter/autoawq.py:35
+b /home/justin/work/hqq/hqq/models/base.py:335

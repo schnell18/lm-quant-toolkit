@@ -29,6 +29,12 @@ LLAMA_MODELS = {
     },
 }
 
+VIT_OPENCLIP_MODELS = {
+    "laion/CLIP-ViT-B-32-laion2B-s34B-b79K": {"vlayers": 12, "tlayers": 12},
+    "laion/CLIP-ViT-H-14-laion2B-s32B-b79K": {"vlayers": 32, "tlayers": 24},
+    "laion/CLIP-ViT-L-14-laion2B-s32B-b82K": {"vlayers": 24, "tlayers": 12},
+}
+
 
 def get_hf_model_storge_base_dir(model_id, hf_hub_dir=None):
     model_id_x = model_id.replace("/", "--")

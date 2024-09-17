@@ -149,6 +149,11 @@ def persist_progress(
         f.write(f"{model},{cfg},{algo},{task_type},1,{ts_str}\n")
 
 
+def _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir):
+    mem_fp = f"{result_dir}/{experiment_name}/mem-snapshot-{algo}-{model_id.split('/')[1]}.pickle"
+    torch.cuda.memory._dump_snapshot(mem_fp)
+
+
 def _setup_fn(algo, spec):
     match algo:
         case "fp16":
@@ -174,6 +179,7 @@ def do_expermient(
     quant_dir="snapshots",
     result_dir="results",
     log_dir="logs",
+    track_cuda_memory=False,
 ):
     all_df = gen_experiment_items(models, tasks)
     progress_path = os.path.join(result_dir, experiment_name, "progress.csv")
@@ -218,6 +224,9 @@ def do_expermient(
             )
         print("*" * 72)
 
+        if track_cuda_memory:
+            torch.cuda.memory._record_memory_history()
+        _reset_peak_memory_stats()
         if task_type != "eval_leaderboard":
             create_fn = spec["create_fn"]
             model, tokenizer, quantized = create_fn(
@@ -249,6 +258,8 @@ def do_expermient(
                 metric["ppl_mem_allot"], metric["ppl_mem_reserved"] = (
                     get_memory_metrics()
                 )
+            if track_cuda_memory:
+                _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
             cleanup(model)
         else:
             metric = eval_llm_leaderboard(
@@ -264,6 +275,8 @@ def do_expermient(
             metric["leaderboard_mem_allot"], metric["leaderboard_mem_reserved"] = (
                 get_memory_metrics()
             )
+            if track_cuda_memory:
+                _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
         save_partial_metric(experiment_name, algo, model_id, cfg, metric, result_dir)
         persist_progress(model_id, cfg, algo, task_type, progress_path)
     # combine metrics
@@ -327,14 +340,19 @@ def cleanup(model):
     gc.collect()
 
 
+def _reset_peak_memory_stats():
+    return torch.cuda.reset_peak_memory_stats()
+
+
 def get_memory_metrics():
-    return torch.cuda.memory_allocated(), torch.cuda.memory_reserved()
+    return torch.cuda.max_memory_allocated(), torch.cuda.max_memory_reserved()
 
 
 def do_expermient_fdata(
     experiment_name,
     models,
     tasks,
+    track_cuda_memory=False,
 ):
     do_expermient(
         experiment_name,
@@ -343,6 +361,7 @@ def do_expermient_fdata(
         quant_dir="/fdata/llm/mxq/snapshots",
         result_dir="/fdata/llm/mxq/results",
         log_dir="/fdata/llm/mxq/logs",
+        track_cuda_memory=track_cuda_memory,
     )
 
 
@@ -380,7 +399,8 @@ def experiment_quant_mxq():
 
 
 def experiment_quant_awq():
-    models = [ALL_MODELS[0], ALL_MODELS[2]]
+    # models = [ALL_MODELS[0], ALL_MODELS[2]]
+    models = [ALL_MODELS[1]]
     type = "quant"
     algo = "awq"
     tasks = {
@@ -445,13 +465,13 @@ def experiment_ppl_eval_fp16():
 
 
 def experiment_ppl_eval_awq():
-    models = ALL_MODELS
+    models = [ALL_MODELS[0], ALL_MODELS[2]]
     type = "eval_ppl"
     algo = "awq"
     tasks = {
         algo: {
             "type": type,
-            "configs": AUTOAWQ_CONFIGS[0:2],
+            "configs": AUTOAWQ_CONFIGS[1:2],
         },
     }
     do_expermient_fdata(f"{type}_{algo}", models, tasks)
@@ -572,6 +592,75 @@ def experiment_quant_ppl_eval_mxq_comprise():
     do_expermient_fdata("eval_mxq_compromise", models, ppl_tasks)
 
 
+########################################################################
+#  Misc experiments
+########################################################################
+
+
+def experiment_fp16_llama3_8B_OOM():
+    models = ALL_MODELS[-1:]
+    type = "eval_ppl"
+    algo = "fp16"
+    tasks = {
+        algo: {
+            "type": type,
+            "configs": [
+                ("base", {}),
+            ],
+        },
+    }
+    do_expermient_fdata(
+        f"{type}_llama3_8B_OOM_{algo}",
+        models,
+        tasks,
+        track_cuda_memory=True,
+    )
+
+
+def experiment_fp16_vs_hqq_eval_gpu_mem():
+    models = ALL_MODELS[-1:]
+    type = "eval_ppl"
+    algo = "fp16"
+    tasks = {
+        algo: {
+            "type": type,
+            "configs": [
+                ("base", {}),
+            ],
+        },
+    }
+    do_expermient_fdata("experiment_fp16_vs_hqq_eval_gpu_mem", models, tasks)
+    algo = "hqq"
+    tasks = {
+        algo: {
+            "type": type,
+            "configs": HQQ_CONFIGS[1:2],
+        },
+    }
+    do_expermient_fdata("experiment_fp16_vs_hqq_eval_gpu_mem", models, tasks)
+
+
+def experiment_debug_quant_hqq():
+    models = [ALL_MODELS[0]]
+    type = "quant"
+    algo = "hqq"
+    tasks = {
+        algo: {
+            "type": type,
+            "configs": HQQ_CONFIGS[0:1],
+        },
+    }
+
+    do_expermient(
+        f"debug_{type}_{algo}",
+        models,
+        tasks,
+        quant_dir="/fdata/llm/mxq/snapshots-debug",
+        result_dir="/fdata/llm/mxq/results",
+        log_dir="/fdata/llm/mxq/logs",
+    )
+
+
 def main():
     logging.basicConfig(
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
@@ -581,13 +670,19 @@ def main():
 
     # experiment_llm_leaderboard_autogptq()
     # experiment_llm_leaderboard_fp16()
-    experiment_llm_leaderboard_hqq()
+    # experiment_llm_leaderboard_hqq()
     # experiment_llm_leaderboard_autoawq()
     # experiment_quant_hqq()
     # experiment_quant_mxq()
     # experiment_quant_awq()
     # experiment_quant_gptq()
+    # experiment_ppl_eval_fp16()
     # experiment_ppl_eval_hqq()
+    # experiment_ppl_eval_gptq()
+    # experiment_ppl_eval_awq()
+    # experiment_fp16_llama3_8B_OOM()
+    # experiment_fp16_vs_hqq_eval_gpu_mem()
+    experiment_debug_quant_hqq()
 
 
 if __name__ == "__main__":

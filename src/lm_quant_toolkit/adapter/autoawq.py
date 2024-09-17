@@ -10,14 +10,21 @@ def create_autoawq_model(model_id, quant_config, config_id, load_quantized, save
     quant_path = f"{save_dir}/{model_id}-{config_id}-awq"
     if load_quantized and os.path.exists(quant_path):
         model = AutoAWQForCausalLM.from_quantized(
-            quant_path, device_map="auto", fuse_layers=False
+            quant_path,
+            device_map="auto",
+            fuse_layers=False,
+            offload_state_dict=True,
         )
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
         quantized = True
         model = model.cuda()
     else:
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
-        model = AutoAWQForCausalLM.from_pretrained(model_id, device_map="auto")
+        model = AutoAWQForCausalLM.from_pretrained(
+            model_id,
+            device_map="balanced",
+            offload_state_dict=True,
+        )
     return model, tokenizer, quantized
 
 
