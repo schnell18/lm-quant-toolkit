@@ -10,7 +10,10 @@ import pandas as pd
 import torch
 from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
 
-from lm_quant_toolkit.eval.zeroshot import eval_zeroshot_classification
+from lm_quant_toolkit.eval.clipbenchmark import (
+    eval_linear_probe,
+    eval_zeroshot_classification,
+)
 
 ALL_MODELS = [
     "laion/CLIP-ViT-B-32-laion2B-s34B-b79K",
@@ -35,16 +38,25 @@ HQQ_CONFIGS = [
     ("b2g16", HQQQuantConfig(nbits=2, group_size=16)),
     ("b2g32", HQQQuantConfig(nbits=2, group_size=32)),
     ("b2g64", HQQQuantConfig(nbits=2, group_size=64)),
-    ("mxq-5_00", HQQQuantConfig(mixed=True, budget=5.00, quant_scale=True)),
-    ("mxq-4_75", HQQQuantConfig(mixed=True, budget=4.75, quant_scale=True)),
-    ("mxq-4_50", HQQQuantConfig(mixed=True, budget=4.50, quant_scale=True)),
-    ("mxq-4_25", HQQQuantConfig(mixed=True, budget=4.25, quant_scale=True)),
-    ("mxq-4_01", HQQQuantConfig(mixed=True, budget=4.01, quant_scale=True)),
-    ("mxq-3_76", HQQQuantConfig(mixed=True, budget=3.76, quant_scale=True)),
-    ("mxq-3_50", HQQQuantConfig(mixed=True, budget=3.50, quant_scale=True)),
-    ("mxq-3_00", HQQQuantConfig(mixed=True, budget=3.00, quant_scale=True)),
-    ("mxq-2_75", HQQQuantConfig(mixed=True, budget=2.75, quant_scale=True)),
-    ("mxq-2_48", HQQQuantConfig(mixed=True, budget=2.48, quant_scale=True)),
+]
+
+MXQ_CONFIGS = [
+    (
+        f"{bits:.2f}".replace(".", "_"),
+        HQQQuantConfig(mixed=True, budget=bits, quant_scale=True),
+    )
+    for bits in [
+        5.00,
+        4.75,
+        4.50,
+        4.25,
+        4.01,
+        3.76,
+        3.50,
+        3.00,
+        2.75,
+        2.48,
+    ]
 ]
 
 
@@ -94,7 +106,6 @@ def do_expermient(
     tasks,
     quant_dir="snapshots",
     result_dir="results",
-    log_dir="logs",
     track_cuda_memory=False,
 ):
     all_df = gen_experiment_items(models, tasks)
@@ -130,8 +141,8 @@ def do_expermient(
         print("*" * 72)
         # if task_type == "quant":
         #     print(f"Quantizing {algo} on {model_id} w/ config: {cfg}...")
-        # elif task_type == "eval_zero_shot":
-        if task_type == "eval_zero_shot":
+        # elif task_type == "eval_zeroshot_cls":
+        if task_type == "eval_zeroshot_cls":
             print(
                 f"Evaluating {algo} zero-shot classification on {model_id} w/ config: {cfg}..."
             )
@@ -142,27 +153,37 @@ def do_expermient(
         if track_cuda_memory:
             torch.cuda.memory._record_memory_history()
         _reset_peak_memory_stats()
-        if task_type == "eval_zero_shot":
-            if algo == "fp16":
-                metric = eval_zeroshot_classification(metric, model_id, False)
+        if algo == "fp16":
+            if task_type == "eval_zeroshot_cls":
+                metric = eval_zeroshot_classification(metric, model_id, False, None)
+                metric["zeroshot_mem_allot"], metric["zeroshot_mem_reserved"] = (
+                    get_memory_metrics()
+                )
             else:
+                metric = eval_linear_probe(metric, model_id, False, None)
+                (
+                    metric["linear_probe_mem_allot"],
+                    metric["linear_probe_mem_reserved"],
+                ) = get_memory_metrics()
+        else:
+            if task_type == "eval_zeroshot_cls":
                 # avoid interventions between models
                 quant_config = copy.deepcopy(config[1])
-                if cfg.startswith("mxq-") and model_id in QUANT_METRICS_FILE_MAP:
+                if algo == "mxq" and model_id in QUANT_METRICS_FILE_MAP:
                     quant_config["quant_metrics_file"] = QUANT_METRICS_FILE_MAP[
                         model_id
                     ]
                 metric = eval_zeroshot_classification(
                     metric, model_id, True, quant_config
                 )
-            metric["zeroshot_mem_allot"], metric["zeroshot_mem_reserved"] = (
-                get_memory_metrics()
-            )
-            if track_cuda_memory:
-                _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
-        elif task_type == "eval_linear_probe":
-            # TODO: implement linear probe here later
-            pass
+            else:
+                metric = eval_linear_probe(metric, model_id, False, None)
+                (
+                    metric["linear_probe_mem_allot"],
+                    metric["linear_probe_mem_reserved"],
+                ) = get_memory_metrics()
+        if track_cuda_memory:
+            _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
         save_partial_metric(experiment_name, algo, model_id, cfg, metric, result_dir)
         persist_progress(model_id, cfg, algo, task_type, progress_path)
     # combine metrics
@@ -187,10 +208,16 @@ def _init_metrics(model_id, algo, config):
         "load_mem_reserved": 0,
         "zeroshot_mem_allot": 0,
         "zeroshot_mem_reserved": 0,
+        "linear_probe_mem_allot": 0,
+        "linear_probe_mem_reserved": 0,
         "acc1_zeroshot_cls": 0,
         "acc5_zeroshot_cls": 0,
         "recall_zeroshot_cls": 0,
         "duration_zeroshot_cls": 0,
+        "acc1_linear_probe": 0,
+        "acc5_linear_probe": 0,
+        "recall_linear_probe": 0,
+        "duration_linear_probe": 0,
     }
 
 
@@ -243,7 +270,6 @@ def do_expermient_fdata(
         tasks,
         quant_dir="/fdata/llm/mxq/snapshots",
         result_dir="/fdata/llm/mxq/results",
-        log_dir="/fdata/llm/mxq/logs",
         track_cuda_memory=track_cuda_memory,
     )
 
@@ -288,7 +314,7 @@ def experiment_quant_mxq():
 
 def experiment_zeroshot_eval_fp16():
     models = ALL_MODELS
-    type = "eval_zero_shot"
+    type = "eval_zeroshot_cls"
     algo = "fp16"
     tasks = {
         algo: {
@@ -303,40 +329,51 @@ def experiment_zeroshot_eval_fp16():
 
 def experiment_zeroshot_eval_hqq():
     models = ALL_MODELS
-    type = "eval_zero_shot"
-    algo = "hqq"
+    type = "eval_zeroshot_cls"
     tasks = {
-        algo: {
+        "hqq": {
             "type": type,
             "configs": HQQ_CONFIGS,
-        },
+        }
     }
-    do_expermient_fdata(f"{type}_{algo}", models, tasks)
+    do_expermient_fdata(f"{type}_hqq", models, tasks)
 
 
-def experiment_quant_zeroshot_eval_mxq_comprise():
+def experiment_zeroshot_eval_mxq():
     models = ALL_MODELS
-    equiv_mxq_configs = []
-    nbits = [4.06, 4.10, 4.15, 4.19, 4.24, 4.28, 4.33]
-    for bits in nbits:
-        cfg_name = f"mxq-{str(bits).replace('.', '_')}"
-        equiv_mxq_configs.append(
-            (cfg_name, HQQQuantConfig(mixed=True, budget=bits, quant_scale=True))
+    type = "eval_zeroshot_cls"
+    tasks = {
+        "mxq": {
+            "type": type,
+            "configs": MXQ_CONFIGS,
+        },
+    }
+    do_expermient_fdata(f"{type}_mxq", models, tasks)
+
+
+def experiment_eval_mxq_combined():
+    models = ALL_MODELS
+    equiv_mxq_configs = [
+        (
+            f"{bits:.2f}".replace(".", "_"),
+            HQQQuantConfig(mixed=True, budget=bits, quant_scale=True),
         )
-    quant_tasks = {
-        "hqq": {
-            "type": "quant",
-            "configs": equiv_mxq_configs,
-        },
-    }
+        for bits in [4.06, 4.10, 4.15, 4.19, 4.24, 4.28, 4.33]
+    ]
     zeroshot_tasks = {
-        "hqq": {
-            "type": "eval_zero_shot",
+        "mxq": {
+            "type": "eval_zeroshot_cls",
             "configs": equiv_mxq_configs,
         },
     }
-    do_expermient_fdata("quant_mxq_compromise", models, quant_tasks)
-    # do_expermient_fdata("eval_mxq_compromise", models, zeroshot_tasks)
+    linear_probe_tasks = {
+        "mxq": {
+            "type": "eval_linear_probe",
+            "configs": equiv_mxq_configs,
+        },
+    }
+    do_expermient_fdata("eval_linear_probe_mxq2", models, linear_probe_tasks)
+    do_expermient_fdata("eval_zeroshot_cls_mxq2", models, zeroshot_tasks)
 
 
 def main():
@@ -349,8 +386,10 @@ def main():
     # experiment_quant_hqq()
     # experiment_quant_mxq()
     # experiment_zeroshot_eval_fp16()
-    experiment_zeroshot_eval_hqq()
-    # experiment_quant_zeroshot_eval_mxq_comprise()
+    # experiment_zeroshot_eval_mxq()
+    experiment_eval_mxq_combined()
+    # experiment_zeroshot_eval_fp16()
+    # experiment_zeroshot_eval_hqq()
 
 
 if __name__ == "__main__":
