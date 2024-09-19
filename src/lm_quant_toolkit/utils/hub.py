@@ -11,9 +11,12 @@ LLAMA_MODELS = {
     },
     "meta-llama/Meta-Llama-3-8B": {
         "layers": 32,
+        "llama2": False,
     },
     "meta-llama/Meta-Llama-3-70B": {
         "layers": 80,
+        "llama2": False,
+        "base_dir": "/data/hugginface/hub",
     },
     "meta-llama/Llama-2-70b-hf": {
         "layers": 80,
@@ -22,10 +25,12 @@ LLAMA_MODELS = {
     "meta-llama/Meta-Llama-3-70B-Instruct": {
         "layers": 80,
         "base_dir": "/data/hugginface/hub",
+        "llama2": False,
     },
     "meta-llama/Meta-Llama-3.1-405B-Instruct": {
         "layers": 126,
         "base_dir": "/data/hugginface/hub",
+        "llama2": False,
     },
 }
 

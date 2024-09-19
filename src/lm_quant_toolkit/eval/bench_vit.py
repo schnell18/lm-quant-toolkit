@@ -29,6 +29,9 @@ QUANT_METRICS_FILE_MAP = {
 }
 
 HQQ_CONFIGS = [
+    ("b8g32", HQQQuantConfig(nbits=8, group_size=32)),
+    ("b8g64", HQQQuantConfig(nbits=8, group_size=64)),
+    ("b8g128", HQQQuantConfig(nbits=8, group_size=128)),
     ("b4g32", HQQQuantConfig(nbits=4, group_size=32)),
     ("b4g64", HQQQuantConfig(nbits=4, group_size=64)),
     ("b4g128", HQQQuantConfig(nbits=4, group_size=128)),
@@ -46,6 +49,14 @@ MXQ_CONFIGS = [
         HQQQuantConfig(mixed=True, budget=bits, quant_scale=True),
     )
     for bits in [
+        8.50,
+        8.25,
+        8.15,
+        8.00,
+        7.50,
+        7.00,
+        6.50,
+        6.00,
         5.00,
         4.75,
         4.50,
@@ -77,22 +88,10 @@ def gen_experiment_items(models, tasks):
     return pd.DataFrame(dikts)
 
 
-def persist_progress(
-    model,
-    cfg,
-    algo,
-    task_type,
-    progress_path,
-):
+def persist_progress(df, progress_path):
     """Save the progress of experiment for resumption."""
     Path(progress_path).parent.mkdir(parents=True, exist_ok=True)
-    if not Path(progress_path).exists():
-        with open(progress_path, "w") as f:
-            f.write("model,cfg,algo,task_type,status,completion_time\n")
-
-    ts_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open(progress_path, "a") as f:
-        f.write(f"{model},{cfg},{algo},{task_type},1,{ts_str}\n")
+    df.to_csv(progress_path, index=False)
 
 
 def _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir):
@@ -108,29 +107,32 @@ def do_expermient(
     result_dir="results",
     track_cuda_memory=False,
 ):
-    all_df = gen_experiment_items(models, tasks)
+    df_all = gen_experiment_items(models, tasks)
     progress_path = os.path.join(result_dir, experiment_name, "progress.csv")
     if Path(progress_path).exists():
-        checked_df = pd.read_csv(progress_path)
-        df2 = all_df.merge(
-            checked_df, how="left", on=["model", "cfg", "task_type", "algo"]
+        df_saved = pd.read_csv(progress_path)
+        df_all = df_all.merge(
+            df_saved, how="left", on=["model", "cfg", "task_type", "algo"]
         )
         # filter already processed repos, equivalent to SQL is null
-        df2 = df2.query("status != status or status != 1")
+        df_todo = df_all.query("status != status or status != 1")
     else:
-        df2 = all_df
-    if df2.empty:
-        print("*" * 72)
-        print("Tasks completed!")
-        print("*" * 72)
-        return
-
-    df2 = df2.sort_values(by=["model", "cfg"])
+        df_all["status"] = 0
+        df_all["completion_time"] = ""
+        df_todo = df_all
     print("*" * 72)
     print("Sub-task list:")
-    print(df2)
+    print(df_all)
+    cnt_todo, cnt_tot = len(df_todo), len(df_all)
+    print(f"Todo:{cnt_todo}, Done: {cnt_tot - cnt_todo}, Total: {cnt_tot}")
+    if cnt_todo == 0:
+        print("Tasks completed!")
     print("*" * 72)
-    for idx, row in df2.iterrows():
+    if cnt_todo == 0:
+        return
+
+    df_todo = df_todo.sort_values(by=["model", "cfg"], ascending=False)
+    for idx, row in df_todo.iterrows():
         model_id = row["model"]
         algo = row["algo"]
         task_type = row["task_type"]
@@ -185,7 +187,15 @@ def do_expermient(
         if track_cuda_memory:
             _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
         save_partial_metric(experiment_name, algo, model_id, cfg, metric, result_dir)
-        persist_progress(model_id, cfg, algo, task_type, progress_path)
+        df_all.loc[
+            (df_all["model"] == model_id)
+            & (df_all["cfg"] == cfg)
+            & (df_all["algo"] == algo)
+            & (df_all["task_type"] == task_type),
+            ["status", "completion_time"],
+        ] = 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # persist_progress(model_id, cfg, algo, task_type, progress_path)
+        persist_progress(df_all, progress_path)
     # combine metrics
     combine_metrics(experiment_name, result_dir)
 
@@ -327,16 +337,63 @@ def experiment_zeroshot_eval_fp16():
     do_expermient_fdata(f"{type}_{algo}", models, tasks)
 
 
-def experiment_zeroshot_eval_hqq():
+def experiment_eval_fp16_combined():
     models = ALL_MODELS
-    type = "eval_zeroshot_cls"
+    algo = "fp16"
+    tasks = {
+        algo: {
+            "type": "eval_zeroshot_cls",
+            "configs": [
+                ("base", {}),
+            ],
+        },
+    }
+    linear_probe_tasks = {
+        algo: {
+            "type": "eval_linear_probe",
+            "configs": [
+                ("base", {}),
+            ],
+        },
+    }
+    do_expermient_fdata(f"eval_linear_probe_{algo}", models, linear_probe_tasks)
+    do_expermient_fdata(f"eval_zeroshot_cls_{algo}", models, tasks)
+
+
+def experiment_eval_hqq_comprehensive():
+    models = ALL_MODELS
     tasks = {
         "hqq": {
-            "type": type,
+            "type": "eval_zeroshot_cls",
             "configs": HQQ_CONFIGS,
         }
     }
-    do_expermient_fdata(f"{type}_hqq", models, tasks)
+    linear_probe_tasks = {
+        "hqq": {
+            "type": "eval_linear_probe",
+            "configs": HQQ_CONFIGS,
+        },
+    }
+    do_expermient_fdata("eval_zs_hqq_comprehensive", models, tasks)
+    do_expermient_fdata("eval_lp_hqq_comprehensive", models, linear_probe_tasks)
+
+
+def experiment_eval_mxq_comprehensive():
+    models = ALL_MODELS
+    zeroshot_tasks = {
+        "mxq": {
+            "type": "eval_zeroshot_cls",
+            "configs": MXQ_CONFIGS,
+        },
+    }
+    linear_probe_tasks = {
+        "mxq": {
+            "type": "eval_linear_probe",
+            "configs": MXQ_CONFIGS,
+        },
+    }
+    do_expermient_fdata("eval_zs_mxq_comprehensive", models, zeroshot_tasks)
+    do_expermient_fdata("eval_lp_mxq_comprehensive", models, linear_probe_tasks)
 
 
 def experiment_zeroshot_eval_mxq():
@@ -387,9 +444,10 @@ def main():
     # experiment_quant_mxq()
     # experiment_zeroshot_eval_fp16()
     # experiment_zeroshot_eval_mxq()
-    experiment_eval_mxq_combined()
-    # experiment_zeroshot_eval_fp16()
-    # experiment_zeroshot_eval_hqq()
+    # experiment_eval_mxq_combined()
+    # experiment_eval_fp16_combined()
+    experiment_eval_mxq_comprehensive()
+    experiment_eval_hqq_comprehensive()
 
 
 if __name__ == "__main__":

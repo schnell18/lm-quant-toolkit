@@ -8,7 +8,7 @@ def eval_clip_benchmark(
     model_id,
     quantized,
     quant_config,
-    additional_args,
+    additional_args=[],
 ):
     # build args for clip_benchmark
     model_type = "open_clip_hqq" if quantized else "open_clip"
@@ -36,7 +36,7 @@ def eval_clip_benchmark(
         f"--output=benchmark_{{dataset}}_{{pretrained}}_{{model}}_{{language}}_{{task}}-{model_type}.json",
         f"--extra_args={extra_args}",
     ]
-    if additional_args is not None and len(additional_args) > 0:
+    if len(additional_args) > 0:
         args_str.extend(additional_args)
     t1 = time.time()
     parser, _ = get_parser_args()
@@ -58,7 +58,6 @@ def eval_zeroshot_classification(metric, model_id, quantized, quant_config):
         model_id,
         quantized,
         quant_config,
-        None,
     )
     metric["acc1_zeroshot_cls"] = result_dict["metrics"]["acc1"]
     metric["acc5_zeroshot_cls"] = result_dict["metrics"]["acc5"]
