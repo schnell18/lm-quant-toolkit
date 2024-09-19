@@ -171,7 +171,7 @@ def summarize_vit_quantable_params(
     df.to_csv(csv_fp, index=False)
 
 
-def aggregate_quantable_parameters(models, base_dir="data"):
+def aggregate_quantable_parameters(models, base_dir="data", unit=1_000_000_000):
     ret = {}
     for model in models:
         csv_file = f"{base_dir}/quantable-{model}.csv"
@@ -179,7 +179,7 @@ def aggregate_quantable_parameters(models, base_dir="data"):
         total = df["param_count"].sum()
         quant = df["quant_count"].sum()
         pct = quant / total
-        ret[model] = (total / 1_000_000_000, quant / 1_000_000_000, pct * 100)
+        ret[model] = (total / unit, quant / unit, pct * 100)
     return ret
 
 
