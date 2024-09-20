@@ -45,9 +45,8 @@ def calc_fnorm_vit(
                     bpp = nbit1 + 2 * nbit2 / gsize1 + 32 / (gsize1 * gsize2)
                     memmb = bpp * params / 8 / (1024**2)
                     dikt = {
-                        "model_type": model_type,
                         "layer": layer,
-                        "module": module,
+                        "module": f"{model_type}.{module}",
                         "nbit1": nbit1,
                         "gsize1": gsize1,
                         "nbit2": nbit2,
@@ -91,7 +90,8 @@ def calc_fnorm(
 
 
 def calc_fnorm_for_vit_model(model_id, base_dir, layer_cfg):
-    self_attns = ["out_proj"]
+    # self_attns = ["out_proj"]
+    self_attns = []
     mlps = ["c_fc", "c_proj"]
     nbits1 = [2, 3, 4, 8]
     gsizes1 = [32, 64, 128]
@@ -148,7 +148,6 @@ def calc_fnorm_for_vit_model(model_id, base_dir, layer_cfg):
     df.to_csv(
         file_name,
         columns=[
-            "model_type",
             "layer",
             "module",
             "nbit1",

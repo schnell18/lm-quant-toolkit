@@ -6,18 +6,17 @@ from clip_benchmark.cli import get_parser_args, run
 def eval_clip_benchmark(
     task,
     model_id,
-    quantized,
     quant_config,
     additional_args=[],
 ):
     # build args for clip_benchmark
-    model_type = "open_clip_hqq" if quantized else "open_clip"
+    model_type = "open_clip_hqq" if quant_config else "open_clip"
     comps = model_id.split("/")
     elems = comps[1].split("-")
     model_name = "-".join(elems[1:4])
     pretrained = "-".join(elems[4:])
     extra_args = ""
-    if quantized:
+    if quant_config:
         mixed = quant_config.get("mixed", None)
         if mixed:
             budget = quant_config["budget"]
@@ -52,11 +51,10 @@ def eval_clip_benchmark(
     return result_dict
 
 
-def eval_zeroshot_classification(metric, model_id, quantized, quant_config):
+def eval_zeroshot_classification(metric, model_id, quant_config):
     result_dict = eval_clip_benchmark(
         "zeroshot_classification",
         model_id,
-        quantized,
         quant_config,
     )
     metric["acc1_zeroshot_cls"] = result_dict["metrics"]["acc1"]
@@ -66,9 +64,9 @@ def eval_zeroshot_classification(metric, model_id, quantized, quant_config):
     return metric
 
 
-def eval_linear_probe(metric, model_id, quantized, quant_config):
+def eval_linear_probe(metric, model_id, quant_config):
     additional_args = [
-        "--batch_size=64",
+        "--batch_size=128",
         "--fewshot_lr=0.1",
         "--fewshot_epochs=20",
         "--train_split=train",
@@ -78,7 +76,6 @@ def eval_linear_probe(metric, model_id, quantized, quant_config):
     result_dict = eval_clip_benchmark(
         "linear_probe",
         model_id,
-        quantized,
         quant_config,
         additional_args,
     )

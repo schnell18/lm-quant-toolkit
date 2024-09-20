@@ -15,10 +15,14 @@ from lm_quant_toolkit.eval.clipbenchmark import (
     eval_zeroshot_classification,
 )
 
+# ALL_MODELS = [
+#     "laion/CLIP-ViT-B-32-laion2B-s34B-b79K",
+#     "laion/CLIP-ViT-H-14-laion2B-s32B-b79K",
+#     "laion/CLIP-ViT-L-14-laion2B-s32B-b82K",
+# ]
+
 ALL_MODELS = [
-    "laion/CLIP-ViT-B-32-laion2B-s34B-b79K",
     "laion/CLIP-ViT-H-14-laion2B-s32B-b79K",
-    "laion/CLIP-ViT-L-14-laion2B-s32B-b82K",
 ]
 
 
@@ -155,35 +159,26 @@ def do_expermient(
         if track_cuda_memory:
             torch.cuda.memory._record_memory_history()
         _reset_peak_memory_stats()
-        if algo == "fp16":
-            if task_type == "eval_zeroshot_cls":
-                metric = eval_zeroshot_classification(metric, model_id, False, None)
-                metric["zeroshot_mem_allot"], metric["zeroshot_mem_reserved"] = (
-                    get_memory_metrics()
-                )
-            else:
-                metric = eval_linear_probe(metric, model_id, False, None)
-                (
-                    metric["linear_probe_mem_allot"],
-                    metric["linear_probe_mem_reserved"],
-                ) = get_memory_metrics()
+
+        quant_config = None
+        if algo != "fp16":
+            quant_config = copy.deepcopy(config[1])
+            if algo == "mxq" and model_id in QUANT_METRICS_FILE_MAP:
+                quant_config["quant_metrics_file"] = QUANT_METRICS_FILE_MAP[model_id]
+        if task_type == "eval_zeroshot_cls":
+            # avoid interventions between models
+            metric = eval_zeroshot_classification(metric, model_id, quant_config)
+            (
+                metric["zeroshot_mem_allot"],
+                metric["zeroshot_mem_reserved"],
+            ) = get_memory_metrics()
         else:
-            if task_type == "eval_zeroshot_cls":
-                # avoid interventions between models
-                quant_config = copy.deepcopy(config[1])
-                if algo == "mxq" and model_id in QUANT_METRICS_FILE_MAP:
-                    quant_config["quant_metrics_file"] = QUANT_METRICS_FILE_MAP[
-                        model_id
-                    ]
-                metric = eval_zeroshot_classification(
-                    metric, model_id, True, quant_config
-                )
-            else:
-                metric = eval_linear_probe(metric, model_id, False, None)
-                (
-                    metric["linear_probe_mem_allot"],
-                    metric["linear_probe_mem_reserved"],
-                ) = get_memory_metrics()
+            metric = eval_linear_probe(metric, model_id, quant_config)
+            (
+                metric["linear_probe_mem_allot"],
+                metric["linear_probe_mem_reserved"],
+            ) = get_memory_metrics()
+
         if track_cuda_memory:
             _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
         save_partial_metric(experiment_name, algo, model_id, cfg, metric, result_dir)
@@ -258,6 +253,23 @@ def cleanup(model):
     del model
     torch.cuda.empty_cache()
     gc.collect()
+
+
+def calc_bits(b1, g1, b2, g2):
+    return b1 + 2 * b2 / g1 + 32 / g1 / g2
+
+
+def get_mxq_bits(reduction_pcts=[3, 5, 8]):
+    nbits = []
+    for cfg in HQQ_CONFIGS:
+        bpp = calc_bits(
+            cfg[1]["weight_quant_params"]["nbits"],
+            cfg[1]["weight_quant_params"]["group_size"],
+            8,
+            128,
+        )
+        nbits.extend([round(bpp * (1 - pct / 100), 2) for pct in reduction_pcts])
+    return sorted(list(set(nbits)), reverse=True)
 
 
 def _reset_peak_memory_stats():
@@ -356,8 +368,8 @@ def experiment_eval_fp16_combined():
             ],
         },
     }
-    do_expermient_fdata(f"eval_linear_probe_{algo}", models, linear_probe_tasks)
-    do_expermient_fdata(f"eval_zeroshot_cls_{algo}", models, tasks)
+    do_expermient_fdata(f"eval_linear_probe_{algo}2", models, linear_probe_tasks)
+    do_expermient_fdata(f"eval_zeroshot_cls_{algo}2", models, tasks)
 
 
 def experiment_eval_hqq_comprehensive():
@@ -374,8 +386,36 @@ def experiment_eval_hqq_comprehensive():
             "configs": HQQ_CONFIGS,
         },
     }
-    do_expermient_fdata("eval_zs_hqq_comprehensive", models, tasks)
-    do_expermient_fdata("eval_lp_hqq_comprehensive", models, linear_probe_tasks)
+    do_expermient_fdata("eval_zs_hqq_comprehensive2", models, tasks)
+    do_expermient_fdata("eval_lp_hqq_comprehensive2", models, linear_probe_tasks)
+
+
+def experiment_eval_mxq_358_memory_saving():
+    nbits = get_mxq_bits()
+    # budget 2.07 is infeasible
+    nbits = [bit for bit in nbits if bit > 2.07]
+    mxq_configs = [
+        (
+            f"{bits:.2f}".replace(".", "_"),
+            HQQQuantConfig(mixed=True, budget=bits, quant_scale=True),
+        )
+        for bits in nbits
+    ]
+    models = ALL_MODELS
+    tasks = {
+        "mxq": {
+            "type": "eval_zeroshot_cls",
+            "configs": mxq_configs,
+        }
+    }
+    linear_probe_tasks = {
+        "mxq": {
+            "type": "eval_linear_probe",
+            "configs": mxq_configs,
+        },
+    }
+    do_expermient_fdata("eval_zs_mxq_358_memory_saving", models, tasks)
+    do_expermient_fdata("eval_lp_mxq_358_memory_saving", models, linear_probe_tasks)
 
 
 def experiment_eval_mxq_comprehensive():
@@ -392,8 +432,8 @@ def experiment_eval_mxq_comprehensive():
             "configs": MXQ_CONFIGS,
         },
     }
-    do_expermient_fdata("eval_zs_mxq_comprehensive", models, zeroshot_tasks)
-    do_expermient_fdata("eval_lp_mxq_comprehensive", models, linear_probe_tasks)
+    do_expermient_fdata("eval_zs_mxq_comprehensive2", models, zeroshot_tasks)
+    do_expermient_fdata("eval_lp_mxq_comprehensive2", models, linear_probe_tasks)
 
 
 def experiment_zeroshot_eval_mxq():
@@ -446,8 +486,8 @@ def main():
     # experiment_zeroshot_eval_mxq()
     # experiment_eval_mxq_combined()
     # experiment_eval_fp16_combined()
-    experiment_eval_mxq_comprehensive()
-    experiment_eval_hqq_comprehensive()
+    # experiment_eval_hqq_comprehensive()
+    experiment_eval_mxq_358_memory_saving()
 
 
 if __name__ == "__main__":
