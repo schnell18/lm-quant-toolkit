@@ -173,7 +173,12 @@ def do_expermient(
                 metric["zeroshot_mem_reserved"],
             ) = get_memory_metrics()
         else:
-            metric = eval_linear_probe(metric, model_id, quant_config)
+            # Make model with different quantization configs don't share the
+            # pre-calated features vectors, thus they are evaluated
+            # separately.
+            feature_root = os.path.join(quant_dir, "features", cfg)
+            Path(feature_root).mkdir(parents=True, exist_ok=True)
+            metric = eval_linear_probe(metric, model_id, quant_config, feature_root)
             (
                 metric["linear_probe_mem_allot"],
                 metric["linear_probe_mem_reserved"],
@@ -255,7 +260,7 @@ def cleanup(model):
     gc.collect()
 
 
-def calc_bits(b1, g1, b2, g2):
+def calc_bits(b1, g1, b2=8, g2=128):
     return b1 + 2 * b2 / g1 + 32 / g1 / g2
 
 
@@ -386,8 +391,8 @@ def experiment_eval_hqq_comprehensive():
             "configs": HQQ_CONFIGS,
         },
     }
-    do_expermient_fdata("eval_zs_hqq_comprehensive2", models, tasks)
-    do_expermient_fdata("eval_lp_hqq_comprehensive2", models, linear_probe_tasks)
+    do_expermient_fdata("eval_lp_hqq_comprehensive4", models, linear_probe_tasks)
+    do_expermient_fdata("eval_zs_hqq_comprehensive4", models, tasks)
 
 
 def experiment_eval_mxq_358_memory_saving():
@@ -414,8 +419,8 @@ def experiment_eval_mxq_358_memory_saving():
             "configs": mxq_configs,
         },
     }
-    do_expermient_fdata("eval_zs_mxq_358_memory_saving", models, tasks)
-    do_expermient_fdata("eval_lp_mxq_358_memory_saving", models, linear_probe_tasks)
+    do_expermient_fdata("eval_lp_mxq_358_memory_saving4", models, linear_probe_tasks)
+    do_expermient_fdata("eval_zs_mxq_358_memory_saving4", models, tasks)
 
 
 def experiment_eval_mxq_comprehensive():
@@ -486,7 +491,7 @@ def main():
     # experiment_zeroshot_eval_mxq()
     # experiment_eval_mxq_combined()
     # experiment_eval_fp16_combined()
-    # experiment_eval_hqq_comprehensive()
+    experiment_eval_hqq_comprehensive()
     experiment_eval_mxq_358_memory_saving()
 
 

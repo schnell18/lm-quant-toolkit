@@ -64,13 +64,14 @@ def eval_zeroshot_classification(metric, model_id, quant_config):
     return metric
 
 
-def eval_linear_probe(metric, model_id, quant_config):
+def eval_linear_probe(metric, model_id, quant_config, feature_root):
     additional_args = [
-        "--batch_size=128",
+        "--batch_size=2048",
         "--fewshot_lr=0.1",
         "--fewshot_epochs=20",
         "--train_split=train",
         "--test_split=test",
+        f"--feature_root={feature_root}",
     ]
 
     result_dict = eval_clip_benchmark(
