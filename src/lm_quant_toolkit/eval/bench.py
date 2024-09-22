@@ -49,17 +49,26 @@ HQQ_CONFIGS = [
     ("b2g16", HQQQuantConfig(nbits=2, group_size=16)),
     ("b2g32", HQQQuantConfig(nbits=2, group_size=32)),
     ("b2g64", HQQQuantConfig(nbits=2, group_size=64)),
-    ("mxq-5_00", HQQQuantConfig(mixed=True, budget=5.00, quant_scale=True)),
-    ("mxq-4_75", HQQQuantConfig(mixed=True, budget=4.75, quant_scale=True)),
-    ("mxq-4_50", HQQQuantConfig(mixed=True, budget=4.50, quant_scale=True)),
-    ("mxq-4_25", HQQQuantConfig(mixed=True, budget=4.25, quant_scale=True)),
-    ("mxq-4_01", HQQQuantConfig(mixed=True, budget=4.01, quant_scale=True)),
-    ("mxq-3_76", HQQQuantConfig(mixed=True, budget=3.76, quant_scale=True)),
-    ("mxq-3_50", HQQQuantConfig(mixed=True, budget=3.50, quant_scale=True)),
-    ("mxq-3_00", HQQQuantConfig(mixed=True, budget=3.00, quant_scale=True)),
-    ("mxq-2_75", HQQQuantConfig(mixed=True, budget=2.75, quant_scale=True)),
-    ("mxq-2_48", HQQQuantConfig(mixed=True, budget=2.48, quant_scale=True)),
+    # ("mxq-5_00", HQQQuantConfig(mixed=True, budget=5.00, quant_scale=True)),
+    # ("mxq-4_75", HQQQuantConfig(mixed=True, budget=4.75, quant_scale=True)),
+    # ("mxq-4_50", HQQQuantConfig(mixed=True, budget=4.50, quant_scale=True)),
+    # ("mxq-4_25", HQQQuantConfig(mixed=True, budget=4.25, quant_scale=True)),
+    # ("mxq-4_01", HQQQuantConfig(mixed=True, budget=4.01, quant_scale=True)),
+    # ("mxq-3_76", HQQQuantConfig(mixed=True, budget=3.76, quant_scale=True)),
+    # ("mxq-3_50", HQQQuantConfig(mixed=True, budget=3.50, quant_scale=True)),
+    # ("mxq-3_00", HQQQuantConfig(mixed=True, budget=3.00, quant_scale=True)),
+    # ("mxq-2_75", HQQQuantConfig(mixed=True, budget=2.75, quant_scale=True)),
+    # ("mxq-2_48", HQQQuantConfig(mixed=True, budget=2.48, quant_scale=True)),
 ]
+
+MXQ_CONFIGS = [
+    (
+        f"{bits:.2f}".replace(".", "_"),
+        HQQQuantConfig(mixed=True, budget=bits, quant_scale=True),
+    )
+    for bits in [5.00, 4.75, 4.50, 4.25, 4.01, 3.76, 3.50, 3.00, 2.75, 2.48]
+]
+
 
 AUTOAWQ_CONFIGS = [
     ("b4g32", {"w_bit": 4, "q_group_size": 32, "zero_point": True, "version": "GEMM"}),
@@ -73,14 +82,14 @@ AUTOAWQ_CONFIGS = [
     # ("b3g128", {"w_bit": 3, "q_group_size": 128, "zero_point": True, 'version':'gemv_fast'}),
 ]
 
-AWQ_CONFIGS = [
-    ("b4g32", {"w_bit": 4, "q_group_size": 32, "zero_point": True}),
-    ("b4g64", {"w_bit": 4, "q_group_size": 64, "zero_point": True}),
-    ("b4g128", {"w_bit": 4, "q_group_size": 128, "zero_point": True}),
-    ("b3g32", {"w_bit": 3, "q_group_size": 32, "zero_point": True}),
-    ("b3g64", {"w_bit": 3, "q_group_size": 64, "zero_point": True}),
-    ("b3g128", {"w_bit": 3, "q_group_size": 128, "zero_point": True}),
-]
+# AWQ_CONFIGS = [
+#     ("b4g32", {"w_bit": 4, "q_group_size": 32, "zero_point": True}),
+#     ("b4g64", {"w_bit": 4, "q_group_size": 64, "zero_point": True}),
+#     ("b4g128", {"w_bit": 4, "q_group_size": 128, "zero_point": True}),
+#     ("b3g32", {"w_bit": 3, "q_group_size": 32, "zero_point": True}),
+#     ("b3g64", {"w_bit": 3, "q_group_size": 64, "zero_point": True}),
+#     ("b3g128", {"w_bit": 3, "q_group_size": 128, "zero_point": True}),
+# ]
 
 GPTQ_CONFIGS = [
     (
@@ -165,7 +174,7 @@ def _setup_fn(algo, spec):
         case "gptq":
             spec["create_fn"] = create_autogptq_model
             spec["quantize_fn"] = quantize_autogptq_model
-        case "hqq":
+        case "hqq", "mxq":
             spec["create_fn"] = create_hqq_model
             spec["quantize_fn"] = quantize_hqq_model
         case _:
@@ -232,12 +241,11 @@ def do_expermient(
             model, tokenizer, quantized = create_fn(
                 model_id, config[1], cfg, quant_fn is not None, quant_dir
             )
-            metric["load_mem_allot"], metric["load_mem_reserved"] = get_memory_metrics()
 
             if not quantized and quant_fn:
                 # avoid interventions between models
                 quant_config = copy.deepcopy(config[1])
-                if cfg.startswith("mxq-") and model_id in QUANT_METRICS_FILE_MAP:
+                if algo == "mxq" and model_id in QUANT_METRICS_FILE_MAP:
                     quant_config["quant_metrics_file"] = QUANT_METRICS_FILE_MAP[
                         model_id
                     ]
@@ -252,8 +260,12 @@ def do_expermient(
                 # persistent the quantized model
                 os.sync()
                 metric["quant_duration"] = duration
-            # Evaluate the quantized model
-            if task_type == "eval_ppl":
+            if task_type == "eval_load_mem":
+                metric["load_mem_allot"], metric["load_mem_reserved"] = (
+                    get_memory_metrics()
+                )
+            elif task_type == "eval_ppl":
+                # Evaluate the quantized model
                 metric = eval_ppls(model, tokenizer, metric)
                 metric["ppl_mem_allot"], metric["ppl_mem_reserved"] = (
                     get_memory_metrics()
@@ -388,11 +400,11 @@ def experiment_quant_hqq():
 def experiment_quant_mxq():
     models = ALL_MODELS
     type = "quant"
-    algo = "hqq"
+    algo = "mxq"
     tasks = {
         algo: {
             "type": type,
-            "configs": HQQ_CONFIGS[9:],
+            "configs": MXQ_CONFIGS,
         },
     }
     do_expermient_fdata(f"{type}_{algo}_mxq", models, tasks)
@@ -549,6 +561,19 @@ def experiment_llm_leaderboard_hqq():
     do_expermient_fdata(f"{type}_{algo}", models, tasks)
 
 
+def experiment_llm_leaderboard_mxq():
+    models = ALL_MODELS
+    type = "eval_leaderboard"
+    algo = "mxq"
+    tasks = {
+        algo: {
+            "type": type,
+            "configs": MXQ_CONFIGS,
+        },
+    }
+    do_expermient_fdata(f"{type}_{algo}", models, tasks)
+
+
 def experiment_llm_leaderboard_autoawq():
     models = ALL_MODELS[0:1]
     type = "eval_leaderboard"
@@ -638,6 +663,33 @@ def experiment_fp16_vs_hqq_eval_gpu_mem():
         },
     }
     do_expermient_fdata("experiment_fp16_vs_hqq_eval_gpu_mem", models, tasks)
+
+
+def experiment_load_mem_usage():
+    models = ALL_MODELS
+    type = "eval_load_mem"
+    tasks = {
+        "fp16": {
+            "type": type,
+            "configs": [
+                ("base", {}),
+            ],
+        },
+        "mxq": {
+            "type": type,
+            "configs": MXQ_CONFIGS,
+        },
+        "hqq": {
+            "type": type,
+            "configs": HQQ_CONFIGS,
+        },
+        "awq": {
+            "type": type,
+            "configs": AUTOAWQ_CONFIGS,
+        },
+        "gptq": {"type": type, "configs": GPTQ_CONFIGS},
+    }
+    do_expermient_fdata("experiment_load_mem_usage", models, tasks)
 
 
 def experiment_debug_quant_hqq():
