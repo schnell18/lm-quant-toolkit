@@ -1,21 +1,17 @@
+import json
 import os
 import time
-import torch
 
-from transformers import AutoModelForCausalLM
-from transformers import AutoTokenizer
-from transformers import AutoConfig
+import torch
 from accelerate import (
-    init_empty_weights,
     infer_auto_device_map,
+    init_empty_weights,
     load_checkpoint_in_model,
 )
-
-from awq.quantize.pre_quant import run_awq
-from awq.quantize.pre_quant import apply_awq
+from awq.quantize.pre_quant import apply_awq, run_awq
 from awq.quantize.quantizer import real_quantize_model_weight
 from awq.utils.utils import simple_dispatch_model
-
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 max_memory = {}
 
@@ -69,7 +65,7 @@ def create_awq_model(model_id, quant_config, config_id, load_quantized, save_dir
 
 def quantize_awq_model(model, tokenizer, quant_config, model_id, config_id, save_dir):
     t1 = time.time()
-    nbits = quant_config.pop('w_bit')
+    nbits = quant_config.pop("w_bit")
     awq_results = run_awq(
         model,
         tokenizer,
@@ -87,8 +83,18 @@ def quantize_awq_model(model, tokenizer, quant_config, model_id, config_id, save
     real_quantize_model_weight(model, w_bit=nbits, q_config=quant_config)
 
     t2 = time.time()
-    print('Took ' + str(t2 - t1) + ' seconds to quantize the model with AWQ')
+    print("Took " + str(t2 - t1) + " seconds to quantize the model with AWQ")
     quant_path = f"{save_dir}/{model_id}-{config_id}-awq"
     torch.save(model.cpu().state_dict(), f"{quant_path}/qmodel.pth")
     tokenizer.save_pretrained(quant_path)
-    return model, t2 - t1
+    return model, t2 - t1, _get_model_file_size(quant_path, quant_config)
+
+
+def _get_model_file_size(quant_path, quant_config):
+    size = 0
+    with open(os.path.join(quant_path, "model.safetensors.index.json"), "r") as f:
+        index = json.load(f)
+        for shard in set(index["weight_map"].values()):
+            fp = os.path.join(quant_path, shard)
+        size += os.path.getsize(fp)
+    return size

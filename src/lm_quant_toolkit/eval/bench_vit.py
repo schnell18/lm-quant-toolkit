@@ -194,7 +194,6 @@ def do_expermient(
             & (df_all["task_type"] == task_type),
             ["status", "completion_time"],
         ] = 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # persist_progress(model_id, cfg, algo, task_type, progress_path)
         persist_progress(df_all, progress_path)
     # combine metrics
     combine_metrics(experiment_name, result_dir)

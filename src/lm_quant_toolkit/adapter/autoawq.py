@@ -1,11 +1,15 @@
 import os
 import time
 
+import torch
 import transformers
 from awq import AutoAWQForCausalLM
 
+from lm_quant_toolkit.adapter.common import get_model_storage_size
+
 
 def create_autoawq_model(model_id, quant_config, config_id, load_quantized, save_dir):
+    model_file_size = 0
     quantized = False
     quant_path = f"{save_dir}/{model_id}-{config_id}-awq"
     if load_quantized and os.path.exists(quant_path):
@@ -17,15 +21,23 @@ def create_autoawq_model(model_id, quant_config, config_id, load_quantized, save
         )
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
         quantized = True
+        model_file_size = get_model_storage_size(quant_path)
         model = model.cuda()
     else:
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
+        # model = AutoAWQForCausalLM.from_pretrained(
+        #     model_id,
+        #     device_map="auto",
+        #     offload_state_dict=True,
+        #     max_memory={0: "18GiB", "cpu": "60GiB"},
+        # )
         model = AutoAWQForCausalLM.from_pretrained(
             model_id,
-            device_map="balanced",
+            device_map="cuda",
             offload_state_dict=True,
+            torch_dtype=torch.float16,
         )
-    return model, tokenizer, quantized
+    return model, tokenizer, quantized, model_file_size
 
 
 def quantize_autoawq_model(
@@ -38,4 +50,6 @@ def quantize_autoawq_model(
     quant_path = f"{save_dir}/{model_id}-{config_id}-awq"
     model.save_quantized(quant_path)
     tokenizer.save_pretrained(quant_path)
-    return model, t2 - t1
+    # persistent the quantized model
+    os.sync()
+    return model, t2 - t1, get_model_storage_size(quant_path)

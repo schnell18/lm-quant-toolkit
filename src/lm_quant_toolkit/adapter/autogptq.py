@@ -2,9 +2,9 @@ import gc
 import os
 import random
 import time
+
 import torch
 import transformers
-
 from auto_gptq import AutoGPTQForCausalLM
 from datasets import load_dataset
 from tqdm import tqdm
@@ -16,12 +16,16 @@ def prepare_model(model, tokenizer, n_samples=1024, max_tokens=512, use_triton=F
     data = load_dataset(
         "allenai/c4",
         data_files="en/c4-train.00001-of-01024.json.gz",
-        split=f"train[:{n_samples}]"
+        split=f"train[:{n_samples}]",
     )
     # ~536K tokens
     tokenized_data = torch.cat(
-        [tokenizer(data[i]['text'], return_tensors='pt').input_ids
-            for i in tqdm(range(len(data)))], axis=-1)
+        [
+            tokenizer(data[i]["text"], return_tensors="pt").input_ids
+            for i in tqdm(range(len(data)))
+        ],
+        axis=-1,
+    )
 
     # Format tokenized examples
     random.seed(1)
@@ -31,9 +35,9 @@ def prepare_model(model, tokenizer, n_samples=1024, max_tokens=512, use_triton=F
         j = i + max_tokens
         input_ids = tokenized_data[:, i:j]
         attention_mask = torch.ones_like(input_ids)
-        examples_ids.append({'input_ids': input_ids, 'attention_mask': attention_mask})
+        examples_ids.append({"input_ids": input_ids, "attention_mask": attention_mask})
 
-    print('Using ' + str(len(examples_ids)) + ' samples for calibration.')
+    print("Using " + str(len(examples_ids)) + " samples for calibration.")
     model.quantize(examples_ids, batch_size=1, use_triton=use_triton)
     # model = model.cuda()
     # with torch.no_grad():
@@ -46,25 +50,36 @@ def prepare_model(model, tokenizer, n_samples=1024, max_tokens=512, use_triton=F
 
 
 def create_autogptq_model(model_id, quant_config, config_id, load_quantized, save_dir):
+    model_file_size = 0
     quantized = False
     quant_path = f"{save_dir}/{model_id}-{config_id}-gptq"
     if load_quantized and os.path.exists(quant_path):
         model = AutoGPTQForCausalLM.from_quantized(quant_path, device="cuda:0")
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
         quantized = True
+        model_file_size = _get_model_file_size(quant_path, quant_config)
     else:
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
         model = AutoGPTQForCausalLM.from_pretrained(model_id, quant_config)
-    return model, tokenizer, quantized
+    return model, tokenizer, quantized, model_file_size
 
 
-def quantize_autogptq_model(model, tokenizer, quant_config, model_id, config_id, save_dir):
+def quantize_autogptq_model(
+    model, tokenizer, quant_config, model_id, config_id, save_dir
+):
     t1 = time.time()
     model = prepare_model(model, tokenizer)
     t2 = time.time()
-    print('Took ' + str(t2 - t1) + ' seconds to quantize the model with AutoGPTQ')
+    print("Took " + str(t2 - t1) + " seconds to quantize the model with AutoGPTQ")
     quant_path = f"{save_dir}/{model_id}-{config_id}-gptq"
     model.save_quantized(quant_path, use_safetensors=True)
-    return model, t2 - t1
+    # persistent the quantized model
+    os.sync()
+    return model, t2 - t1, _get_model_file_size(quant_path, quant_config)
 
 
+def _get_model_file_size(quant_path, quant_config):
+    b = quant_config.bits
+    g = quant_config.group_size
+    fp = os.path.join(quant_path, f"gptq_model-{b}bit-{g}g.safetensors")
+    return os.path.getsize(fp)

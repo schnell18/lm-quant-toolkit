@@ -24,6 +24,7 @@ from lm_quant_toolkit.adapter.autogptq import (
 )
 from lm_quant_toolkit.adapter.fp16 import create_fp16_model
 from lm_quant_toolkit.adapter.hqq import create_hqq_model, quantize_hqq_model
+from lm_quant_toolkit.adapter.mxq import create_mxq_model, quantize_mxq_model
 from lm_quant_toolkit.eval.leaderboard import eval_llm_leaderboard
 from lm_quant_toolkit.eval.perplexity import eval_ppls
 
@@ -140,22 +141,10 @@ def gen_experiment_items(models, tasks):
     return pd.DataFrame(dikts)
 
 
-def persist_progress(
-    model,
-    cfg,
-    algo,
-    task_type,
-    progress_path,
-):
+def persist_progress(df, progress_path):
     """Save the progress of experiment for resumption."""
     Path(progress_path).parent.mkdir(parents=True, exist_ok=True)
-    if not Path(progress_path).exists():
-        with open(progress_path, "w") as f:
-            f.write("model,cfg,algo,task_type,status,completion_time\n")
-
-    ts_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open(progress_path, "a") as f:
-        f.write(f"{model},{cfg},{algo},{task_type},1,{ts_str}\n")
+    df.to_csv(progress_path, index=False)
 
 
 def _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir):
@@ -174,9 +163,12 @@ def _setup_fn(algo, spec):
         case "gptq":
             spec["create_fn"] = create_autogptq_model
             spec["quantize_fn"] = quantize_autogptq_model
-        case "hqq", "mxq":
+        case "hqq":
             spec["create_fn"] = create_hqq_model
             spec["quantize_fn"] = quantize_hqq_model
+        case "mxq":
+            spec["create_fn"] = create_mxq_model
+            spec["quantize_fn"] = quantize_mxq_model
         case _:
             raise ValueError(f"Invalid algo: {algo}")
 
@@ -190,29 +182,32 @@ def do_expermient(
     log_dir="logs",
     track_cuda_memory=False,
 ):
-    all_df = gen_experiment_items(models, tasks)
+    df_all = gen_experiment_items(models, tasks)
     progress_path = os.path.join(result_dir, experiment_name, "progress.csv")
     if Path(progress_path).exists():
-        checked_df = pd.read_csv(progress_path)
-        df2 = all_df.merge(
-            checked_df, how="left", on=["model", "cfg", "task_type", "algo"]
+        df_saved = pd.read_csv(progress_path)
+        df_all = df_all.merge(
+            df_saved, how="left", on=["model", "cfg", "task_type", "algo"]
         )
         # filter already processed repos, equivalent to SQL is null
-        df2 = df2.query("status != status or status != 1")
+        df_todo = df_all.query("status != status or status != 1")
     else:
-        df2 = all_df
-    if df2.empty:
-        print("*" * 72)
-        print("Tasks completed!")
-        print("*" * 72)
-        return
-
-    df2 = df2.sort_values(by=["model", "cfg"])
+        df_all["status"] = 0
+        df_all["completion_time"] = ""
+        df_todo = df_all
     print("*" * 72)
     print("Sub-task list:")
-    print(df2)
+    print(df_all)
+    cnt_todo, cnt_tot = len(df_todo), len(df_all)
+    print(f"Todo:{cnt_todo}, Done: {cnt_tot - cnt_todo}, Total: {cnt_tot}")
+    if cnt_todo == 0:
+        print("Tasks completed!")
     print("*" * 72)
-    for idx, row in df2.iterrows():
+    if cnt_todo == 0:
+        return
+
+    df_todo = df_todo.sort_values(by=["model", "cfg"], ascending=False)
+    for idx, row in df_todo.iterrows():
         model_id = row["model"]
         algo = row["algo"]
         task_type = row["task_type"]
@@ -227,9 +222,13 @@ def do_expermient(
             print(f"Quantizing {algo} on {model_id} w/ config: {cfg}...")
         elif task_type == "eval_ppl":
             print(f"Evaluating {algo} PPL on {model_id} w/ config: {cfg}...")
-        else:
+        elif task_type == "eval_leaderboard":
             print(
                 f"Evaluating {algo} LLM Leaderboard benchmarks on {model_id} w/ config: {cfg}..."
+            )
+        else:
+            print(
+                f"Evaluating {algo} model storage metrics on {model_id} w/ config: {cfg}..."
             )
         print("*" * 72)
 
@@ -238,7 +237,7 @@ def do_expermient(
         _reset_peak_memory_stats()
         if task_type != "eval_leaderboard":
             create_fn = spec["create_fn"]
-            model, tokenizer, quantized = create_fn(
+            model, tokenizer, quantized, model_file_size = create_fn(
                 model_id, config[1], cfg, quant_fn is not None, quant_dir
             )
 
@@ -249,7 +248,7 @@ def do_expermient(
                     quant_config["quant_metrics_file"] = QUANT_METRICS_FILE_MAP[
                         model_id
                     ]
-                model, duration = quant_fn(
+                model, duration, model_file_size = quant_fn(
                     model,
                     tokenizer,
                     quant_config,
@@ -257,13 +256,13 @@ def do_expermient(
                     cfg,
                     quant_dir,
                 )
-                # persistent the quantized model
-                os.sync()
                 metric["quant_duration"] = duration
-            if task_type == "eval_load_mem":
-                metric["load_mem_allot"], metric["load_mem_reserved"] = (
-                    get_memory_metrics()
-                )
+            if task_type == "eval_model_storage":
+                allot, reserved = get_memory_metrics()
+                metric["load_mem_allot"] = allot
+                metric["load_mem_reserved"] = reserved
+                metric["model_storage_size"] = model_file_size
+
             elif task_type == "eval_ppl":
                 # Evaluate the quantized model
                 metric = eval_ppls(model, tokenizer, metric)
@@ -290,7 +289,14 @@ def do_expermient(
             if track_cuda_memory:
                 _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
         save_partial_metric(experiment_name, algo, model_id, cfg, metric, result_dir)
-        persist_progress(model_id, cfg, algo, task_type, progress_path)
+        df_all.loc[
+            (df_all["model"] == model_id)
+            & (df_all["cfg"] == cfg)
+            & (df_all["algo"] == algo)
+            & (df_all["task_type"] == task_type),
+            ["status", "completion_time"],
+        ] = 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        persist_progress(df_all, progress_path)
     # combine metrics
     combine_metrics(experiment_name, result_dir)
 
@@ -302,6 +308,7 @@ def _init_metrics(model_id, algo, config):
         "config": config[0],
         "config_detail": config[1],
         "quant_duration": 0,
+        "model_storage_size": 0,
         "load_mem_allot": 0,
         "load_mem_reserved": 0,
         "ppl_mem_allot": 0,
@@ -339,11 +346,14 @@ def combine_metrics(experiment_name, result_dir):
     for it in iters:
         df = pd.read_csv(it)
         dfs.append(df)
-    combined = pd.concat(dfs)
-    ts_str = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_name = f"{result_dir}/{experiment_name}/result-{experiment_name}-{ts_str}.csv"
-    Path(file_name).parent.mkdir(parents=True, exist_ok=True)
-    combined.to_csv(file_name, index=False)
+    if len(dfs) > 0:
+        combined = pd.concat(dfs)
+        ts_str = datetime.now().strftime("%Y%m%d%H%M%S")
+        file_name = (
+            f"{result_dir}/{experiment_name}/result-{experiment_name}-{ts_str}.csv"
+        )
+        Path(file_name).parent.mkdir(parents=True, exist_ok=True)
+        combined.to_csv(file_name, index=False)
 
 
 def cleanup(model):
@@ -665,9 +675,9 @@ def experiment_fp16_vs_hqq_eval_gpu_mem():
     do_expermient_fdata("experiment_fp16_vs_hqq_eval_gpu_mem", models, tasks)
 
 
-def experiment_load_mem_usage():
+def experiment_eval_model_storage():
     models = ALL_MODELS
-    type = "eval_load_mem"
+    type = "eval_model_storage"
     tasks = {
         "fp16": {
             "type": type,
@@ -689,17 +699,45 @@ def experiment_load_mem_usage():
         },
         "gptq": {"type": type, "configs": GPTQ_CONFIGS},
     }
-    do_expermient_fdata("experiment_load_mem_usage", models, tasks)
+    for i in range(5):
+        do_expermient_fdata(f"eval_model_storge_{i}", models, tasks)
+
+
+def experiment_eval_ppl_all():
+    models = ALL_MODELS
+    type = "eval_ppl"
+    tasks = {
+        "fp16": {
+            "type": type,
+            "configs": [
+                ("base", {}),
+            ],
+        },
+        "mxq": {
+            "type": type,
+            "configs": MXQ_CONFIGS,
+        },
+        "hqq": {
+            "type": type,
+            "configs": HQQ_CONFIGS,
+        },
+        "awq": {
+            "type": type,
+            "configs": AUTOAWQ_CONFIGS,
+        },
+        "gptq": {"type": type, "configs": GPTQ_CONFIGS},
+    }
+    do_expermient_fdata("experiment_eval_ppl_all", models, tasks)
 
 
 def experiment_debug_quant_hqq():
-    models = [ALL_MODELS[0]]
-    type = "quant"
+    models = [ALL_MODELS[1]]
+    type = "eval_model_storage"
     algo = "hqq"
     tasks = {
         algo: {
             "type": type,
-            "configs": HQQ_CONFIGS[0:1],
+            "configs": HQQ_CONFIGS[1:2],
         },
     }
 
@@ -709,7 +747,6 @@ def experiment_debug_quant_hqq():
         tasks,
         quant_dir="/fdata/llm/mxq/snapshots-debug",
         result_dir="/fdata/llm/mxq/results",
-        log_dir="/fdata/llm/mxq/logs",
     )
 
 
@@ -734,6 +771,9 @@ def main():
     # experiment_ppl_eval_awq()
     # experiment_fp16_llama3_8B_OOM()
     # experiment_fp16_vs_hqq_eval_gpu_mem()
+    # experiment_debug_quant_hqq()
+    # experiment_eval_model_storage()
+    # experiment_eval_ppl_all()
     experiment_debug_quant_hqq()
 
 

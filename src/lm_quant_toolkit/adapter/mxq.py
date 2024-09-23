@@ -5,10 +5,10 @@ from hqq.engine.hf import AutoTokenizer as hggAutoTokenizer
 from hqq.engine.hf import HQQModelForCausalLM
 
 
-def create_hqq_model(model_id, quant_config, config_id, load_quantized, save_dir):
+def create_mxq_model(model_id, quant_config, config_id, load_quantized, save_dir):
     quantized = False
     model_file_size = 0
-    quant_path = f"{save_dir}/{model_id}-{config_id}-hqq"
+    quant_path = f"{save_dir}/{model_id}-{config_id}-mxq"
     if load_quantized and os.path.exists(quant_path):
         model = HQQModelForCausalLM.from_quantized(quant_path)
         tokenizer = hggAutoTokenizer.from_pretrained(model_id)
@@ -20,13 +20,13 @@ def create_hqq_model(model_id, quant_config, config_id, load_quantized, save_dir
     return model, tokenizer, quantized, model_file_size
 
 
-def quantize_hqq_model(model, tokenizer, quant_config, model_id, config_id, save_dir):
+def quantize_mxq_model(model, tokenizer, quant_config, model_id, config_id, save_dir):
     model_file_size = 0
     t1 = time.time()
     model.quantize_model(quant_config=quant_config)
     t2 = time.time()
-    print("Took " + str(t2 - t1) + " seconds to quantize the model with HQQ")
-    quant_path = f"{save_dir}/{model_id}-{config_id}-hqq"
+    print("Took " + str(t2 - t1) + " seconds to quantize the model with MXQ")
+    quant_path = f"{save_dir}/{model_id}-{config_id}-mxq"
     model.save_quantized(quant_path)
     # persistent the quantized model
     os.sync()

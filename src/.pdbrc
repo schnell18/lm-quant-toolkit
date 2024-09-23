@@ -18,6 +18,20 @@
 # b /home/justin/work/hqq/hqq/models/base.py:335
 #
 # b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/adapter/vit/hqq.py:21
-b /home/justin/work/hqq/hqq/models/open_clip/base.py:63
-b /home/justin/work/CLIP_benchmark/clip_benchmark/models/open_clip_hqq.py:17
-b /home/justin/work/hqq/hqq/models/open_clip/vit_clip.py:60
+# b /home/justin/work/hqq/hqq/models/open_clip/base.py:63
+# b /home/justin/work/CLIP_benchmark/clip_benchmark/models/open_clip_hqq.py:17
+# b /home/justin/work/hqq/hqq/models/open_clip/vit_clip.py:60
+
+
+# AutoAWQ 0.2.6 OOM break points
+# b /home/justin/work/AutoAWQ/awq/models/base.py:186
+# b /home/justin/work/AutoAWQ/awq/quantize/quantizer.py:149
+# b /home/justin/work/AutoAWQ/awq/quantize/quantizer.py:538
+
+
+# AutoAWQ 0.2.5 two-device error break points
+# b /home/justin/work/AutoAWQ/awq/models/base.py:170
+# b /home/justin/work/AutoAWQ/awq/quantize/quantizer.py:61
+
+# debug GPU memory measuring issue
+b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/eval/bench.py:242
