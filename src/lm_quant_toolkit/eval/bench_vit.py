@@ -22,7 +22,7 @@ from lm_quant_toolkit.eval.clipbenchmark import (
 # ]
 
 ALL_MODELS = [
-    "laion/CLIP-ViT-H-14-laion2B-s32B-b79K",
+    "laion/CLIP-ViT-B-32-laion2B-s34B-b79K",
 ]
 
 
@@ -390,8 +390,8 @@ def experiment_eval_hqq_comprehensive():
             "configs": HQQ_CONFIGS,
         },
     }
-    do_expermient_fdata("eval_lp_hqq_comprehensive4", models, linear_probe_tasks)
-    do_expermient_fdata("eval_zs_hqq_comprehensive4", models, tasks)
+    # do_expermient_fdata("eval_lp_hqq_comprehensive4", models, linear_probe_tasks)
+    do_expermient_fdata("eval_zs_hqq_comprehensive5", models, tasks)
 
 
 def experiment_eval_mxq_358_memory_saving():
@@ -418,8 +418,8 @@ def experiment_eval_mxq_358_memory_saving():
             "configs": mxq_configs,
         },
     }
-    do_expermient_fdata("eval_lp_mxq_358_memory_saving4", models, linear_probe_tasks)
-    do_expermient_fdata("eval_zs_mxq_358_memory_saving4", models, tasks)
+    # do_expermient_fdata("eval_lp_mxq_358_memory_saving4", models, linear_probe_tasks)
+    do_expermient_fdata("eval_zs_mxq_358_memory_saving5", models, tasks)
 
 
 def experiment_eval_mxq_comprehensive():
