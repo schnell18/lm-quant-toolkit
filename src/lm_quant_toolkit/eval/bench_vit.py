@@ -15,16 +15,11 @@ from lm_quant_toolkit.eval.clipbenchmark import (
     eval_zeroshot_classification,
 )
 
-# ALL_MODELS = [
-#     "laion/CLIP-ViT-B-32-laion2B-s34B-b79K",
-#     "laion/CLIP-ViT-H-14-laion2B-s32B-b79K",
-#     "laion/CLIP-ViT-L-14-laion2B-s32B-b82K",
-# ]
-
 ALL_MODELS = [
     "laion/CLIP-ViT-B-32-laion2B-s34B-b79K",
+    "laion/CLIP-ViT-H-14-laion2B-s32B-b79K",
+    "laion/CLIP-ViT-L-14-laion2B-s32B-b82K",
 ]
-
 
 QUANT_METRICS_FILE_MAP = {
     "laion/CLIP-ViT-B-32-laion2B-s34B-b79K": "data/fnorm-CLIP-ViT-B-32-laion2B-s34B-b79K.csv",
@@ -53,24 +48,24 @@ MXQ_CONFIGS = [
         HQQQuantConfig(mixed=True, budget=bits, quant_scale=True),
     )
     for bits in [
-        8.50,
-        8.25,
-        8.15,
-        8.00,
-        7.50,
-        7.00,
-        6.50,
-        6.00,
+        7.80,
+        7.72,
+        7.64,
+        7.56,
+        7.48,
+        7.40,
+        7.32,
         5.00,
-        4.75,
-        4.50,
-        4.25,
-        4.01,
-        3.76,
-        3.50,
+        4.96,
+        4.91,
+        4.87,
+        4.82,
+        4.78,
+        4.74,
+        4.00,
+        3.96,
+        3.92,
         3.00,
-        2.75,
-        2.48,
     ]
 ]
 

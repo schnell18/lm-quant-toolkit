@@ -1,3 +1,4 @@
+import sys
 import time
 
 from clip_benchmark.cli import get_parser_args, run
@@ -38,6 +39,10 @@ def eval_clip_benchmark(
     if len(additional_args) > 0:
         args_str.extend(additional_args)
     t1 = time.time()
+
+    # clear the command line args for main python program
+    # so that they are not passed to clip_benchmark CLI
+    sys.argv = [sys.argv[0]]
     parser, _ = get_parser_args()
     cli_args = parser.parse_args(args_str)
     cli_args.dataset = cli_args.dataset[0]
