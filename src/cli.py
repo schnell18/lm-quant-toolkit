@@ -1,7 +1,10 @@
+#!/usr/bin/env python
 """Console script for lm-quant-toolkit."""
 
 import argparse
 import sys
+
+from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
 
 from lm_quant_toolkit.eval.bench import (
     ALL_MODELS,
@@ -214,9 +217,13 @@ def _get_vit_configs(algos, config_names):
                     algo_configs[algo] = VIT_MXQ_CONFIGS
                 else:
                     algo_configs[algo] = [
-                        cfg for cfg in VIT_MXQ_CONFIGS if cfg[0] in config_names
+                        (
+                            f"{bits:.2f}".replace(".", "_"),
+                            HQQQuantConfig(mixed=True, budget=bits, quant_scale=True),
+                        )
+                        for bits in [float(cfg) for cfg in config_names]
                     ]
-    return algo_configs
+                    return algo_configs
 
 
 def main():

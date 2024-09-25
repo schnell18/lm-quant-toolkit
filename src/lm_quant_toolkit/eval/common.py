@@ -7,6 +7,9 @@ from pathlib import Path
 import pandas as pd
 import torch
 from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
+from hqq.utils.optimizer import find_optimal_configs
+
+from lm_quant_toolkit.utils.hub import LLAMA_MODELS, VIT_OPENCLIP_MODELS
 
 HQQ_CONFIGS = [
     ("b8g32", HQQQuantConfig(nbits=8, group_size=32)),
@@ -94,3 +97,68 @@ def _reset_peak_memory_stats():
 
 def get_memory_metrics():
     return torch.cuda.max_memory_allocated(), torch.cuda.max_memory_reserved()
+
+
+def plan_eval_bit_budgets(model_arch="ViT", points=10):
+    bases = [8.13, 4.51, 3.51, 3.02]
+    for base in bases:
+        ideals, solvables = get_eval_plan(model_arch, base, points)
+        print("*" * 72)
+        print(f"base: {base}")
+        for t in zip(ideals, solvables):
+            print(f"ideal: {t[0]:.2f}, solvable: {t[1]:.2f}")
+        print("*" * 72)
+
+
+def get_eval_plan(model_arch, base, points):
+    ideals = []
+    solvables = []
+    for point in range(1, points + 1):
+        tentative = round(base * (100 - point) / 100, 2)
+        ideals.append(tentative)
+        ret = try_solvable(model_arch, tentative)
+        if ret is not None:
+            solvables.append(ret)
+        else:
+            solvables.append(0.0)
+    return ideals, solvables
+
+
+def try_solvable(model_arch, bit_budget):
+    model_ids = (
+        VIT_OPENCLIP_MODELS.keys() if model_arch == "ViT" else LLAMA_MODELS.keys()
+    )
+
+    dikt = {}
+    feasible_budget = round(bit_budget, 2)
+    for model_id in model_ids:
+        attempts = 1
+        _, fp = get_mxq_quant_meta_data_file(model_id)
+        while True:
+            try:
+                find_optimal_configs(fp, feasible_budget, time_limit=200)
+                dikt[model_id] = feasible_budget
+                break
+            except ValueError:
+                print(f"Warning: {feasible_budget:.2f} unsolvable for model {model_id}")
+                if attempts > 3:
+                    break
+                feasible_budget -= 0.01
+            attempts += 1
+    if len(set(dikt.values())) > 1:
+        print(dikt)
+        for model_id, budget in dikt.items():
+            if abs(budget - feasible_budget) > 0.01:
+                try:
+                    fp = get_mxq_quant_meta_data_file(model_id)
+                    find_optimal_configs(fp, feasible_budget, time_limit=200)
+                except ValueError:
+                    print(
+                        f"Warning: {feasible_budget:.2f} unsolvable for model {model_id}"
+                    )
+                    return None
+    return feasible_budget
+
+
+if __name__ == "__main__":
+    plan_eval_bit_budgets()

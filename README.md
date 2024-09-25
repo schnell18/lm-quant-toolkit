@@ -11,15 +11,20 @@ compression techniques have been developed to address the demanding
 computational resource issue. Nonetheless, there has been limited exploration
 into high-level quantization strategy orthogonal to existing methods to offer
 better flexibility of balancing the trade-off between memory usage and
-accuracy.
+accuracy. And maximize
 
 ## Requirements
 
-* Python 3.7 over
+The following softwares and libraries are primary dependencies of this project.
+* Python 3.11 recommended
+* miniconda
 * CUDA 12.x
 * AutoAWQ
 * AutoGPTQ
 * HQQ
+* CLIP_benchmark(for ViT model evaluation)
+
+For complete dependencies, please review the `pyproject.toml` file.
 
 ## Features
 
@@ -39,18 +44,36 @@ pip install -e .
 
 ## Usage
 
-### Run quantization harness
+This toolkit offers a command line utility named `cli.py` to help conducting
+experiments such as quantizing, evaluating langauge models and transformer
+vision models. The `cli.py` tool is designed to run long running
+experiments. It collects the perplexity, Open LLM
+LeaderBoard scores durations and GPU memory consumptions under various
+experiment settings. These experiment data are recorded in .csv format to ease
+further analysis and reporting.
 
-The `bench` tool is designed to run long running LLM quantization and evaluation
-experiments. It collects the perplexity, Open LLM LeaderBoard scores durations
-and GPU memory consumptions under various experiment settings. These experiment
-data are recorded in .csv format to ease further analysis and reporting.
+### Run quantizations
+This toolkit support selected Llama and OpenCLIP ViT model quantization.
+For Llama models, the supported algorithms include:
+- AWQ
+- GPTQ
+- HQQ
+- MXQ
 
-Run the following comand to
-quantize LLMs:
+The following command can be used to quantize the Llama-2-7b, Llama-2-13b-hf,
+Llama-3-8B models(denoted as 0, 1, 2 respectively) using MXQ algorithm:
 
 ```bash
-python src/lm_quant_toolkit/eval/bench.py
+python src/cli.py llm \
+    --task quant \
+    --model 0 1 2 \
+    --algo mxq \
+    --config 4.00 \
+    --experiment-name quant_llama-4_00-mxq \
+    --quant-snapshot-dir="/fdata/llm/mxq/snapshots" \
+    --result-dir="/fdata/llm/mxq/results" \
+    2>&1 \
+    | tee logs/bench-$(date +%Y%m%d%H%M%S).log
 ```
 
 
