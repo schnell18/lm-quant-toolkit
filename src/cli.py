@@ -7,14 +7,13 @@ from lm_quant_toolkit.eval.bench import (
     ALL_MODELS,
     AUTOAWQ_CONFIGS,
     GPTQ_CONFIGS,
-    HQQ_CONFIGS,
     MXQ_CONFIGS,
     do_expermient,
 )
 from lm_quant_toolkit.eval.bench_vit import ALL_MODELS as ALL_VIT_MODELS
-from lm_quant_toolkit.eval.bench_vit import HQQ_CONFIGS as VIT_HQQ_CONFIGS
 from lm_quant_toolkit.eval.bench_vit import MXQ_CONFIGS as VIT_MXQ_CONFIGS
 from lm_quant_toolkit.eval.bench_vit import do_expermient as do_expermient_vit
+from lm_quant_toolkit.eval.common import HQQ_CONFIGS
 
 
 def get_parser_args():
@@ -205,10 +204,10 @@ def _get_vit_configs(algos, config_names):
                 algo_configs[algo] = [("base", {})]
             case "hqq":
                 if config_names is None:
-                    algo_configs[algo] = VIT_HQQ_CONFIGS
+                    algo_configs[algo] = HQQ_CONFIGS
                 else:
                     algo_configs[algo] = [
-                        cfg for cfg in VIT_HQQ_CONFIGS if cfg[0] in config_names
+                        cfg for cfg in HQQ_CONFIGS if cfg[0] in config_names
                     ]
             case "mxq":
                 if config_names is None:

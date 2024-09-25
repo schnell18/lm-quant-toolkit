@@ -33,9 +33,7 @@ def eval_clip_benchmark(
             extra_args = f"nbits={b},group_size={g}"
     wds_cache_dir = os.path.join(quant_dir, "wds-dataset")
     Path(wds_cache_dir).mkdir(parents=True, exist_ok=True)
-    out_file = (
-        f"--output=benchmark_{{dataset}}_{{pretrained}}_{{model}}_{{language}}_{{task}}-{model_type}.json",
-    )
+    out_file = f"benchmark_{{dataset}}_{{pretrained}}_{{model}}_{{language}}_{{task}}-{model_type}.json"
     out_fp = os.path.join(result_dir, out_file)
     args_str = [
         "eval",
@@ -85,9 +83,8 @@ def eval_zeroshot_classification(metric, model_id, result_dir, quant_dir, quant_
 def eval_linear_probe(
     metric, model_id, result_dir, quant_dir, quant_config, feature_root
 ):
-    feature_root = ""
     additional_args = [
-        "--batch_size=2048",
+        "--batch_size=512",
         "--fewshot_lr=0.1",
         "--fewshot_epochs=20",
         "--train_split=train",

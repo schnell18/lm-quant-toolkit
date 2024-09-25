@@ -1,6 +1,4 @@
 import copy
-import gc
-import glob
 import logging
 import os
 from datetime import datetime
@@ -14,32 +12,22 @@ from lm_quant_toolkit.eval.clipbenchmark import (
     eval_linear_probe,
     eval_zeroshot_classification,
 )
+from lm_quant_toolkit.eval.common import (
+    HQQ_CONFIGS,
+    _dump_cuda_mem_snapshot,
+    _reset_peak_memory_stats,
+    calc_bits,
+    combine_metrics,
+    get_memory_metrics,
+    get_mxq_quant_meta_data_file,
+    persist_progress,
+    save_partial_metric,
+)
 
 ALL_MODELS = [
     "laion/CLIP-ViT-B-32-laion2B-s34B-b79K",
     "laion/CLIP-ViT-H-14-laion2B-s32B-b79K",
     "laion/CLIP-ViT-L-14-laion2B-s32B-b82K",
-]
-
-QUANT_METRICS_FILE_MAP = {
-    "laion/CLIP-ViT-B-32-laion2B-s34B-b79K": "data/fnorm-CLIP-ViT-B-32-laion2B-s34B-b79K.csv",
-    "laion/CLIP-ViT-H-14-laion2B-s32B-b79K": "data/fnorm-CLIP-ViT-H-14-laion2B-s32B-b79K.csv",
-    "laion/CLIP-ViT-L-14-laion2B-s32B-b82K": "data/fnorm-CLIP-ViT-L-14-laion2B-s32B-b82K.csv",
-}
-
-HQQ_CONFIGS = [
-    ("b8g32", HQQQuantConfig(nbits=8, group_size=32)),
-    ("b8g64", HQQQuantConfig(nbits=8, group_size=64)),
-    ("b8g128", HQQQuantConfig(nbits=8, group_size=128)),
-    ("b4g32", HQQQuantConfig(nbits=4, group_size=32)),
-    ("b4g64", HQQQuantConfig(nbits=4, group_size=64)),
-    ("b4g128", HQQQuantConfig(nbits=4, group_size=128)),
-    ("b3g32", HQQQuantConfig(nbits=3, group_size=32)),
-    ("b3g64", HQQQuantConfig(nbits=3, group_size=64)),
-    ("b3g128", HQQQuantConfig(nbits=3, group_size=128)),
-    ("b2g16", HQQQuantConfig(nbits=2, group_size=16)),
-    ("b2g32", HQQQuantConfig(nbits=2, group_size=32)),
-    ("b2g64", HQQQuantConfig(nbits=2, group_size=64)),
 ]
 
 MXQ_CONFIGS = [
@@ -85,17 +73,6 @@ def gen_experiment_items(models, tasks):
                     }
                 )
     return pd.DataFrame(dikts)
-
-
-def persist_progress(df, progress_path):
-    """Save the progress of experiment for resumption."""
-    Path(progress_path).parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(progress_path, index=False)
-
-
-def _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir):
-    mem_fp = f"{result_dir}/{experiment_name}/mem-snapshot-{algo}-{model_id.split('/')[1]}.pickle"
-    torch.cuda.memory._dump_snapshot(mem_fp)
 
 
 def do_expermient(
@@ -158,8 +135,12 @@ def do_expermient(
         quant_config = None
         if algo != "fp16":
             quant_config = copy.deepcopy(config[1])
-            if algo == "mxq" and model_id in QUANT_METRICS_FILE_MAP:
-                quant_config["quant_metrics_file"] = QUANT_METRICS_FILE_MAP[model_id]
+            if algo == "mxq":
+                ok, metric_fp = get_mxq_quant_meta_data_file(model_id)
+                if not ok:
+                    print(f"Quantization meta data file: {metric_fp} doesn't exists!")
+                    return
+                quant_config["quant_metrics_file"] = metric_fp
         if task_type == "eval_zeroshot_cls":
             # avoid interventions between models
             metric = eval_zeroshot_classification(
@@ -238,39 +219,6 @@ def _init_metrics(model_id, algo, config):
     }
 
 
-def save_partial_metric(experiment_name, algo, model_id, config, metric, result_dir):
-    metrics = [metric]
-    df = pd.DataFrame(metrics)
-    result_dir = os.path.join(result_dir, experiment_name)
-    os.makedirs(result_dir, exist_ok=True)
-    model_short_id = model_id.split("/")[1]
-    file_name = f"{result_dir}/partial-{algo}-{model_short_id}-{config}.csv"
-    df.to_csv(file_name, index=False)
-
-
-def combine_metrics(experiment_name, result_dir):
-    dfs = []
-    iters = glob.iglob(f"{result_dir}/{experiment_name}/partial-*.csv")
-    for it in iters:
-        df = pd.read_csv(it)
-        dfs.append(df)
-    combined = pd.concat(dfs)
-    ts_str = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_name = f"{result_dir}/{experiment_name}/result-{experiment_name}-{ts_str}.csv"
-    Path(file_name).parent.mkdir(parents=True, exist_ok=True)
-    combined.to_csv(file_name, index=False)
-
-
-def cleanup(model):
-    del model
-    torch.cuda.empty_cache()
-    gc.collect()
-
-
-def calc_bits(b1, g1, b2=8, g2=128):
-    return b1 + 2 * b2 / g1 + 32 / g1 / g2
-
-
 def get_mxq_bits(reduction_pcts=[3, 5, 8]):
     nbits = []
     for cfg in HQQ_CONFIGS:
@@ -282,14 +230,6 @@ def get_mxq_bits(reduction_pcts=[3, 5, 8]):
         )
         nbits.extend([round(bpp * (1 - pct / 100), 2) for pct in reduction_pcts])
     return sorted(list(set(nbits)), reverse=True)
-
-
-def _reset_peak_memory_stats():
-    return torch.cuda.reset_peak_memory_stats()
-
-
-def get_memory_metrics():
-    return torch.cuda.max_memory_allocated(), torch.cuda.max_memory_reserved()
 
 
 def do_expermient_fdata(
@@ -398,7 +338,7 @@ def experiment_eval_hqq_comprehensive():
             "configs": HQQ_CONFIGS,
         },
     }
-    # do_expermient_fdata("eval_lp_hqq_comprehensive4", models, linear_probe_tasks)
+    do_expermient_fdata("eval_lp_hqq_comprehensive4", models, linear_probe_tasks)
     do_expermient_fdata("eval_zs_hqq_comprehensive5", models, tasks)
 
 
@@ -426,7 +366,7 @@ def experiment_eval_mxq_358_memory_saving():
             "configs": mxq_configs,
         },
     }
-    # do_expermient_fdata("eval_lp_mxq_358_memory_saving4", models, linear_probe_tasks)
+    do_expermient_fdata("eval_lp_mxq_358_memory_saving4", models, linear_probe_tasks)
     do_expermient_fdata("eval_zs_mxq_358_memory_saving5", models, tasks)
 
 

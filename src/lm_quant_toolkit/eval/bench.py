@@ -1,6 +1,4 @@
 import copy
-import gc
-import glob
 import logging
 import os
 
@@ -25,6 +23,17 @@ from lm_quant_toolkit.adapter.autogptq import (
 from lm_quant_toolkit.adapter.fp16 import create_fp16_model
 from lm_quant_toolkit.adapter.hqq import create_hqq_model, quantize_hqq_model
 from lm_quant_toolkit.adapter.mxq import create_mxq_model, quantize_mxq_model
+from lm_quant_toolkit.eval.common import (
+    HQQ_CONFIGS,
+    _dump_cuda_mem_snapshot,
+    _reset_peak_memory_stats,
+    cleanup,
+    combine_metrics,
+    get_memory_metrics,
+    get_mxq_quant_meta_data_file,
+    persist_progress,
+    save_partial_metric,
+)
 from lm_quant_toolkit.eval.leaderboard import eval_llm_leaderboard
 from lm_quant_toolkit.eval.perplexity import eval_ppls
 
@@ -32,34 +41,6 @@ ALL_MODELS = [
     "meta-llama/Llama-2-7b-hf",
     "meta-llama/Llama-2-13b-hf",
     "meta-llama/Meta-Llama-3-8B",
-]
-
-QUANT_METRICS_FILE_MAP = {
-    "meta-llama/Llama-2-7b-hf": "data/fnorm-Llama-2-7b-hf.csv",
-    "meta-llama/Llama-2-13b-hf": "data/fnorm-Llama-2-13b-hf.csv",
-    "meta-llama/Meta-Llama-3-8B": "data/fnorm-Llama-3-8B.csv",
-}
-
-HQQ_CONFIGS = [
-    ("b4g32", HQQQuantConfig(nbits=4, group_size=32)),
-    ("b4g64", HQQQuantConfig(nbits=4, group_size=64)),
-    ("b4g128", HQQQuantConfig(nbits=4, group_size=128)),
-    ("b3g32", HQQQuantConfig(nbits=3, group_size=32)),
-    ("b3g64", HQQQuantConfig(nbits=3, group_size=64)),
-    ("b3g128", HQQQuantConfig(nbits=3, group_size=128)),
-    ("b2g16", HQQQuantConfig(nbits=2, group_size=16)),
-    ("b2g32", HQQQuantConfig(nbits=2, group_size=32)),
-    ("b2g64", HQQQuantConfig(nbits=2, group_size=64)),
-    # ("mxq-5_00", HQQQuantConfig(mixed=True, budget=5.00, quant_scale=True)),
-    # ("mxq-4_75", HQQQuantConfig(mixed=True, budget=4.75, quant_scale=True)),
-    # ("mxq-4_50", HQQQuantConfig(mixed=True, budget=4.50, quant_scale=True)),
-    # ("mxq-4_25", HQQQuantConfig(mixed=True, budget=4.25, quant_scale=True)),
-    # ("mxq-4_01", HQQQuantConfig(mixed=True, budget=4.01, quant_scale=True)),
-    # ("mxq-3_76", HQQQuantConfig(mixed=True, budget=3.76, quant_scale=True)),
-    # ("mxq-3_50", HQQQuantConfig(mixed=True, budget=3.50, quant_scale=True)),
-    # ("mxq-3_00", HQQQuantConfig(mixed=True, budget=3.00, quant_scale=True)),
-    # ("mxq-2_75", HQQQuantConfig(mixed=True, budget=2.75, quant_scale=True)),
-    # ("mxq-2_48", HQQQuantConfig(mixed=True, budget=2.48, quant_scale=True)),
 ]
 
 MXQ_CONFIGS = [
@@ -120,10 +101,6 @@ GPTQ_CONFIGS = [
 ]
 
 
-def calc_bits(b1, g1, b2, g2):
-    return b1 + 2 * b2 / g1 + 32 / g1 / g2
-
-
 def gen_experiment_items(models, tasks):
     dikts = []
     for algo, spec in tasks.items():
@@ -139,17 +116,6 @@ def gen_experiment_items(models, tasks):
                     }
                 )
     return pd.DataFrame(dikts)
-
-
-def persist_progress(df, progress_path):
-    """Save the progress of experiment for resumption."""
-    Path(progress_path).parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(progress_path, index=False)
-
-
-def _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir):
-    mem_fp = f"{result_dir}/{experiment_name}/mem-snapshot-{algo}-{model_id.split('/')[1]}.pickle"
-    torch.cuda.memory._dump_snapshot(mem_fp)
 
 
 def _setup_fn(algo, spec):
@@ -244,10 +210,14 @@ def do_expermient(
             if not quantized and quant_fn:
                 # avoid interventions between models
                 quant_config = copy.deepcopy(config[1])
-                if algo == "mxq" and model_id in QUANT_METRICS_FILE_MAP:
-                    quant_config["quant_metrics_file"] = QUANT_METRICS_FILE_MAP[
-                        model_id
-                    ]
+                if algo == "mxq":
+                    ok, metric_fp = get_mxq_quant_meta_data_file(model_id)
+                    if not ok:
+                        print(
+                            f"Quantization meta data file: {metric_fp} doesn't exists!"
+                        )
+                        return
+                    quant_config["quant_metrics_file"] = metric_fp
                 model, duration, model_file_size = quant_fn(
                     model,
                     tokenizer,
@@ -328,46 +298,6 @@ def _init_metrics(model_id, algo, config):
         "musr": 0,
         "mmlupro": 0,
     }
-
-
-def save_partial_metric(experiment_name, algo, model_id, config, metric, result_dir):
-    metrics = [metric]
-    df = pd.DataFrame(metrics)
-    result_dir = os.path.join(result_dir, experiment_name)
-    os.makedirs(result_dir, exist_ok=True)
-    model_short_id = model_id.split("/")[1]
-    file_name = f"{result_dir}/partial-{algo}-{model_short_id}-{config}.csv"
-    df.to_csv(file_name, index=False)
-
-
-def combine_metrics(experiment_name, result_dir):
-    dfs = []
-    iters = glob.iglob(f"{result_dir}/{experiment_name}/partial-*.csv")
-    for it in iters:
-        df = pd.read_csv(it)
-        dfs.append(df)
-    if len(dfs) > 0:
-        combined = pd.concat(dfs)
-        ts_str = datetime.now().strftime("%Y%m%d%H%M%S")
-        file_name = (
-            f"{result_dir}/{experiment_name}/result-{experiment_name}-{ts_str}.csv"
-        )
-        Path(file_name).parent.mkdir(parents=True, exist_ok=True)
-        combined.to_csv(file_name, index=False)
-
-
-def cleanup(model):
-    del model
-    torch.cuda.empty_cache()
-    gc.collect()
-
-
-def _reset_peak_memory_stats():
-    return torch.cuda.reset_peak_memory_stats()
-
-
-def get_memory_metrics():
-    return torch.cuda.max_memory_allocated(), torch.cuda.max_memory_reserved()
 
 
 def do_expermient_fdata(
