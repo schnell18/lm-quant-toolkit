@@ -56,12 +56,12 @@ MXQ_CONFIGS = [
         7.40,
         7.32,
         5.00,
-        4.96,
-        4.91,
-        4.87,
+        4.95,
+        4.90,
+        4.86,
         4.82,
         4.78,
-        4.74,
+        4.73,
         4.00,
         3.96,
         3.92,
@@ -162,7 +162,13 @@ def do_expermient(
                 quant_config["quant_metrics_file"] = QUANT_METRICS_FILE_MAP[model_id]
         if task_type == "eval_zeroshot_cls":
             # avoid interventions between models
-            metric = eval_zeroshot_classification(metric, model_id, quant_config)
+            metric = eval_zeroshot_classification(
+                metric,
+                model_id,
+                result_dir,
+                quant_dir,
+                quant_config,
+            )
             (
                 metric["zeroshot_mem_allot"],
                 metric["zeroshot_mem_reserved"],
@@ -173,7 +179,14 @@ def do_expermient(
             # separately.
             feature_root = os.path.join(quant_dir, "features", cfg)
             Path(feature_root).mkdir(parents=True, exist_ok=True)
-            metric = eval_linear_probe(metric, model_id, quant_config, feature_root)
+            metric = eval_linear_probe(
+                metric,
+                model_id,
+                result_dir,
+                quant_dir,
+                quant_config,
+                feature_root,
+            )
             (
                 metric["linear_probe_mem_allot"],
                 metric["linear_probe_mem_reserved"],

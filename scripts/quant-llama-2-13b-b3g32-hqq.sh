@@ -6,7 +6,7 @@
 export HF_HOME=/home/justin/.cache/huggingface/
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-python ../src/cli.py llm \
+python /home/justin/work/lm-quant-toolkit/src/cli.py llm \
     --quant-snapshot-dir="/fdata/llm/mxq/snapshots" \
     --result-dir="/fdata/llm/mxq/results" \
     --model 1 \

@@ -1,5 +1,7 @@
+import os
 import sys
 import time
+from pathlib import Path
 
 from clip_benchmark.cli import get_parser_args, run
 
@@ -7,6 +9,8 @@ from clip_benchmark.cli import get_parser_args, run
 def eval_clip_benchmark(
     task,
     model_id,
+    result_dir,
+    quant_dir,
     quant_config,
     additional_args=[],
 ):
@@ -27,13 +31,20 @@ def eval_clip_benchmark(
             b = quant_config["weight_quant_params"]["nbits"]
             g = quant_config["weight_quant_params"]["group_size"]
             extra_args = f"nbits={b},group_size={g}"
+    wds_cache_dir = os.path.join(quant_dir, "wds-dataset")
+    Path(wds_cache_dir).mkdir(parents=True, exist_ok=True)
+    out_file = (
+        f"--output=benchmark_{{dataset}}_{{pretrained}}_{{model}}_{{language}}_{{task}}-{model_type}.json",
+    )
+    out_fp = os.path.join(result_dir, out_file)
     args_str = [
         "eval",
         f"--task={task}",
         f"--model_type={model_type}",
         "--dataset=wds/imagenet1k",
         "--dataset_root=https://huggingface.co/datasets/clip-benchmark/wds_{dataset_cleaned}/tree/main",
-        f"--output=benchmark_{{dataset}}_{{pretrained}}_{{model}}_{{language}}_{{task}}-{model_type}.json",
+        f"--output={out_fp}",
+        f"--wds_cache_dir={wds_cache_dir}",
         f"--extra_args={extra_args}",
     ]
     if len(additional_args) > 0:
@@ -56,10 +67,12 @@ def eval_clip_benchmark(
     return result_dict
 
 
-def eval_zeroshot_classification(metric, model_id, quant_config):
+def eval_zeroshot_classification(metric, model_id, result_dir, quant_dir, quant_config):
     result_dict = eval_clip_benchmark(
         "zeroshot_classification",
         model_id,
+        result_dir,
+        quant_dir,
         quant_config,
     )
     metric["acc1_zeroshot_cls"] = result_dict["metrics"]["acc1"]
@@ -69,7 +82,10 @@ def eval_zeroshot_classification(metric, model_id, quant_config):
     return metric
 
 
-def eval_linear_probe(metric, model_id, quant_config, feature_root):
+def eval_linear_probe(
+    metric, model_id, result_dir, quant_dir, quant_config, feature_root
+):
+    feature_root = ""
     additional_args = [
         "--batch_size=2048",
         "--fewshot_lr=0.1",
@@ -78,10 +94,11 @@ def eval_linear_probe(metric, model_id, quant_config, feature_root):
         "--test_split=test",
         f"--feature_root={feature_root}",
     ]
-
     result_dict = eval_clip_benchmark(
         "linear_probe",
         model_id,
+        result_dir,
+        quant_dir,
         quant_config,
         additional_args,
     )
