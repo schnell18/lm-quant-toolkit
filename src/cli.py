@@ -180,21 +180,37 @@ def _get_configs(algos, config_names):
             case "fp16":
                 algo_configs[algo] = [("base", {})]
             case "hqq":
-                algo_configs[algo] = [
-                    cfg for cfg in HQQ_CONFIGS if cfg[0] in config_names
-                ]
+                if config_names is None:
+                    algo_configs[algo] = HQQ_CONFIGS
+                else:
+                    algo_configs[algo] = [
+                        cfg for cfg in HQQ_CONFIGS if cfg[0] in config_names
+                    ]
             case "mxq":
-                algo_configs[algo] = [
-                    cfg for cfg in MXQ_CONFIGS if cfg[0] in config_names
-                ]
+                if config_names is None:
+                    algo_configs[algo] = MXQ_CONFIGS
+                else:
+                    algo_configs[algo] = [
+                        (
+                            f"{bits:.2f}".replace(".", "_"),
+                            HQQQuantConfig(mixed=True, budget=bits, quant_scale=True),
+                        )
+                        for bits in [float(cfg) for cfg in config_names]
+                    ]
             case "awq":
-                algo_configs[algo] = [
-                    cfg for cfg in AUTOAWQ_CONFIGS if cfg[0] in config_names
-                ]
+                if config_names is None:
+                    algo_configs[algo] = AUTOAWQ_CONFIGS
+                else:
+                    algo_configs[algo] = [
+                        cfg for cfg in AUTOAWQ_CONFIGS if cfg[0] in config_names
+                    ]
             case "gptq":
-                algo_configs[algo] = [
-                    cfg for cfg in GPTQ_CONFIGS if cfg[0] in config_names
-                ]
+                if config_names is None:
+                    algo_configs[algo] = GPTQ_CONFIGS
+                else:
+                    algo_configs[algo] = [
+                        cfg for cfg in GPTQ_CONFIGS if cfg[0] in config_names
+                    ]
 
     return algo_configs
 
@@ -223,7 +239,7 @@ def _get_vit_configs(algos, config_names):
                         )
                         for bits in [float(cfg) for cfg in config_names]
                     ]
-                    return algo_configs
+    return algo_configs
 
 
 def main():

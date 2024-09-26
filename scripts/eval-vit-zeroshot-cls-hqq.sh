@@ -5,12 +5,12 @@ if [ ! -d logs ]; then
 fi
 
 python ../src/cli.py vit \
+    --task eval_zeroshot_cls \
+    --model 0 1 2 \
+    --algo hqq \
+    --experiment-name eval_zs_BLH_hqq \
     --quant-snapshot-dir="/fdata/llm/mxq/snapshots" \
     --result-dir="/fdata/llm/mxq/results" \
-    --model 0 1 \
-    --algo mxq \
-    --task eval_zeroshot_cls \
-    --experiment-name eval_zs_BH_mxq \
     2>&1 \
     | tee logs/bench-vit-$(date +%Y%m%d%H%M%S).log
 
