@@ -14,7 +14,7 @@ python ../src/cli.py llm \
     --model 0 1 2 \
     --algo mxq \
     --config 4.51 4.25 4.13 3.51 3.25 3.13 3.02 2.51 2.25 \
-    --experiment-name quant_llm-mxq \
+    --experiment-name quant_llm_b4-mxq \
     --quant-snapshot-dir="/fdata/llm/mxq/snapshots" \
     --result-dir="/fdata/llm/mxq/results" \
     2>&1 \
