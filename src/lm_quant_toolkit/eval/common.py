@@ -99,10 +99,10 @@ def get_memory_metrics():
     return torch.cuda.max_memory_allocated(), torch.cuda.max_memory_reserved()
 
 
-def plan_eval_bit_budgets(model_arch="ViT", points=10):
-    bases = [8.13, 4.51, 3.51, 3.02]
+def plan_eval_bit_budgets(model_arch="ViT", points=5, desc=True):
+    bases = [4.51]
     for base in bases:
-        ideals, solvables = get_eval_plan(model_arch, base, points)
+        ideals, solvables = get_eval_plan(model_arch, base, points, desc)
         print("*" * 72)
         print(f"base: {base}")
         for t in zip(ideals, solvables):
@@ -110,13 +110,14 @@ def plan_eval_bit_budgets(model_arch="ViT", points=10):
         print("*" * 72)
 
 
-def get_eval_plan(model_arch, base, points):
+def get_eval_plan(model_arch, base, points, desc):
     ideals = []
     solvables = []
     for point in range(1, points + 1):
-        tentative = round(base * (100 - point) / 100, 2)
+        pct = 100 - point if desc else 100 + point
+        tentative = round(base * pct / 100, 2)
         ideals.append(tentative)
-        ret = try_solvable(model_arch, tentative)
+        ret = try_solvable(model_arch, tentative, desc)
         if ret is not None:
             solvables.append(ret)
         else:
@@ -124,7 +125,7 @@ def get_eval_plan(model_arch, base, points):
     return ideals, solvables
 
 
-def try_solvable(model_arch, bit_budget):
+def try_solvable(model_arch, bit_budget, desc):
     model_ids = (
         VIT_OPENCLIP_MODELS.keys() if model_arch == "ViT" else LLAMA_MODELS.keys()
     )
@@ -143,7 +144,7 @@ def try_solvable(model_arch, bit_budget):
                 print(f"Warning: {feasible_budget:.2f} unsolvable for model {model_id}")
                 if attempts > 3:
                     break
-                feasible_budget -= 0.01
+                feasible_budget += -0.01 if desc else 0.01
             attempts += 1
     if len(set(dikt.values())) > 1:
         print(dikt)
@@ -161,4 +162,5 @@ def try_solvable(model_arch, bit_budget):
 
 
 if __name__ == "__main__":
-    plan_eval_bit_budgets()
+    plan_eval_bit_budgets(points=5, desc=True)
+    plan_eval_bit_budgets(points=10, desc=False)
