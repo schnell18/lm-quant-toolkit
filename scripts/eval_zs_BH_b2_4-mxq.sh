@@ -5,10 +5,11 @@ if [ ! -d logs ]; then
 fi
 
 python ../src/cli.py vit \
-    --task eval_linear_probe \
-    --model 0 1 2 \
-    --algo fp16 \
-    --experiment-name eval_lp_BLH_2_fp16 \
+    --task eval_zeroshot_cls \
+    --model 0 1 \
+    --algo mxq \
+    --config 2.51 2.46 2.25 2.20 \
+    --experiment-name eval_zs_BH_b2_4-mxq \
     --quant-snapshot-dir="/fdata/llm/mxq/snapshots" \
     --result-dir="/fdata/llm/mxq/results" \
     2>&1 \
