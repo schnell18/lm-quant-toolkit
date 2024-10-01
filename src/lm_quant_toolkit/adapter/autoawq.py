@@ -4,6 +4,7 @@ import time
 import torch
 import transformers
 from awq import AutoAWQForCausalLM
+from transformers import AutoConfig
 
 from lm_quant_toolkit.adapter.common import get_model_storage_size
 
@@ -12,12 +13,17 @@ def create_autoawq_model(model_id, quant_config, config_id, load_quantized, save
     model_file_size = 0
     quantized = False
     quant_path = f"{save_dir}/{model_id}-{config_id}-awq"
+
+    config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
+    # To avoid OOM after huggingface transformers 4.36.2
+    config.use_cache = False
     if load_quantized and os.path.exists(quant_path):
         model = AutoAWQForCausalLM.from_quantized(
             quant_path,
             device_map="auto",
             fuse_layers=False,
             offload_state_dict=True,
+            config=config,
         )
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
         quantized = True
@@ -36,6 +42,8 @@ def create_autoawq_model(model_id, quant_config, config_id, load_quantized, save
             device_map="cuda",
             offload_state_dict=True,
             torch_dtype=torch.float16,
+            max_memory={0: "23GiB", "cpu": "60GiB"},
+            config=config,
         )
     return model, tokenizer, quantized, model_file_size
 

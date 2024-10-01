@@ -1,4 +1,3 @@
-import json
 import os
 import time
 
@@ -85,16 +84,9 @@ def quantize_awq_model(model, tokenizer, quant_config, model_id, config_id, save
     t2 = time.time()
     print("Took " + str(t2 - t1) + " seconds to quantize the model with AWQ")
     quant_path = f"{save_dir}/{model_id}-{config_id}-awq"
-    torch.save(model.cpu().state_dict(), f"{quant_path}/qmodel.pth")
+    quant_fp = os.path.join(quant_path, "qmodel.pth")
+    torch.save(model.cpu().state_dict(), quant_fp)
     tokenizer.save_pretrained(quant_path)
-    return model, t2 - t1, _get_model_file_size(quant_path, quant_config)
 
-
-def _get_model_file_size(quant_path, quant_config):
-    size = 0
-    with open(os.path.join(quant_path, "model.safetensors.index.json"), "r") as f:
-        index = json.load(f)
-        for shard in set(index["weight_map"].values()):
-            fp = os.path.join(quant_path, shard)
-        size += os.path.getsize(fp)
-    return size
+    model_file_size = os.path.getsize(quant_fp)
+    return model, t2 - t1, model_file_size
