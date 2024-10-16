@@ -42,7 +42,7 @@ def create_autoawq_model(model_id, quant_config, config_id, load_quantized, save
             device_map="cuda",
             offload_state_dict=True,
             torch_dtype=torch.float16,
-            max_memory={0: "23GiB", "cpu": "60GiB"},
+            max_memory={0: "20GiB", "cpu": "60GiB"},
             config=config,
         )
     return model, tokenizer, quantized, model_file_size

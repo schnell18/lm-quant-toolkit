@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 
+import re
+
 import pandas as pd
 import torch
 from hqq.core.quantize import Quantizer as hQuant
@@ -8,7 +10,6 @@ from safetensors.torch import save_file as safe_save
 from scipy.stats import kurtosis
 from torch import uint8
 
-from lm_quant_toolkit.utils.hub import LLAMA_MODELS, get_hf_model_storge_base_dir
 from lm_quant_toolkit.utils.safetensors import get_tensor, get_tensor_dual
 
 
@@ -142,8 +143,8 @@ def is_linear_module(key):
     return False
 
 
-def extract_quant_config(base_dir, model_id, config):
-    file_path = f"{base_dir}/{model_id}-{config}-hqq/qmodel.pt"
+def extract_quant_config(base_dir, model_id, config, algo="hqq"):
+    file_path = f"{base_dir}/{model_id}-{config}-{algo}/qmodel.pt"
     dikt = torch.load(file_path, map_location="cpu")
     quant_configs = {}
     mem_fp16_all_total = 0
@@ -200,60 +201,71 @@ def get_mem_usage_df(model_ids, confs, base_dir):
     return df
 
 
-# if __name__ == "__main__":
-#     base_dir = "/home/justin/work/hqq/examples/llama2_benchmark/snapshots/"
-#     model_ids = [
-#         "meta-llama/Llama-2-7b-hf",
-#         "meta-llama/Llama-2-13b-hf",
-#         # "meta-llama/Meta-Llama-3-8B",
-#     ]
-#     confs = [
-#         # "b4g32",
-#         # "b4g64",
-#         # "b4g128",
-#         # "b3g32",
-#         # "b3g64",
-#         # "b3g128",
-#         "mix-3_74",
-#         "mix-3_52",
-#         "mix-2_74",
-#         "mix-2_50",
-#     ]
-#     df = get_mem_usage_df(model_ids, confs, base_dir)
-#     print(df)
-#
-#
+if __name__ == "__main__":
+    base_dir = "/fdata/llm/mxq/snapshots/"
+    model_ids = [
+        "meta-llama/Llama-2-7b-hf",
+        # "meta-llama/Llama-2-13b-hf",
+        # "meta-llama/Meta-Llama-3-8B",
+    ]
+    confs = [
+        "4_51",
+        "4_25",
+        "4_13",
+    ]
+
+    dikt = []
+    pat = re.compile(r"model\.layers\.(\d+)\.(.+)")
+    for model_id in model_ids:
+        for conf in confs:
+            configs, mem_quant_total, mem_all_total, mem_fp16_all_total = (
+                extract_quant_config(base_dir, model_id, conf, algo="mxq")
+            )
+            for key, val in configs.items():
+                matcher = re.match(pat, key)
+                if matcher:
+                    layer = matcher.group(1)
+                    module = matcher.group(2)
+                    # val["model"] = model_id.split("/")[1]
+                    val["layer"] = layer
+                    val["module"] = module
+                    val["bit_budget"] = conf.replace("_", ".")
+                    dikt.append(val)
+    df = pd.DataFrame(dikt)
+    df.to_csv("llama-mxq-cfgs.csv", index=False)
+
+
 # if __name__ == "__main__":
 #     output_dir = "snapshots/cmp"
 #     model_id = "meta-llama/Llama-2-7b-hf"
 #     model = LLAMA_MODELS[model_id]
 #     compare_pair(model_id.split("/")[1], model["layers"], output_dir)
+
+
+# if __name__ == "__main__":
+#     # Llama-2-7b-hf-b3g128-hqq:
+#     # Llama-2-7b-hf-b3g32-hqq:
+#     # Llama-2-7b-hf-b3g64-hqq:
+#     # Llama-2-7b-hf-b4g128-hqq:
+#     # Llama-2-7b-hf-b4g32-hqq:
+#     # Llama-2-7b-hf-b4g64-hqq:
 #
-
-if __name__ == "__main__":
-    # Llama-2-7b-hf-b3g128-hqq:
-    # Llama-2-7b-hf-b3g32-hqq:
-    # Llama-2-7b-hf-b3g64-hqq:
-    # Llama-2-7b-hf-b4g128-hqq:
-    # Llama-2-7b-hf-b4g32-hqq:
-    # Llama-2-7b-hf-b4g64-hqq:
-
-    quant_cfg = "b4g64"
-    quant_base_dir = "/data/gqq-eval"
-    output_dir = "snapshots/cmp"
-    model_id = "meta-llama/Llama-2-7b-hf"
-    model = LLAMA_MODELS[model_id]
-    if model["base_dir"]:
-        model_base_dir = get_hf_model_storge_base_dir(
-            model_id, hf_hub_dir=LLAMA_MODELS["base_dir"]
-        )
-    else:
-        model_base_dir = get_hf_model_storge_base_dir(model_id)
-    save_compare_pair(
-        model_base_dir,
-        quant_base_dir,
-        quant_cfg,
-        model_id.split("/")[1],
-        model["layers"],
-        output_dir,
-    )
+#     quant_cfg = "b4g64"
+#     quant_base_dir = "/data/gqq-eval"
+#     output_dir = "snapshots/cmp"
+#     model_id = "meta-llama/Llama-2-7b-hf"
+#     model = LLAMA_MODELS[model_id]
+#     if model["base_dir"]:
+#         model_base_dir = get_hf_model_storge_base_dir(
+#             model_id, hf_hub_dir=LLAMA_MODELS["base_dir"]
+#         )
+#     else:
+#         model_base_dir = get_hf_model_storge_base_dir(model_id)
+#     save_compare_pair(
+#         model_base_dir,
+#         quant_base_dir,
+#         quant_cfg,
+#         model_id.split("/")[1],
+#         model["layers"],
+#         output_dir,
+#     )

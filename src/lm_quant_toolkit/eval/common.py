@@ -99,10 +99,15 @@ def get_memory_metrics():
     return torch.cuda.max_memory_allocated(), torch.cuda.max_memory_reserved()
 
 
-def plan_eval_bit_budgets(model_arch="ViT", points=5, desc=True):
-    bases = [4.51]
+def plan_eval_bit_budgets(
+    model_arch="ViT",
+    points=5,
+    step=1,
+    bases=[4.51],
+    include_base=False,
+):
     for base in bases:
-        ideals, solvables = get_eval_plan(model_arch, base, points, desc)
+        ideals, solvables = get_eval_plan(model_arch, base, points, step, include_base)
         print("*" * 72)
         print(f"base: {base}")
         for t in zip(ideals, solvables):
@@ -110,14 +115,14 @@ def plan_eval_bit_budgets(model_arch="ViT", points=5, desc=True):
         print("*" * 72)
 
 
-def get_eval_plan(model_arch, base, points, desc):
+def get_eval_plan(model_arch, base, points, step, include_base):
     ideals = []
     solvables = []
-    for point in range(1, points + 1):
-        pct = 100 - point if desc else 100 + point
-        tentative = round(base * pct / 100, 2)
+    start = 0 if include_base else 1
+    for point in range(start, points + 1):
+        tentative = round(base + point * step, 2)
         ideals.append(tentative)
-        ret = try_solvable(model_arch, tentative, desc)
+        ret = try_solvable(model_arch, tentative, step)
         if ret is not None:
             solvables.append(ret)
         else:
@@ -125,10 +130,13 @@ def get_eval_plan(model_arch, base, points, desc):
     return ideals, solvables
 
 
-def try_solvable(model_arch, bit_budget, desc):
-    model_ids = (
-        VIT_OPENCLIP_MODELS.keys() if model_arch == "ViT" else LLAMA_MODELS.keys()
-    )
+def try_solvable(model_arch, bit_budget, step):
+    if model_arch == "ViT":
+        model_ids = VIT_OPENCLIP_MODELS.keys()
+    else:
+        model_ids = [
+            key for key in LLAMA_MODELS if LLAMA_MODELS[key].get("experiment", False)
+        ]
 
     dikt = {}
     feasible_budget = round(bit_budget, 2)
@@ -143,11 +151,10 @@ def try_solvable(model_arch, bit_budget, desc):
             except ValueError:
                 print(f"Warning: {feasible_budget:.2f} unsolvable for model {model_id}")
                 if attempts > 3:
-                    break
-                feasible_budget += -0.01 if desc else 0.01
+                    return None
+                feasible_budget += -0.01 if step < 0 else 0.01
             attempts += 1
     if len(set(dikt.values())) > 1:
-        print(dikt)
         for model_id, budget in dikt.items():
             if abs(budget - feasible_budget) > 0.01:
                 try:
@@ -161,6 +168,63 @@ def try_solvable(model_arch, bit_budget, desc):
     return feasible_budget
 
 
+def debug_milp_solvable(model_id, bit_budget):
+    _, fp = get_mxq_quant_meta_data_file(model_id)
+    configs = find_optimal_configs(fp, bit_budget, time_limit=200)
+    print(configs)
+
+
+def plan_432_bits():
+    bases = [4.51, 4.25, 4.13]
+    plan_eval_bit_budgets(
+        model_arch="llm", points=5, step=0.02, bases=bases, include_base=True
+    )
+    plan_eval_bit_budgets(
+        model_arch="llm", points=5, step=-0.02, bases=bases, include_base=True
+    )
+    bases = [3.51, 3.25, 3.13, 2.51, 2.25, 2.13]
+    plan_eval_bit_budgets(
+        model_arch="llm", points=3, step=0.02, bases=bases, include_base=True
+    )
+    plan_eval_bit_budgets(
+        model_arch="llm", points=3, step=-0.02, bases=bases, include_base=True
+    )
+
+
+def plan_567_bits():
+    best_bit_budget = calc_bits(8, 32, 8, 128)
+    save_objs = [10, 20, 30, 40]
+    bases = [best_bit_budget * (100 - obj) / 100 for obj in save_objs]
+    plan_eval_bit_budgets(
+        model_arch="llm", points=5, step=0.02, bases=bases, include_base=True
+    )
+    plan_eval_bit_budgets(
+        model_arch="llm", points=5, step=-0.02, bases=bases, include_base=True
+    )
+
+
+def fill_budget_gap(start, stop, step=0.02):
+    result = []
+    d = start + step
+    while d < stop:
+        result.append(round(d, 2))
+        d += step
+    return result
+
+
+def fill_gaps():
+    gaps = []
+    # gaps.extend(fill_budget_gap(3.57, 4.03))
+    # gaps.extend(fill_budget_gap(3.29, 3.45))
+    # gaps.extend(fill_budget_gap(6.92, 7.56))
+    # gaps.extend(fill_budget_gap(4.61, 5.00))
+    gaps.extend(fill_budget_gap(5.20, 5.86))
+    # gaps.extend([4.39, 4.37])
+    print(gaps)
+    plan_eval_bit_budgets(
+        model_arch="llm", points=0, step=0.02, bases=gaps, include_base=True
+    )
+
+
 if __name__ == "__main__":
-    plan_eval_bit_budgets(points=5, desc=True)
-    plan_eval_bit_budgets(points=10, desc=False)
+    fill_gaps()

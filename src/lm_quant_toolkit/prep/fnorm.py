@@ -231,7 +231,7 @@ def main_vit():
 
 def main():
     for model_id, model in LLAMA_MODELS.items():
-        if model_id != "meta-llama/Meta-Llama-3-8B":
+        if model_id != "meta-llama/Llama-3.1-8B":
             continue
         t1 = timer()
         base_dir = model.get("base_dir", None)
@@ -242,4 +242,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main_vit()
+    main()

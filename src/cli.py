@@ -17,6 +17,7 @@ from lm_quant_toolkit.eval.bench_vit import ALL_MODELS as ALL_VIT_MODELS
 from lm_quant_toolkit.eval.bench_vit import MXQ_CONFIGS as VIT_MXQ_CONFIGS
 from lm_quant_toolkit.eval.bench_vit import do_expermient as do_expermient_vit
 from lm_quant_toolkit.eval.common import HQQ_CONFIGS
+from lm_quant_toolkit.misc.quant_config import dump_mxq_objectives
 
 
 def get_parser_args():
@@ -169,6 +170,30 @@ def get_parser_args():
         help="name of the experiment",
     )
 
+    parser_obj = subparsers.add_parser("obj", help="Dump MiLP objective metrics")
+    parser_obj.set_defaults(which="obj")
+
+    parser_obj.add_argument(
+        "--model",
+        type=str,
+        nargs="+",
+        default="1",
+        help="Model to evaluate",
+    )
+    parser_obj.add_argument(
+        "--budget",
+        type=float,
+        default=None,
+        nargs="+",
+        help="Bit budgets",
+    )
+    parser_obj.add_argument(
+        "--output_file",
+        type=str,
+        default="mxq-objectives.csv",
+        help="Output file location",
+    )
+
     args = parser.parse_args()
     return parser, args
 
@@ -252,6 +277,8 @@ def main():
         main_llm(base)
     elif base.which == "vit":
         main_vit(base)
+    elif base.which == "obj":
+        main_obj(base)
 
 
 def main_llm(args):
@@ -295,6 +322,14 @@ def main_vit(args):
         result_dir=args.result_dir,
         track_cuda_memory=args.track_cuda_memory,
     )
+
+
+def main_obj(args):
+    budgets = args.budget
+    csv_fp = args.output_file
+    indicies = [int(m) for m in args.model]
+    models = [ALL_MODELS[i] for i in indicies]
+    dump_mxq_objectives(models, budgets, csv_fp=csv_fp)
 
 
 if __name__ == "__main__":

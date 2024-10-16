@@ -5,13 +5,21 @@ from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
 LLAMA_MODELS = {
     "meta-llama/Llama-2-7b-hf": {
         "layers": 32,
+        "experiment": True,
     },
     "meta-llama/Llama-2-13b-hf": {
         "layers": 40,
+        "experiment": True,
     },
     "meta-llama/Meta-Llama-3-8B": {
         "layers": 32,
         "llama2": False,
+        "experiment": True,
+    },
+    "meta-llama/Llama-3.1-8B": {
+        "layers": 32,
+        "llama2": False,
+        "experiment": True,
     },
     "meta-llama/Meta-Llama-3-70B": {
         "layers": 80,

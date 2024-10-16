@@ -41,6 +41,7 @@ ALL_MODELS = [
     "meta-llama/Llama-2-7b-hf",
     "meta-llama/Llama-2-13b-hf",
     "meta-llama/Meta-Llama-3-8B",
+    "meta-llama/Llama-3.1-8B",
 ]
 
 MXQ_CONFIGS = [
