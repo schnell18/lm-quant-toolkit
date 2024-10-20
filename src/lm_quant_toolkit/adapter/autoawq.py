@@ -21,8 +21,7 @@ def create_autoawq_model(model_id, quant_config, config_id, load_quantized, save
         model = AutoAWQForCausalLM.from_quantized(
             quant_path,
             device_map="auto",
-            fuse_layers=False,
-            offload_state_dict=True,
+            offload_state_dict=False,
             config=config,
         )
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
@@ -31,18 +30,12 @@ def create_autoawq_model(model_id, quant_config, config_id, load_quantized, save
         model = model.cuda()
     else:
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
-        # model = AutoAWQForCausalLM.from_pretrained(
-        #     model_id,
-        #     device_map="auto",
-        #     offload_state_dict=True,
-        #     max_memory={0: "18GiB", "cpu": "60GiB"},
-        # )
         model = AutoAWQForCausalLM.from_pretrained(
             model_id,
-            device_map="cuda",
-            offload_state_dict=True,
+            device_map="auto",
+            offload_state_dict=False,
             torch_dtype=torch.float16,
-            max_memory={0: "20GiB", "cpu": "60GiB"},
+            max_memory={0: "18GiB", "cpu": "60GiB"},
             config=config,
         )
     return model, tokenizer, quantized, model_file_size

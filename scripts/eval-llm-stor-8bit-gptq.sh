@@ -9,19 +9,19 @@ fi
 
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-algo=mxq
+algo=gptq
 model_ids="0 1 2"
-cfgs="4.51 4.25 4.13 3.51 3.25 3.13 3.02 2.51 2.25"
+cfgs="b8g32 b8g64 b8g128"
 for m in $model_ids; do
     for cfg in $cfgs ; do
         python ../src/cli.py llm \
+            --quant-snapshot-dir="/fdata/llm/mxq/snapshots" \
+            --result-dir="/fdata/llm/mxq/results" \
             --model $m \
             --algo ${algo} \
             --config ${cfg} \
             --task eval_model_storage \
-            --experiment-name eval_model_stor_b4-mxq \
-            --quant-snapshot-dir="/fdata/llm/mxq/snapshots" \
-            --result-dir="/fdata/llm/mxq/results" \
+            --experiment-name eval_model_stor_8bit-gptq \
             2>&1 \
             | tee logs/bench-$(date +%Y%m%d%H%M%S).log
     done

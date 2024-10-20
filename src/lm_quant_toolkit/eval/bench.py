@@ -11,6 +11,7 @@ import pandas as pd
 import torch
 from auto_gptq import BaseQuantizeConfig as GPTQQuantConfig
 from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
+from transformers import BitsAndBytesConfig
 
 from lm_quant_toolkit.adapter.autoawq import (
     create_autoawq_model,
@@ -20,6 +21,7 @@ from lm_quant_toolkit.adapter.autogptq import (
     create_autogptq_model,
     quantize_autogptq_model,
 )
+from lm_quant_toolkit.adapter.bnb import create_bnb_model, quantize_bnb_model
 from lm_quant_toolkit.adapter.fp16 import create_fp16_model
 from lm_quant_toolkit.adapter.hqq import create_hqq_model, quantize_hqq_model
 from lm_quant_toolkit.adapter.mxq import create_mxq_model, quantize_mxq_model
@@ -52,6 +54,23 @@ MXQ_CONFIGS = [
     for bits in [5.00, 4.75, 4.50, 4.25, 4.01, 3.76, 3.50, 3.00, 2.75, 2.48]
 ]
 
+BNB_CONFIGS = [
+    (
+        "b4g64",
+        BitsAndBytesConfig(
+            load_in_4_bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+        ),
+    ),
+    (
+        "b8g128",
+        BitsAndBytesConfig(
+            load_in_8_bit=True,
+        ),
+    ),
+]
+
 
 AUTOAWQ_CONFIGS = [
     ("b4g32", {"w_bit": 4, "q_group_size": 32, "zero_point": True, "version": "GEMM"}),
@@ -65,16 +84,19 @@ AUTOAWQ_CONFIGS = [
     # ("b3g128", {"w_bit": 3, "q_group_size": 128, "zero_point": True, 'version':'gemv_fast'}),
 ]
 
-# AWQ_CONFIGS = [
-#     ("b4g32", {"w_bit": 4, "q_group_size": 32, "zero_point": True}),
-#     ("b4g64", {"w_bit": 4, "q_group_size": 64, "zero_point": True}),
-#     ("b4g128", {"w_bit": 4, "q_group_size": 128, "zero_point": True}),
-#     ("b3g32", {"w_bit": 3, "q_group_size": 32, "zero_point": True}),
-#     ("b3g64", {"w_bit": 3, "q_group_size": 64, "zero_point": True}),
-#     ("b3g128", {"w_bit": 3, "q_group_size": 128, "zero_point": True}),
-# ]
-
 GPTQ_CONFIGS = [
+    (
+        "b8g32",
+        GPTQQuantConfig(bits=8, group_size=32, damp_percent=0.01, desc_act=False),
+    ),
+    (
+        "b8g64",
+        GPTQQuantConfig(bits=8, group_size=64, damp_percent=0.01, desc_act=False),
+    ),
+    (
+        "b8g128",
+        GPTQQuantConfig(bits=8, group_size=128, damp_percent=0.01, desc_act=False),
+    ),
     (
         "b4g32",
         GPTQQuantConfig(bits=4, group_size=32, damp_percent=0.01, desc_act=False),
@@ -133,6 +155,9 @@ def _setup_fn(algo, spec):
         case "hqq":
             spec["create_fn"] = create_hqq_model
             spec["quantize_fn"] = quantize_hqq_model
+        case "bnb":
+            spec["create_fn"] = create_bnb_model
+            spec["quantize_fn"] = quantize_bnb_model
         case "mxq":
             spec["create_fn"] = create_mxq_model
             spec["quantize_fn"] = quantize_mxq_model

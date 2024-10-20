@@ -114,6 +114,7 @@ def get_parser_args():
         choices=[
             "fp16",
             "hqq",
+            "bnb",
             "mxq",
             "gptq",
             "awq",

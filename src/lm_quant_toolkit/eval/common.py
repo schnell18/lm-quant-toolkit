@@ -218,7 +218,8 @@ def fill_gaps():
     # gaps.extend(fill_budget_gap(3.29, 3.45))
     # gaps.extend(fill_budget_gap(6.92, 7.56))
     # gaps.extend(fill_budget_gap(4.61, 5.00))
-    gaps.extend(fill_budget_gap(5.20, 5.86))
+    # gaps.extend(fill_budget_gap(5.20, 5.86))
+    gaps.extend(fill_budget_gap(6.01, 6.70))
     # gaps.extend([4.39, 4.37])
     print(gaps)
     plan_eval_bit_budgets(
