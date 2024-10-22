@@ -9,6 +9,7 @@ from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
 from lm_quant_toolkit.eval.bench import (
     ALL_MODELS,
     AUTOAWQ_CONFIGS,
+    BNB_CONFIGS,
     GPTQ_CONFIGS,
     MXQ_CONFIGS,
     do_expermient,
@@ -44,6 +45,7 @@ def get_parser_args():
             "mxq",
             "gptq",
             "awq",
+            "bnb",
         ],
         nargs="+",
         default=None,
@@ -236,6 +238,13 @@ def _get_configs(algos, config_names):
                 else:
                     algo_configs[algo] = [
                         cfg for cfg in GPTQ_CONFIGS if cfg[0] in config_names
+                    ]
+            case "bnb":
+                if config_names is None:
+                    algo_configs[algo] = BNB_CONFIGS
+                else:
+                    algo_configs[algo] = [
+                        cfg for cfg in BNB_CONFIGS if cfg[0] in config_names
                     ]
 
     return algo_configs

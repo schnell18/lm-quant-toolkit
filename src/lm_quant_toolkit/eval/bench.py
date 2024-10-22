@@ -58,15 +58,17 @@ BNB_CONFIGS = [
     (
         "b4g64",
         BitsAndBytesConfig(
-            load_in_4_bit=True,
+            load_in_4bit=True,
             bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype="float16",
             bnb_4bit_use_double_quant=True,
         ),
     ),
     (
         "b8g128",
         BitsAndBytesConfig(
-            load_in_8_bit=True,
+            load_in_8bit=True,
+            bnb_4bit_compute_dtype="float16",
         ),
     ),
 ]
@@ -302,7 +304,7 @@ def _init_metrics(model_id, algo, config):
         "model": model_id.split("/")[1],
         "algo": algo,
         "config": config[0],
-        "config_detail": config[1],
+        "config_detail": str(config[1]).replace("\n", ""),
         "quant_duration": 0,
         "model_storage_size": 0,
         "load_mem_allot": 0,
