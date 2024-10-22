@@ -9,9 +9,9 @@ fi
 
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-algo=awq
-model_ids="1"
-cfgs="b4g32 b4g64 b4g128"
+algo=hqq
+model_ids="0 1 2"
+cfgs="b8g32 b8g64 b8g128"
 for m in $model_ids; do
     for cfg in $cfgs ; do
         python ../src/cli.py llm \
@@ -21,10 +21,8 @@ for m in $model_ids; do
             --algo ${algo} \
             --config ${cfg} \
             --task eval_model_storage \
-            --experiment-name eval_model_stor_13b_awq3 \
+            --experiment-name eval_model_stor_8bit_hqq \
             2>&1 \
             | tee logs/bench-$(date +%Y%m%d%H%M%S).log
     done
 done
-
-

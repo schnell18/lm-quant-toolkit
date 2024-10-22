@@ -12,8 +12,6 @@ from awq.quantize.quantizer import real_quantize_model_weight
 from awq.utils.utils import simple_dispatch_model
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
-max_memory = {}
-
 
 def create_awq_model(model_id, quant_config, config_id, load_quantized, save_dir):
     quantized = False
@@ -30,6 +28,7 @@ def create_awq_model(model_id, quant_config, config_id, load_quantized, save_dir
             model = AutoModelForCausalLM.from_config(
                 config=config, torch_dtype=torch.float16, trust_remote_code=True
             )
+        max_memory = {0: "20GiB", "cpu": "60GiB"}
         # Infer device map
         kwargs = {"max_memory": max_memory} if len(max_memory) else {}
         device_map = infer_auto_device_map(
@@ -48,7 +47,7 @@ def create_awq_model(model_id, quant_config, config_id, load_quantized, save_dir
             model,
             checkpoint=quant_path,
             device_map=device_map,
-            offload_state_dict=True,
+            offload_state_dict=False,
         )
         # Dispatch model
         model = simple_dispatch_model(model, device_map=device_map)
@@ -59,7 +58,7 @@ def create_awq_model(model_id, quant_config, config_id, load_quantized, save_dir
         model = AutoModelForCausalLM.from_pretrained(
             model_id, config=config, trust_remote_code=True, **kwargs
         )
-    return model, tokenizer, quantized
+    return model, tokenizer, quantized, 0
 
 
 def quantize_awq_model(model, tokenizer, quant_config, model_id, config_id, save_dir):

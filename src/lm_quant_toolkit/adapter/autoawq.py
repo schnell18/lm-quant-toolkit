@@ -30,6 +30,8 @@ def create_autoawq_model(model_id, quant_config, config_id, load_quantized, save
         model = model.cuda()
     else:
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
+        #     max_memory={0: "18GiB", "cpu": "60GiB"},
+        # )
         model = AutoAWQForCausalLM.from_pretrained(
             model_id,
             device_map="auto",
@@ -53,4 +55,12 @@ def quantize_autoawq_model(
     tokenizer.save_pretrained(quant_path)
     # persistent the quantized model
     os.sync()
-    return model, t2 - t1, get_model_storage_size(quant_path)
+    return model, t2 - t1, _get_model_file_size(quant_path)
+
+
+def _get_model_file_size(quant_path):
+    quant_fp_pt = os.path.join(quant_path, "qmodel.pth")
+    if os.path.exists(quant_fp_pt):
+        return os.path.getsize(quant_fp_pt)
+    else:
+        return get_model_storage_size(quant_path)
