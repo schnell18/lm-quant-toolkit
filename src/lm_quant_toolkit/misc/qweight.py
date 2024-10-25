@@ -205,8 +205,8 @@ if __name__ == "__main__":
     base_dir = "/fdata/llm/mxq/snapshots/"
     model_ids = [
         "meta-llama/Llama-2-7b-hf",
-        # "meta-llama/Llama-2-13b-hf",
-        # "meta-llama/Meta-Llama-3-8B",
+        "meta-llama/Llama-2-13b-hf",
+        "meta-llama/Meta-Llama-3-8B",
     ]
     confs = [
         "4_51",
@@ -226,7 +226,7 @@ if __name__ == "__main__":
                 if matcher:
                     layer = matcher.group(1)
                     module = matcher.group(2)
-                    # val["model"] = model_id.split("/")[1]
+                    val["model"] = model_id.split("/")[1]
                     val["layer"] = layer
                     val["module"] = module
                     val["bit_budget"] = conf.replace("_", ".")

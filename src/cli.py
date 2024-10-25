@@ -68,6 +68,7 @@ def get_parser_args():
             "quant",
             "eval_model_storage",
             "eval_ppl",
+            "eval_leaderboard",
         ],
         help="Task to evaluate on.",
     )

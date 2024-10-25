@@ -10,11 +10,10 @@ fi
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 python ../src/cli.py llm \
-    --task quant \
+    --task eval_leaderboard \
     --model 0 1 2 \
-    --algo mxq \
-    --config 4.51 4.25 4.13 \
-    --experiment-name quant_llm_b4-mxq2 \
+    --algo fp16 \
+    --experiment-name eval_leaderboard-fp16 \
     --quant-snapshot-dir="/fdata/llm/mxq/snapshots" \
     --result-dir="/fdata/llm/mxq/results" \
     2>&1 \

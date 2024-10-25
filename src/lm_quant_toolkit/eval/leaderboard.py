@@ -279,8 +279,9 @@ def _prepare_tokenizer_files(model_id, quant_dir):
     base_dir = get_hf_model_storge_base_dir(model_id)
     for f in files:
         src_fp = os.path.join(base_dir, f)
-        dst_fp = os.path.join(quant_dir, f)
-        shutil.copyfile(src_fp, dst_fp, follow_symlinks=True)
+        if os.path.exists(src_fp):
+            dst_fp = os.path.join(quant_dir, f)
+            shutil.copyfile(src_fp, dst_fp, follow_symlinks=True)
 
 
 def test_run(fp):

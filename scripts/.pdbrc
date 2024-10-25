@@ -5,17 +5,20 @@
 # debug GPU memory measuring issue
 # b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/eval/bench.py:242
 
-b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/adapter/autoawq.py:39
-b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/adapter/autoawq.py:46
+# b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/adapter/autoawq.py:39
+# b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/adapter/autoawq.py:46
 # b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/transformers/modeling_utils.py:955, param_device == 'cpu'
 # b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/transformers/modeling_utils.py:973, param_device == 'cpu'
 # b /home/justin/work/transformers/modeling_utils.py:989
-b /home/justin/work/transformers/src/transformers/modeling_utils.py:4795
-b /home/justin/work/transformers/src/transformers/modeling_utils.py:4213
-b /home/justin/work/AutoAWQ/awq/models/base.py:338
-b /home/justin/work/accelerate/src/accelerate/big_modeling.py:420
-#b /home/justin/work/accelerate/src/accelerate/hooks.py:579, module_name == 'model.layers.28.mlp.gate_proj'
-b /home/justin/work/accelerate/src/accelerate/hooks.py:579, module_name == 'model.layers.28'
-#b /home/justin/work/accelerate/src/accelerate/hooks.py:288
-#b /home/justin/work/accelerate/src/accelerate/hooks.py:308
-b /home/justin/work/accelerate/src/accelerate/hooks.py:327
+# b /home/justin/work/transformers/src/transformers/modeling_utils.py:4795
+# b /home/justin/work/transformers/src/transformers/modeling_utils.py:4213
+# b /home/justin/work/AutoAWQ/awq/models/base.py:338
+# b /home/justin/work/accelerate/src/accelerate/big_modeling.py:420
+# b /home/justin/work/accelerate/src/accelerate/hooks.py:579, module_name == 'model.layers.28.mlp.gate_proj'
+# b /home/justin/work/accelerate/src/accelerate/hooks.py:579, module_name == 'model.layers.28'
+# b /home/justin/work/accelerate/src/accelerate/hooks.py:288
+# b /home/justin/work/accelerate/src/accelerate/hooks.py:308
+# b /home/justin/work/accelerate/src/accelerate/hooks.py:327
+# b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/transformers/modeling_utils.py:4194
+# b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/transformers/quantizers/quantizer_bnb_4bit.py:190
+b /home/justin/work/transformers/src/transformers/modeling_utils.py:4194
