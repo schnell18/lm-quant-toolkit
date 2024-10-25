@@ -241,5 +241,34 @@ def main():
         print(f"Finished {model_id} metrics calc in {t2 - t1} seconds")
 
 
+def join_kurtosis():
+    for model_id, model in LLAMA_MODELS.items():
+        exp = model.get("experiment", False)
+        if not exp or model_id == "meta-llama/Llama-3.1-8B":
+            continue
+        t1 = timer()
+        model_short_id = model_id.split("/")[1]
+        df_fnorm = pd.read_csv(f"data/fnorm-{model_short_id}.csv")
+        df_wdist = pd.read_csv(f"data/wdist-{model_short_id}.csv")
+        df_fnorm = pd.merge(df_fnorm, df_wdist, how="inner", on=["module", "layer"])
+        df_fnorm = df_fnorm[
+            [
+                "layer",
+                "module",
+                "nbit1",
+                "gsize1",
+                "nbit2",
+                "gsize2",
+                "fnorm",
+                "memmb",
+                "params",
+                "kurtosis",
+            ]
+        ]
+        df_fnorm.to_csv(f"fnorm-{model_short_id}.csv", index=False)
+        t2 = timer()
+        print(f"Finished {model_id} Kurtosis data join in {t2 - t1} seconds")
+
+
 if __name__ == "__main__":
-    main()
+    join_kurtosis()

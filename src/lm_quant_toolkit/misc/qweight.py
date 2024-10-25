@@ -202,11 +202,11 @@ def get_mem_usage_df(model_ids, confs, base_dir):
 
 
 if __name__ == "__main__":
-    base_dir = "/fdata/llm/mxq/snapshots/"
+    base_dir = "/fdata/llm/mxq/snapshots-kurt/"
     model_ids = [
-        "meta-llama/Llama-2-7b-hf",
+        # "meta-llama/Llama-2-7b-hf",
         "meta-llama/Llama-2-13b-hf",
-        "meta-llama/Meta-Llama-3-8B",
+        # "meta-llama/Meta-Llama-3-8B",
     ]
     confs = [
         "4_51",
@@ -232,7 +232,7 @@ if __name__ == "__main__":
                     val["bit_budget"] = conf.replace("_", ".")
                     dikt.append(val)
     df = pd.DataFrame(dikt)
-    df.to_csv("llama-mxq-cfgs.csv", index=False)
+    df.to_csv("llama-mxq-cfgs-kurt.csv", index=False)
 
 
 # if __name__ == "__main__":
