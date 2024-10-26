@@ -201,25 +201,13 @@ def get_mem_usage_df(model_ids, confs, base_dir):
     return df
 
 
-if __name__ == "__main__":
-    base_dir = "/fdata/llm/mxq/snapshots-kurt/"
-    model_ids = [
-        # "meta-llama/Llama-2-7b-hf",
-        "meta-llama/Llama-2-13b-hf",
-        # "meta-llama/Meta-Llama-3-8B",
-    ]
-    confs = [
-        "4_51",
-        "4_25",
-        "4_13",
-    ]
-
+def dump_quant_cfgs(quant_dir, model_ids, confs, csv_fp="mxq-cfgs.csv"):
     dikt = []
     pat = re.compile(r"model\.layers\.(\d+)\.(.+)")
     for model_id in model_ids:
         for conf in confs:
             configs, mem_quant_total, mem_all_total, mem_fp16_all_total = (
-                extract_quant_config(base_dir, model_id, conf, algo="mxq")
+                extract_quant_config(quant_dir, model_id, conf, algo="mxq")
             )
             for key, val in configs.items():
                 matcher = re.match(pat, key)
@@ -232,7 +220,7 @@ if __name__ == "__main__":
                     val["bit_budget"] = conf.replace("_", ".")
                     dikt.append(val)
     df = pd.DataFrame(dikt)
-    df.to_csv("llama-mxq-cfgs-kurt.csv", index=False)
+    df.to_csv(csv_fp, index=False)
 
 
 # if __name__ == "__main__":

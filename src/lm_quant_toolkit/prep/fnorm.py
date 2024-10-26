@@ -250,6 +250,28 @@ def join_kurtosis():
         model_short_id = model_id.split("/")[1]
         df_fnorm = pd.read_csv(f"data/fnorm-{model_short_id}.csv")
         df_wdist = pd.read_csv(f"data/wdist-{model_short_id}.csv")
+        # calculate scaled kurtosis
+        df_kurt_agg = df_wdist.groupby("module").agg(
+            kurt_max=pd.NamedAgg(column="kurtosis", aggfunc="max"),
+            kurt_min=pd.NamedAgg(column="kurtosis", aggfunc="min"),
+        )
+        df_wdist = df_wdist.merge(df_kurt_agg, how="left", on="module")
+        df_wdist["kurtosis_scaled"] = (df_wdist["kurtosis"] - df_wdist["kurt_min"]) / (
+            df_wdist["kurt_max"] - df_wdist["kurt_min"]
+        )
+        df_fnorm = df_fnorm[
+            [
+                "layer",
+                "module",
+                "nbit1",
+                "gsize1",
+                "nbit2",
+                "gsize2",
+                "fnorm",
+                "memmb",
+                "params",
+            ]
+        ]
         df_fnorm = pd.merge(df_fnorm, df_wdist, how="inner", on=["module", "layer"])
         df_fnorm = df_fnorm[
             [
@@ -263,8 +285,10 @@ def join_kurtosis():
                 "memmb",
                 "params",
                 "kurtosis",
+                "kurtosis_scaled",
             ]
         ]
+
         df_fnorm.to_csv(f"fnorm-{model_short_id}.csv", index=False)
         t2 = timer()
         print(f"Finished {model_id} Kurtosis data join in {t2 - t1} seconds")

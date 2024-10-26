@@ -19,6 +19,7 @@ from lm_quant_toolkit.eval.bench_vit import MXQ_CONFIGS as VIT_MXQ_CONFIGS
 from lm_quant_toolkit.eval.bench_vit import do_expermient as do_expermient_vit
 from lm_quant_toolkit.eval.common import HQQ_CONFIGS
 from lm_quant_toolkit.misc.quant_config import dump_mxq_objectives
+from lm_quant_toolkit.misc.qweight import dump_quant_cfgs
 
 
 def get_parser_args():
@@ -174,28 +175,44 @@ def get_parser_args():
         help="name of the experiment",
     )
 
-    parser_obj = subparsers.add_parser("obj", help="Dump MiLP objective metrics")
-    parser_obj.set_defaults(which="obj")
+    parser_dump = subparsers.add_parser("dump", help="Dump MXQ meta data")
+    parser_dump.set_defaults(which="dump")
 
-    parser_obj.add_argument(
+    parser_dump.add_argument(
+        "--type",
+        type=str,
+        default=None,
+        choices=[
+            "objective",
+            "quant_config",
+        ],
+        help="Type of data to dump.",
+    )
+    parser_dump.add_argument(
         "--model",
         type=str,
         nargs="+",
         default="1",
         help="Model to evaluate",
     )
-    parser_obj.add_argument(
+    parser_dump.add_argument(
         "--budget",
         type=float,
         default=None,
         nargs="+",
         help="Bit budgets",
     )
-    parser_obj.add_argument(
+    parser_dump.add_argument(
         "--output_file",
         type=str,
-        default="mxq-objectives.csv",
+        default="mxq-dumpectives.csv",
         help="Output file location",
+    )
+    parser_dump.add_argument(
+        "--quant-snapshot-dir",
+        default=None,
+        type=str,
+        help="directory to where quantized snapshots are stored",
     )
 
     args = parser.parse_args()
@@ -288,8 +305,8 @@ def main():
         main_llm(base)
     elif base.which == "vit":
         main_vit(base)
-    elif base.which == "obj":
-        main_obj(base)
+    elif base.which == "dump":
+        main_dump(base)
 
 
 def main_llm(args):
@@ -335,12 +352,23 @@ def main_vit(args):
     )
 
 
-def main_obj(args):
-    budgets = args.budget
-    csv_fp = args.output_file
-    indicies = [int(m) for m in args.model]
-    models = [ALL_MODELS[i] for i in indicies]
-    dump_mxq_objectives(models, budgets, csv_fp=csv_fp)
+def main_dump(args):
+    if args.type == "objective":
+        budgets = args.budget
+        csv_fp = args.output_file
+        indicies = [int(m) for m in args.model]
+        models = [ALL_MODELS[i] for i in indicies]
+        dump_mxq_objectives(models, budgets, csv_fp=csv_fp)
+    elif args.type == "quant_config":
+        quant_dir = args.quant_snapshot_dir
+        budgets = [
+            f"{bits:.2f}".replace(".", "_")
+            for bits in [float(cfg) for cfg in args.budget]
+        ]
+        csv_fp = args.output_file
+        indicies = [int(m) for m in args.model]
+        models = [ALL_MODELS[i] for i in indicies]
+        dump_quant_cfgs(quant_dir, models, budgets, csv_fp=csv_fp)
 
 
 if __name__ == "__main__":
