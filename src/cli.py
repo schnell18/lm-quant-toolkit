@@ -18,7 +18,7 @@ from lm_quant_toolkit.eval.bench_vit import ALL_MODELS as ALL_VIT_MODELS
 from lm_quant_toolkit.eval.bench_vit import MXQ_CONFIGS as VIT_MXQ_CONFIGS
 from lm_quant_toolkit.eval.bench_vit import do_expermient as do_expermient_vit
 from lm_quant_toolkit.eval.common import HQQ_CONFIGS
-from lm_quant_toolkit.misc.quant_config import dump_mxq_objectives
+from lm_quant_toolkit.misc.quant_sim import dump_mxq_objectives
 from lm_quant_toolkit.misc.qweight import dump_quant_cfgs
 
 
@@ -214,6 +214,20 @@ def get_parser_args():
         type=str,
         help="directory to where quantized snapshots are stored",
     )
+    parser_dump.add_argument(
+        "--attempt",
+        default=None,
+        type=str,
+        nargs="+",
+        choices=[
+            "mxq1",
+            "kurt-global",
+            "kurt-scaled",
+            "pct5",
+            "pct6",
+        ],
+        help="Experiment attempts",
+    )
 
     args = parser.parse_args()
     return parser, args
@@ -361,6 +375,7 @@ def main_dump(args):
         dump_mxq_objectives(models, budgets, csv_fp=csv_fp)
     elif args.type == "quant_config":
         quant_dir = args.quant_snapshot_dir
+        attempts = args.attempt
         budgets = [
             f"{bits:.2f}".replace(".", "_")
             for bits in [float(cfg) for cfg in args.budget]
@@ -368,7 +383,7 @@ def main_dump(args):
         csv_fp = args.output_file
         indicies = [int(m) for m in args.model]
         models = [ALL_MODELS[i] for i in indicies]
-        dump_quant_cfgs(quant_dir, models, budgets, csv_fp=csv_fp)
+        dump_quant_cfgs(quant_dir, models, budgets, csv_fp=csv_fp, attempts=attempts)
 
 
 if __name__ == "__main__":

@@ -150,6 +150,8 @@ def extract_quant_config(base_dir, model_id, config, algo="hqq"):
     mem_fp16_all_total = 0
     mem_all_total = 0
     mem_quant_total = 0
+    param_quant_total = 0
+    param_all_total = 0
     # search quantized linear module with meta
     for key in dikt.keys():
         m_dikt = dikt[key]
@@ -162,10 +164,13 @@ def extract_quant_config(base_dir, model_id, config, algo="hqq"):
                 g1 = meta_dict["group_size"]
                 b2 = meta_scale_dict["nbits"] if meta_scale_dict else 8
                 g2 = meta_scale_dict["group_size"] if meta_scale_dict else 128
+                param_count = shape[0] * shape[1]
+                param_quant_total += param_count
+                param_all_total += param_count
                 memmb = (
-                    (b1 + 2 * b2 / (g1 * g2)) * shape[0] * shape[1] / 8 / 1024 / 1024
+                    (b1 + 2 * b2 / g1 + 32 / (g1 * g2)) * param_count / 8 / 1024 / 1024
                 )
-                mem_fp16_all_total += shape[0] * shape[1] * 2 / 1024 / 1024
+                mem_fp16_all_total += param_count * 2 / 1024 / 1024
                 mem_quant_total += memmb
                 mem_all_total += memmb
                 quant_configs[key] = {
@@ -174,19 +179,28 @@ def extract_quant_config(base_dir, model_id, config, algo="hqq"):
                     "b2": b2,
                     "g2": g2,
                     "memmb": memmb,
+                    "param_cnt": param_count,
                 }
         else:
             w = m_dikt["weight"]
             mem_all_total += w.numel() * 2 / 1024 / 1024
             mem_fp16_all_total += w.numel() * 2 / 1024 / 1024
-    return quant_configs, mem_quant_total, mem_all_total, mem_fp16_all_total
+            param_all_total += w.numel()
+    return (
+        quant_configs,
+        mem_quant_total,
+        mem_all_total,
+        mem_fp16_all_total,
+        param_quant_total,
+        param_all_total,
+    )
 
 
 def get_mem_usage_df(model_ids, confs, base_dir):
     dikts = []
     for model_id in model_ids:
         for conf in confs:
-            configs, mem_quant_total, mem_all_total, mem_fp16_all_total = (
+            configs, mem_quant_total, mem_all_total, mem_fp16_all_total, _, _ = (
                 extract_quant_config(base_dir, model_id, conf)
             )
             dikt = {
@@ -201,59 +215,57 @@ def get_mem_usage_df(model_ids, confs, base_dir):
     return df
 
 
-def dump_quant_cfgs(quant_dir, model_ids, confs, csv_fp="mxq-cfgs.csv"):
+def dump_quant_cfgs(
+    quant_dir,
+    model_ids,
+    confs,
+    csv_fp="mxq-cfgs.csv",
+    attempts=None,
+):
     dikt = []
     pat = re.compile(r"model\.layers\.(\d+)\.(.+)")
-    for model_id in model_ids:
-        for conf in confs:
-            configs, mem_quant_total, mem_all_total, mem_fp16_all_total = (
-                extract_quant_config(quant_dir, model_id, conf, algo="mxq")
-            )
-            for key, val in configs.items():
-                matcher = re.match(pat, key)
-                if matcher:
-                    layer = matcher.group(1)
-                    module = matcher.group(2)
-                    val["model"] = model_id.split("/")[1]
-                    val["layer"] = layer
-                    val["module"] = module
-                    val["bit_budget"] = conf.replace("_", ".")
-                    dikt.append(val)
+    loops = ["mxq1"] if attempts is None else attempts
+    for attempt in loops:
+        snapshot_dir = f"{quant_dir}/{attempt}"
+        for model_id in model_ids:
+            for conf in confs:
+                (
+                    configs,
+                    mem_quant_total,
+                    mem_all_total,
+                    mem_fp16_all_total,
+                    param_quant_total,
+                    param_all_total,
+                ) = extract_quant_config(snapshot_dir, model_id, conf, algo="mxq")
+                for key, val in configs.items():
+                    matcher = re.match(pat, key)
+                    if matcher:
+                        layer = matcher.group(1)
+                        module = matcher.group(2)
+                        val["model"] = model_id.split("/")[1]
+                        val["layer"] = layer
+                        val["module"] = module
+                        if attempts is not None:
+                            val["attempt"] = attempt
+                        val["bit_budget"] = conf.replace("_", ".")
+                        val["params_quant_tot"] = param_quant_total
+                        val["params_all_tot"] = param_all_total
+                        dikt.append(val)
+    columns = [
+        "model",
+        "module",
+        "layer",
+        "memmb",
+        "param_cnt",
+        "bit_budget",
+        "b1",
+        "g1",
+        "b2",
+        "g2",
+        "params_quant_tot",
+        "params_all_tot",
+    ]
+    if attempts is not None:
+        columns.append("attempt")
     df = pd.DataFrame(dikt)
-    df.to_csv(csv_fp, index=False)
-
-
-# if __name__ == "__main__":
-#     output_dir = "snapshots/cmp"
-#     model_id = "meta-llama/Llama-2-7b-hf"
-#     model = LLAMA_MODELS[model_id]
-#     compare_pair(model_id.split("/")[1], model["layers"], output_dir)
-
-
-# if __name__ == "__main__":
-#     # Llama-2-7b-hf-b3g128-hqq:
-#     # Llama-2-7b-hf-b3g32-hqq:
-#     # Llama-2-7b-hf-b3g64-hqq:
-#     # Llama-2-7b-hf-b4g128-hqq:
-#     # Llama-2-7b-hf-b4g32-hqq:
-#     # Llama-2-7b-hf-b4g64-hqq:
-#
-#     quant_cfg = "b4g64"
-#     quant_base_dir = "/data/gqq-eval"
-#     output_dir = "snapshots/cmp"
-#     model_id = "meta-llama/Llama-2-7b-hf"
-#     model = LLAMA_MODELS[model_id]
-#     if model["base_dir"]:
-#         model_base_dir = get_hf_model_storge_base_dir(
-#             model_id, hf_hub_dir=LLAMA_MODELS["base_dir"]
-#         )
-#     else:
-#         model_base_dir = get_hf_model_storge_base_dir(model_id)
-#     save_compare_pair(
-#         model_base_dir,
-#         quant_base_dir,
-#         quant_cfg,
-#         model_id.split("/")[1],
-#         model["layers"],
-#         output_dir,
-#     )
+    df.to_csv(csv_fp, index=False, columns=columns)

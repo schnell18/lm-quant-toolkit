@@ -22,4 +22,6 @@
 # b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/transformers/modeling_utils.py:4194
 # b /home/justin/miniconda3/envs/quant-eval/lib/python3.11/site-packages/transformers/quantizers/quantizer_bnb_4bit.py:190
 # b /home/justin/work/transformers/src/transformers/modeling_utils.py:4194
-b /home/justin/work/hqq/hqq/utils/optimizer.py:21
+# b /home/justin/work/hqq/hqq/utils/optimizer.py:21
+
+b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/misc/qweight.py:216
