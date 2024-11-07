@@ -314,13 +314,18 @@ def main():
     print(base)
     if not hasattr(base, "which"):
         parser.print_help()
-        return
-    if base.which == "llm":
-        main_llm(base)
-    elif base.which == "vit":
-        main_vit(base)
-    elif base.which == "dump":
-        main_dump(base)
+        return 2
+    try:
+        if base.which == "llm":
+            main_llm(base)
+        elif base.which == "vit":
+            main_vit(base)
+        elif base.which == "dump":
+            main_dump(base)
+    except Exception as e:
+        print(e)
+        return 1
+    return 0
 
 
 def main_llm(args):

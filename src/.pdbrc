@@ -36,4 +36,6 @@
 # debug GPU memory measuring issue
 # b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/eval/bench.py:242
 
-b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/eval/bench_vit.py:133
+# b /home/justin/work/lm-quant-toolkit/src/lm_quant_toolkit/eval/bench_vit.py:133
+b /home/justin/work/hqq/hqq/core/quantize.py:122
+b /home/justin/work/hqq/hqq/core/optimize.py:211

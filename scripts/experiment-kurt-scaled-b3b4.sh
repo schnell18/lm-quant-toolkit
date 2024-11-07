@@ -30,39 +30,39 @@ find $RESULT_DIR/${EXP_NAME}_ppl \
     | cut -d' '  -f2 \
     | xargs -i cp {} $RESULT_DIR/$EXP_NAME/data/ppl/mxq/$ATTEMPT
 
-# python ../src/cli.py dump \
-#     --type quant_config \
-#     --model 0 1 2 \
-#     --budget $MXQ_CONFIGS \
-#     --attempt $ATTEMPT \
-#     --quant-snapshot-dir=$QUANT_SNAPSHOT_DIR \
-#     --output_file "$RESULT_DIR/$EXP_NAME/data/mxq-quant-cfgs-${EXP_NAME}.csv"
-#
-# algo=mxq
-# model_ids="0 1 2"
-# for m in $model_ids; do
-#     for cfg in $MXQ_CONFIGS; do
-#         python ../src/cli.py llm \
-#             --model $m \
-#             --algo ${algo} \
-#             --config ${cfg} \
-#             --task eval_model_storage \
-#             --experiment-name "${EXP_NAME}_stor" \
-#             --quant-snapshot-dir="$QUANT_SNAPSHOT_DIR/$ATTEMPT" \
-#             --result-dir=$RESULT_DIR \
-#             2>&1 \
-#             | tee logs/bench-$(date +%Y%m%d%H%M%S).log
-#     done
-# done
-#
-# mkdir -p $RESULT_DIR/$EXP_NAME/data/stor/mxq/$ATTEMPT
-# find $RESULT_DIR/${EXP_NAME}_stor \
-#     -name "result-*.csv" \
-#     -printf '%T@ %p\n' \
-#     | sort -n \
-#     | tail -1 \
-#     | cut -d' '  -f2 \
-#     | xargs -i cp {} $RESULT_DIR/$EXP_NAME/data/stor/mxq/$ATTEMPT
+python ../src/cli.py dump \
+    --type quant_config \
+    --model 0 1 2 \
+    --budget $MXQ_CONFIGS \
+    --attempt $ATTEMPT \
+    --quant-snapshot-dir=$QUANT_SNAPSHOT_DIR \
+    --output_file "$RESULT_DIR/$EXP_NAME/data/mxq-quant-cfgs-${EXP_NAME}.csv"
+
+algo=mxq
+model_ids="0 1 2"
+for m in $model_ids; do
+    for cfg in $MXQ_CONFIGS; do
+        python ../src/cli.py llm \
+            --model $m \
+            --algo ${algo} \
+            --config ${cfg} \
+            --task eval_model_storage \
+            --experiment-name "${EXP_NAME}_stor" \
+            --quant-snapshot-dir="$QUANT_SNAPSHOT_DIR/$ATTEMPT" \
+            --result-dir=$RESULT_DIR \
+            2>&1 \
+            | tee logs/bench-$(date +%Y%m%d%H%M%S).log
+    done
+done
+
+mkdir -p $RESULT_DIR/$EXP_NAME/data/stor/mxq/$ATTEMPT
+find $RESULT_DIR/${EXP_NAME}_stor \
+    -name "result-*.csv" \
+    -printf '%T@ %p\n' \
+    | sort -n \
+    | tail -1 \
+    | cut -d' '  -f2 \
+    | xargs -i cp {} $RESULT_DIR/$EXP_NAME/data/stor/mxq/$ATTEMPT
 
 PWD=$(pwd)
 cd $RESULT_DIR/$EXP_NAME
