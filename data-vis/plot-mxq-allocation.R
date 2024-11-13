@@ -15,12 +15,13 @@ plot_allot_pair <- function(df_lower, df_upper) {
     df_upper, aes(x = layer, y = memmb, color = "blue")
   ) +
     geom_line() +
-    theme_gray(base_size = 14) +
+    theme_gray(base_size = 12) +
     labs(x = "", y = "Memory(MiB)") +
     theme(
       legend.position = "none",
       axis.title.x = element_blank(),
-      axis.text.x = element_blank()
+      axis.text.x = element_blank(),
+      axis.ticks = element_blank()
     ) +
     scale_color_solarized()
 
@@ -42,7 +43,7 @@ plot_allot_pair <- function(df_lower, df_upper) {
       colour = "black",
       size = 2
     ) +
-    theme_gray(base_size = 14) +
+    theme_gray(base_size = 12) +
     labs(x = module_disp, y = "FNorm") +
     theme(legend.position = "none") +
     col_scale
@@ -93,6 +94,12 @@ parser <- add_option(
   help = "The combined quant config allocation csv file",
   metavar = "character"
 )
+parser <- add_option(
+  parser, c("-o", "--output_dir"),
+  type = "character",
+  help = "The output directory for the pdf",
+  metavar = "character"
+)
 
 
 args <- parse_args(parser)
@@ -119,6 +126,12 @@ if (is.null(args$quant_cfg_allot_file)) {
   quant_cfg_allot_file <- "data/quant-cfg-allocation.csv"
 } else {
   quant_cfg_allot_file <- args$quant_cfg_allot_file
+}
+
+if (is.null(args$output_dir)) {
+  output_dir <- "pdfs/allot"
+} else {
+  output_dir <- args$output_dir
 }
 
 fnorm_dir <- path.expand(paste0(baseline_data_dir, "/", "fnorm"))
@@ -194,7 +207,7 @@ p33 <- weight_grid(df_disp, "mlp.up_proj", "kurt-scaled")
 final_plot <- (p11 | p21 | p31) / (p12 | p22 | p32) / (p13 | p23 | p33)
 final_plot
 ggsave(
-  paste0("pdfs/", model_id, "-", budget, "-mlp-allot.pdf"),
+  paste0(output_dir, "/", model_id, "-", budget, "-mlp-allot.pdf"),
   width = 16, height = 9
 )
 
@@ -217,6 +230,6 @@ p93 <- weight_grid(df_disp, "self_attn.v_proj", "kurt-scaled")
 final_plot2 <- (p61 | p71 | p81 | p91) / (p62 | p72 | p82 | p92) / (p63 | p73 | p83 | p93)
 final_plot2
 ggsave(
-  paste0("pdfs/", model_id, "-", budget, "-attn-allot.pdf"),
+  paste0(output_dir, "/", model_id, "-", budget, "-attn-allot.pdf"),
   width = 16, height = 9
 )
