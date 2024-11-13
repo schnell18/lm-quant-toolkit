@@ -1,0 +1,9 @@
+model,algo,config,config_detail,quant_duration,load_mem_allot,load_mem_reserved,zeroshot_mem_allot,zeroshot_mem_reserved,linear_probe_mem_allot,linear_probe_mem_reserved,acc1_zeroshot_cls,acc5_zeroshot_cls,recall_zeroshot_cls,duration_zeroshot_cls,acc1_linear_probe,acc5_linear_probe,recall_linear_probe,duration_linear_probe
+CLIP-ViT-H-14-laion2B-s32B-b79K,mxq,2_51,"{'offload_meta': False, 'mixed': True, 'budget': 2.51}",0,0,0,0,0,5924581376,9269411840,0,0,0,0,0.74196,0.92768,0.7420399999999999,4861.056388378143
+CLIP-ViT-H-14-laion2B-s32B-b79K,mxq,2_46,"{'offload_meta': False, 'mixed': True, 'budget': 2.46}",0,0,0,0,0,5927459840,9737076736,0,0,0,0,0.74406,0.92958,0.7440399999999999,4795.576543569565
+CLIP-ViT-H-14-laion2B-s32B-b79K,mxq,2_20,"{'offload_meta': False, 'mixed': True, 'budget': 2.2}",0,0,0,0,0,5907647488,9795796992,0,0,0,0,0.72906,0.92072,0.7289,4802.375846862793
+CLIP-ViT-B-32-laion2B-s34B-b79K,mxq,2_20,"{'offload_meta': False, 'mixed': True, 'budget': 2.2}",0,0,0,0,0,1232539136,1627389952,0,0,0,0,0.20718,0.40748,0.20728,5786.485795736313
+CLIP-ViT-B-32-laion2B-s34B-b79K,mxq,2_25,"{'offload_meta': False, 'mixed': True, 'budget': 2.25}",0,0,0,0,0,1231827456,1631584256,0,0,0,0,0.21222,0.4066,0.212,5634.143008232117
+CLIP-ViT-H-14-laion2B-s32B-b79K,mxq,2_25,"{'offload_meta': False, 'mixed': True, 'budget': 2.25}",0,0,0,0,0,5910470656,9760145408,0,0,0,0,0.73918,0.92558,0.7389600000000001,4806.175360918045
+CLIP-ViT-B-32-laion2B-s34B-b79K,mxq,2_46,"{'offload_meta': False, 'mixed': True, 'budget': 2.46}",0,0,0,0,0,1235145216,2961178624,0,0,0,0,0.2425,0.45582,0.24246,4395.418176412582
+CLIP-ViT-B-32-laion2B-s34B-b79K,mxq,2_51,"{'offload_meta': False, 'mixed': True, 'budget': 2.51}",0,0,0,0,0,1666392576,9795796992,0,0,0,0,0.24444,0.46038,0.24432,4163.087644338608

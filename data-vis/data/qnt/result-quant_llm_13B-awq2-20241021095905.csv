@@ -1,0 +1,4 @@
+model,algo,config,config_detail,quant_duration,model_storage_size,load_mem_allot,load_mem_reserved,ppl_mem_allot,ppl_mem_reserved,leaderboard_mem_allot,leaderboard_mem_reserved,ppl_wikitext,ppl_c4,duration_wikitext,duration_c4,duration_leaderboard,ifeval,bbh,mathlevel5,gpqa,musr,mmlupro
+Llama-2-13b-hf,awq,b4g128,"{'w_bit': 4, 'q_group_size': 128, 'zero_point': True}",812.8657555580139,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Llama-2-13b-hf,awq,b4g64,"{'w_bit': 4, 'q_group_size': 64, 'zero_point': True}",883.8464283943176,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Llama-2-13b-hf,awq,b4g32,"{'w_bit': 4, 'q_group_size': 32, 'zero_point': True}",1059.5766835212708,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0

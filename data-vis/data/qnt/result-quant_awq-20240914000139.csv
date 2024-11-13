@@ -1,0 +1,7 @@
+model,algo,config,config_detail,quant_duration,load_mem_allot,load_mem_reserved,ppl_mem_allot,ppl_mem_reserved,leaderboard_mem_allot,leaderboard_mem_reserved,ppl_wikitext,ppl_c4,duration_wikitext,duration_c4,duration_leaderboard,ifeval,bbh,mathlevel5,gpqa,musr,mmlupro
+Llama-2-7b-hf,awq,b4g64,"{'w_bit': 4, 'q_group_size': 64, 'zero_point': True, 'version': 'GEMM'}",488.7674260139465,14020170752,14073987072,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Meta-Llama-3-8B,awq,b4g128,"{'w_bit': 4, 'q_group_size': 128, 'zero_point': True, 'version': 'GEMM'}",443.1117050647736,16603862016,16632512512,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Llama-2-7b-hf,awq,b4g128,"{'w_bit': 4, 'q_group_size': 128, 'zero_point': True, 'version': 'GEMM'}",495.0557653903961,13476848128,13486784512,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Meta-Llama-3-8B,awq,b4g32,"{'w_bit': 4, 'q_group_size': 32, 'zero_point': True, 'version': 'GEMM'}",591.7591543197632,17367225344,17408458752,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Meta-Llama-3-8B,awq,b4g64,"{'w_bit': 4, 'q_group_size': 64, 'zero_point': True, 'version': 'GEMM'}",488.3597602844238,17367225344,17387487232,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Llama-2-7b-hf,awq,b4g32,"{'w_bit': 4, 'q_group_size': 32, 'zero_point': True, 'version': 'GEMM'}",612.8054578304291,14020170752,14094958592,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0

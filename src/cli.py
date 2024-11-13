@@ -19,7 +19,7 @@ from lm_quant_toolkit.eval.bench_vit import MXQ_CONFIGS as VIT_MXQ_CONFIGS
 from lm_quant_toolkit.eval.bench_vit import do_expermient as do_expermient_vit
 from lm_quant_toolkit.eval.common import HQQ_CONFIGS
 from lm_quant_toolkit.misc.quant_sim import dump_mxq_objectives
-from lm_quant_toolkit.misc.qweight import dump_quant_cfgs
+from lm_quant_toolkit.misc.qweight import dump_quant_allocation
 
 
 def get_parser_args():
@@ -100,6 +100,13 @@ def get_parser_args():
         default=None,
         type=str,
         help="name of the experiment",
+    )
+
+    parser_llm.add_argument(
+        "--weight-algo",
+        default=None,
+        type=str,
+        help="Applied weighted F Norm for MiLP objective, None or `kurt-scaled`",
     )
 
     parser_vit = subparsers.add_parser("vit", help="Evaluate ViT models")
@@ -197,7 +204,7 @@ def get_parser_args():
     )
     parser_dump.add_argument(
         "--budget",
-        type=float,
+        type=str,
         default=None,
         nargs="+",
         help="Bit budgets",
@@ -221,10 +228,8 @@ def get_parser_args():
         nargs="+",
         choices=[
             "mxq1",
-            "kurt-global",
             "kurt-scaled",
-            "pct5",
-            "pct6",
+            "hqq",
         ],
         help="Experiment attempts",
     )
@@ -348,6 +353,7 @@ def main_llm(args):
         quant_dir=args.quant_snapshot_dir,
         result_dir=args.result_dir,
         track_cuda_memory=args.track_cuda_memory,
+        weight_algo=args.weight_algo,
     )
 
 
@@ -381,14 +387,26 @@ def main_dump(args):
     elif args.type == "quant_config":
         quant_dir = args.quant_snapshot_dir
         attempts = args.attempt
-        budgets = [
-            f"{bits:.2f}".replace(".", "_")
-            for bits in [float(cfg) for cfg in args.budget]
-        ]
+        if "hqq" in attempts:
+            budgets = args.budget
+            algo = "hqq"
+        else:
+            budgets = [
+                f"{bits:.2f}".replace(".", "_")
+                for bits in [float(cfg) for cfg in args.budget]
+            ]
+            algo = "mxq"
         csv_fp = args.output_file
         indicies = [int(m) for m in args.model]
         models = [ALL_MODELS[i] for i in indicies]
-        dump_quant_cfgs(quant_dir, models, budgets, csv_fp=csv_fp, attempts=attempts)
+        dump_quant_allocation(
+            quant_dir,
+            models,
+            budgets,
+            csv_fp=csv_fp,
+            attempts=attempts,
+            algo=algo,
+        )
 
 
 if __name__ == "__main__":

@@ -20,3 +20,4 @@ htmlcov
 *.pickle
 *.parquet
 .*venv/
+.Rproj.user

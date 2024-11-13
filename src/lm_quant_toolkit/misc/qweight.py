@@ -10,6 +10,7 @@ from safetensors.torch import save_file as safe_save
 from scipy.stats import kurtosis
 from torch import uint8
 
+from lm_quant_toolkit.eval.common import calc_bits
 from lm_quant_toolkit.utils.safetensors import get_tensor, get_tensor_dual
 
 
@@ -215,20 +216,25 @@ def get_mem_usage_df(model_ids, confs, base_dir):
     return df
 
 
-def dump_quant_cfgs(
-    quant_dir,
-    model_ids,
-    confs,
-    csv_fp="mxq-cfgs.csv",
-    attempts=None,
+def dump_quant_allocation(
+    quant_dir, model_ids, confs, csv_fp="mxq-allot.csv", attempts=None, algo="mxq"
 ):
     dikt = []
     pat = re.compile(r"model\.layers\.(\d+)\.(.+)")
+    pat2 = re.compile(r"b(\d+)g(\d+)")
     loops = ["mxq1"] if attempts is None else attempts
     for attempt in loops:
         snapshot_dir = f"{quant_dir}/{attempt}"
         for model_id in model_ids:
             for conf in confs:
+                m2 = re.match(pat2, conf)
+                if m2:
+                    b1 = int(m2.group(1))
+                    g1 = int(m2.group(2))
+                    bit_budget = round(calc_bits(b1, g1), 2)
+                else:
+                    bit_budget = conf.replace("_", ".")
+
                 (
                     configs,
                     mem_quant_total,
@@ -236,7 +242,7 @@ def dump_quant_cfgs(
                     mem_fp16_all_total,
                     param_quant_total,
                     param_all_total,
-                ) = extract_quant_config(snapshot_dir, model_id, conf, algo="mxq")
+                ) = extract_quant_config(snapshot_dir, model_id, conf, algo=algo)
                 for key, val in configs.items():
                     matcher = re.match(pat, key)
                     if matcher:
@@ -245,9 +251,7 @@ def dump_quant_cfgs(
                         val["model"] = model_id.split("/")[1]
                         val["layer"] = layer
                         val["module"] = module
-                        if attempts is not None:
-                            val["attempt"] = attempt
-                        val["bit_budget"] = conf.replace("_", ".")
+                        val["bit_budget"] = bit_budget
                         val["params_quant_tot"] = param_quant_total
                         val["params_all_tot"] = param_all_total
                         dikt.append(val)
@@ -265,7 +269,5 @@ def dump_quant_cfgs(
         "params_quant_tot",
         "params_all_tot",
     ]
-    if attempts is not None:
-        columns.append("attempt")
     df = pd.DataFrame(dikt)
     df.to_csv(csv_fp, index=False, columns=columns)

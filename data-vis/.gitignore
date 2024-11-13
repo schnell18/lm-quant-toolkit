@@ -1,0 +1,6 @@
+.RData
+pdfs/
+*.pdf
+*.Rout
+*.xlsx
+.Rproj.user/

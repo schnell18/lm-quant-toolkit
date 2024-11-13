@@ -1,0 +1,4 @@
+model,algo,config,config_detail,quant_duration,load_mem_allot,load_mem_reserved,ppl_mem_allot,ppl_mem_reserved,leaderboard_mem_allot,leaderboard_mem_reserved,ppl_wikitext,ppl_c4,duration_wikitext,duration_c4,duration_leaderboard,ifeval,bbh,mathlevel5,gpqa,musr,mmlupro
+Llama-2-7b-hf,fp16,base,{},0,13476848128,13478395904,14299840512,14656995328,0,0,5.1847,6.9453,0.097,0.097,0,0,0,0,0,0,0
+Meta-Llama-3-8B,fp16,base,{},0,21951865856,22036873216,21951865856,22076719104,0,0,5.8132,8.9824,0.735,0.736,0,0,0,0,0,0,0
+Llama-2-13b-hf,fp16,base,{},0,20729451008,20732444672,21986072064,22254977024,0,0,4.6301,6.4458,0.596,0.598,0,0,0,0,0,0,0

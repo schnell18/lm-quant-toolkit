@@ -175,6 +175,7 @@ def do_expermient(
     result_dir="results",
     log_dir="logs",
     track_cuda_memory=False,
+    weight_algo=None,
 ):
     df_all = gen_experiment_items(models, tasks)
     progress_path = os.path.join(result_dir, experiment_name, "progress.csv")
@@ -246,6 +247,7 @@ def do_expermient(
                         )
                         return
                     quant_config["quant_metrics_file"] = metric_fp
+                    quant_config["weight_algo"] = weight_algo
                 model, duration, model_file_size = quant_fn(
                     model,
                     tokenizer,
