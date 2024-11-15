@@ -70,7 +70,7 @@ df_fnorm <- df_fnorm |>
   )
 
 by <- join_by(model == model, module == module, layer == layer, cfg == cfg)
-df_cfgs <- read_csv("data/allot/mxq-quant-cfgs-mxq1.csv")
+df_cfgs <- read_csv("data/allot/mxq/mxq1/quant-cfg-allot-mxq1.csv")
 df_check <- df_cfgs |>
   mutate(
     cfg = paste0("b", b1, "g", g1),
