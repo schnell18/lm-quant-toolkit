@@ -80,9 +80,9 @@ all_cols <- c(
 )
 
 df_all <- read_csv(csv_fp) |>
-  filter(
-    is.na(attempt) | attempt == "kurt-scaled"
-  ) |>
+  # filter(
+  #   is.na(attempt)
+  # ) |>
   mutate(
     ppl_wikitext = round(ppl_wikitext, digits = 2),
     ppl_c4 = round(ppl_c4, digits = 2),
@@ -123,21 +123,21 @@ latex_cols <- c(
 
 df_latex <- df_all |>
   filter(bpp >= 3.03 & bpp < 8.0 | bpp >= 16.00) |>
-  filter(
-    algo != "MXQ" |
-      bpp == 4.51 |
-      bpp == 4.25 |
-      bpp == 4.13 |
-      bpp == 3.51 |
-      bpp == 3.25 |
-      bpp == 3.13 |
-      bpp == 3.65 |
-      bpp == 5.72 |
-      bpp == 6.89 |
-      bpp == 3.07 |
-      bpp == 4.01 |
-      bpp == 5.02
-  ) |>
+  # filter(
+  #   algo != "MXQ" |
+  #     bpp == 4.51 |
+  #     bpp == 4.25 |
+  #     bpp == 4.13 |
+  #     bpp == 3.51 |
+  #     bpp == 3.25 |
+  #     bpp == 3.13 |
+  #     bpp == 3.65 |
+  #     bpp == 5.72 |
+  #     bpp == 6.89 |
+  #     bpp == 3.07 |
+  #     bpp == 4.01 |
+  #     bpp == 5.02
+  # ) |>
   pivot_wider(
     names_from = model,
     values_from = c(ppl_wikitext, ppl_c4, memory),

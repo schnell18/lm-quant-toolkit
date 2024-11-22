@@ -32,8 +32,26 @@ df_all <- read_csv(csv_fp) |>
     ),
     attempt = factor(
       attempt,
-      levels = c("mxq1", "kurt-global", "kurt-scaled"),
-      labels = c("MXQ1", "KURT-GLOBAL", "KURT-SCALED"),
+      levels = c(
+        "mxq1",
+        "head-prioritized_1_05",
+        "head-prioritized_1_10",
+        "tail-prioritized_1_05",
+        "tail-prioritized_1_10",
+        "tail-prioritized_1_15",
+        "tail-prioritized_1_20",
+        "kurt-scaled"
+      ),
+      labels = c(
+        "MXQ1",
+        "HP105",
+        "HP110",
+        "TP105",
+        "TP110",
+        "TP115",
+        "TP120",
+        "KURT-SCALED"
+      ),
     )
   )
 

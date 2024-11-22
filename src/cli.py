@@ -18,8 +18,9 @@ from lm_quant_toolkit.eval.bench_vit import ALL_MODELS as ALL_VIT_MODELS
 from lm_quant_toolkit.eval.bench_vit import MXQ_CONFIGS as VIT_MXQ_CONFIGS
 from lm_quant_toolkit.eval.bench_vit import do_expermient as do_expermient_vit
 from lm_quant_toolkit.eval.common import HQQ_CONFIGS
-from lm_quant_toolkit.misc.quant_sim import dump_mxq_objectives
+from lm_quant_toolkit.misc.quant_sim import dump_mxq_configs, dump_mxq_objectives
 from lm_quant_toolkit.misc.qweight import dump_quant_allocation
+from lm_quant_toolkit.prep.sensitivity import measure_sensitivity
 
 
 def get_parser_args():
@@ -106,7 +107,23 @@ def get_parser_args():
         "--weight-algo",
         default=None,
         type=str,
-        help="Applied weighted F Norm for MiLP objective, None or `kurt-scaled`",
+        help="Apply weighted F Norm for MiLP objective, None or `kurt-scaled`",
+    )
+
+    parser_llm.add_argument(
+        "--boost-layer",
+        nargs="+",
+        default=None,
+        type=int,
+        help="Layers to increase memory budget",
+    )
+
+    parser_llm.add_argument(
+        "--decline-layer",
+        nargs="+",
+        default=None,
+        type=int,
+        help="Layers to decrease memory budget",
     )
 
     parser_vit = subparsers.add_parser("vit", help="Evaluate ViT models")
@@ -191,7 +208,9 @@ def get_parser_args():
         default=None,
         choices=[
             "objective",
+            "sensitivity",
             "quant_config",
+            "quant_config_sim",
         ],
         help="Type of data to dump.",
     )
@@ -210,9 +229,9 @@ def get_parser_args():
         help="Bit budgets",
     )
     parser_dump.add_argument(
-        "--output_file",
+        "--output-file",
         type=str,
-        default="mxq-dumpectives.csv",
+        default="mxq-objectives.csv",
         help="Output file location",
     )
     parser_dump.add_argument(
@@ -226,12 +245,19 @@ def get_parser_args():
         default=None,
         type=str,
         nargs="+",
-        choices=[
-            "mxq1",
-            "kurt-scaled",
-            "hqq",
-        ],
         help="Experiment attempts",
+    )
+    parser_dump.add_argument(
+        "--weight-algo",
+        default=None,
+        type=str,
+        help="Apply weighted F Norm for MiLP objective, None or `kurt-scaled`",
+    )
+    parser_dump.add_argument(
+        "--factor",
+        default=None,
+        type=float,
+        help="Factor to apply to the prioritized weights",
     )
 
     args = parser.parse_args()
@@ -346,6 +372,12 @@ def main_llm(args):
         algo_str = "-".join(args.algo)
         cfg_str = "-".join(args.config)
         experiment_name = f"{args.task}-{algo_str}-{cfg_str}"
+
+    kwargs = {
+        "weight_algo": args.weight_algo,
+        "boost_layers": args.boost_layer,
+        "decline_layers": args.decline_layer,
+    }
     do_expermient(
         experiment_name,
         models,
@@ -353,7 +385,7 @@ def main_llm(args):
         quant_dir=args.quant_snapshot_dir,
         result_dir=args.result_dir,
         track_cuda_memory=args.track_cuda_memory,
-        weight_algo=args.weight_algo,
+        **kwargs,
     )
 
 
@@ -407,6 +439,24 @@ def main_dump(args):
             attempts=attempts,
             algo=algo,
         )
+    elif args.type == "quant_config_sim":
+        budgets = [bits for bits in [float(cfg) for cfg in args.budget]]
+        algo = "mxq"
+        csv_fp = args.output_file
+        indicies = [int(m) for m in args.model]
+        models = [ALL_MODELS[i] for i in indicies]
+        dump_mxq_configs(
+            models,
+            budgets,
+            csv_fp=csv_fp,
+            weight_algo=args.weight_algo,
+            factor=args.factor,
+        )
+    elif args.type == "sensitivity":
+        csv_fp = args.output_file
+        indicies = [int(m) for m in args.model]
+        models = [ALL_MODELS[i] for i in indicies]
+        measure_sensitivity(models, csv_fp)
 
 
 if __name__ == "__main__":

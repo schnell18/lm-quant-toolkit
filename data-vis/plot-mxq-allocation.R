@@ -95,9 +95,15 @@ parser <- add_option(
   metavar = "character"
 )
 parser <- add_option(
-  parser, c("-o", "--output_dir"),
+  parser, c("--attempt1"),
   type = "character",
-  help = "The output directory for the pdf",
+  help = "The first attempt to plot",
+  metavar = "character"
+)
+parser <- add_option(
+  parser, c("--attempt2"),
+  type = "character",
+  help = "The second attempt to plot",
   metavar = "character"
 )
 
@@ -132,6 +138,18 @@ if (is.null(args$output_dir)) {
   output_dir <- "pdfs/allot"
 } else {
   output_dir <- args$output_dir
+}
+
+if (is.null(args$attempt1)) {
+  attempt1 <- "mxq1"
+} else {
+  attempt1 <- args$attempt1
+}
+
+if (is.null(args$attempt2)) {
+  attempt2 <- "kurt-scaled"
+} else {
+  attempt2 <- args$attempt2
 }
 
 fnorm_dir <- path.expand(paste0(baseline_data_dir, "/", "fnorm"))
@@ -193,43 +211,45 @@ names(my_colors) <- levels(df_disp$cfg)
 col_scale <- scale_fill_manual(name = "cfg", values = my_colors)
 
 p11 <- weight_grid(df_disp, "mlp.down_proj", NULL)
-p12 <- weight_grid(df_disp, "mlp.down_proj", "mxq1")
-p13 <- weight_grid(df_disp, "mlp.down_proj", "kurt-scaled")
+p12 <- weight_grid(df_disp, "mlp.down_proj", attempt1)
+p13 <- weight_grid(df_disp, "mlp.down_proj", attempt2)
 
 p21 <- weight_grid(df_disp, "mlp.gate_proj", NULL)
-p22 <- weight_grid(df_disp, "mlp.gate_proj", "mxq1")
-p23 <- weight_grid(df_disp, "mlp.gate_proj", "kurt-scaled")
+p22 <- weight_grid(df_disp, "mlp.gate_proj", attempt1)
+p23 <- weight_grid(df_disp, "mlp.gate_proj", attempt2)
 
 p31 <- weight_grid(df_disp, "mlp.up_proj", NULL)
-p32 <- weight_grid(df_disp, "mlp.up_proj", "mxq1")
-p33 <- weight_grid(df_disp, "mlp.up_proj", "kurt-scaled")
+p32 <- weight_grid(df_disp, "mlp.up_proj", attempt1)
+p33 <- weight_grid(df_disp, "mlp.up_proj", attempt2)
 
 final_plot <- (p11 | p21 | p31) / (p12 | p22 | p32) / (p13 | p23 | p33)
 final_plot
 ggsave(
   paste0(output_dir, "/", model_id, "-", budget, "-mlp-allot.pdf"),
+  create.dir = TRUE,
   width = 16, height = 9
 )
 
 p61 <- weight_grid(df_disp, "self_attn.k_proj", NULL)
-p62 <- weight_grid(df_disp, "self_attn.k_proj", "mxq1")
-p63 <- weight_grid(df_disp, "self_attn.k_proj", "kurt-scaled")
+p62 <- weight_grid(df_disp, "self_attn.k_proj", attempt1)
+p63 <- weight_grid(df_disp, "self_attn.k_proj", attempt2)
 
 p71 <- weight_grid(df_disp, "self_attn.o_proj", NULL)
-p72 <- weight_grid(df_disp, "self_attn.o_proj", "mxq1")
-p73 <- weight_grid(df_disp, "self_attn.o_proj", "kurt-scaled")
+p72 <- weight_grid(df_disp, "self_attn.o_proj", attempt1)
+p73 <- weight_grid(df_disp, "self_attn.o_proj", attempt2)
 
 p81 <- weight_grid(df_disp, "self_attn.q_proj", NULL)
-p82 <- weight_grid(df_disp, "self_attn.q_proj", "mxq1")
-p83 <- weight_grid(df_disp, "self_attn.q_proj", "kurt-scaled")
+p82 <- weight_grid(df_disp, "self_attn.q_proj", attempt1)
+p83 <- weight_grid(df_disp, "self_attn.q_proj", attempt2)
 
 p91 <- weight_grid(df_disp, "self_attn.v_proj", NULL)
-p92 <- weight_grid(df_disp, "self_attn.v_proj", "mxq1")
-p93 <- weight_grid(df_disp, "self_attn.v_proj", "kurt-scaled")
+p92 <- weight_grid(df_disp, "self_attn.v_proj", attempt1)
+p93 <- weight_grid(df_disp, "self_attn.v_proj", attempt2)
 
 final_plot2 <- (p61 | p71 | p81 | p91) / (p62 | p72 | p82 | p92) / (p63 | p73 | p83 | p93)
 final_plot2
 ggsave(
   paste0(output_dir, "/", model_id, "-", budget, "-attn-allot.pdf"),
+  create.dir = TRUE,
   width = 16, height = 9
 )
