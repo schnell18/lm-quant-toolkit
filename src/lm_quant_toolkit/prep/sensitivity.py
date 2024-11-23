@@ -1,6 +1,9 @@
 import functools
 import gc
 import inspect
+import os
+import re
+import time
 from collections import defaultdict
 from typing import List, Union
 
@@ -87,11 +90,16 @@ def clear_memory(weight=None):
     torch.cuda.empty_cache()
 
 
-def get_best_device():
-    if torch.backends.mps.is_available():
+def get_best_device(idx=None):
+    if os.environ.get("USE_CPU_FOR_SENSITIVITY", None) == "1":
+        return "cpu"
+    if torch.cuda.is_available():
+        if idx is None:
+            return "cuda:0"
+        else:
+            return "cuda:" + str(idx % torch.cuda.device_count())
+    elif torch.backends.mps.is_available():
         return "mps"
-    elif torch.cuda.is_available():
-        return "cuda:0"
     else:
         return "cpu"
 
@@ -197,11 +205,7 @@ class SensitiveLayerFinder:
             # Move module and inputs to correct device
             common_device = next(self.layers[i].parameters()).device
             if common_device is None or str(common_device) == "cpu":
-                if torch.cuda.is_available():
-                    best_device = "cuda:" + str(i % torch.cuda.device_count())
-                else:
-                    best_device = get_best_device()
-
+                best_device = get_best_device(i)
                 self.layers[i] = self.layers[i].to(best_device)
                 common_device = next(self.layers[i].parameters()).device
 
@@ -404,16 +408,24 @@ class SensitiveLayerFinder:
         return sanitized_kwargs
 
 
-def measure_sensitivity(models, csv_fp):
-    bgs = [(3, 32), (3, 64), (3, 128), (4, 32), (4, 64), (4, 128)]
-    calib_datasets = ["pileval", "wikitext", "c4"]
+def measure_sensitivity(models, cfgs, calib_datasets, csv_fp):
+    pat = re.compile(r"b(\d)g(\d+)")
+    bgs = []
+    for cfg in cfgs:
+        m = re.match(pat, cfg)
+        if m:
+            bgs.append((int(m.group(1)), int(m.group(2))))
     dikts = []
     for ds in calib_datasets:
         for bg in bgs:
             for model_path in models:
                 short_name = model_path.split("/")[1]
                 model = AutoModelForCausalLM.from_pretrained(
-                    model_path, torch_dtype=torch.float16
+                    model_path,
+                    torch_dtype=torch.float16,
+                    device_map="auto",
+                    offload_state_dict=False,
+                    max_memory={0: "18GiB", "cpu": "60GiB"},
                 )
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
                 finder = SensitiveLayerFinder(
@@ -425,6 +437,9 @@ def measure_sensitivity(models, csv_fp):
                     ds,
                 )
                 dikts.extend(finder.measure(csv_fp))
+                clear_memory()
+                time.sleep(2)
+
     df = pd.DataFrame(dikts)
     df.to_csv(csv_fp, index=False)
 

@@ -30,12 +30,17 @@ plt <- ggplot(df_layer, aes(x = layer, y = sensitivity)) +
     aes(shape = cfg, color = cfg)
   ) +
   geom_line(
-    size = 0.5,
+    linewidth = 0.5,
     aes(color = cfg)
   ) +
   labs(x = "Layer", y = "Sensitivity") +
   scale_y_continuous(trans = "log10") +
   theme_gray(base_size = 14) +
-  facet_grid(model ~ dataset, scales = "free") +
+  facet_grid(dataset ~ model, scales = "free") +
   scale_color_solarized()
-plt
+ggsave(
+  "pdfs/sensitivity.pdf",
+  plot = plt,
+  width = 9,
+  height = 6
+)

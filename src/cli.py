@@ -259,6 +259,20 @@ def get_parser_args():
         type=float,
         help="Factor to apply to the prioritized weights",
     )
+    parser_dump.add_argument(
+        "--config",
+        default=None,
+        type=str,
+        nargs="+",
+        help="bit-group configurations",
+    )
+    parser_dump.add_argument(
+        "--calib-dataset",
+        default=None,
+        type=str,
+        nargs="+",
+        help="calibration dataset(s) to use",
+    )
 
     args = parser.parse_args()
     return parser, args
@@ -456,7 +470,9 @@ def main_dump(args):
         csv_fp = args.output_file
         indicies = [int(m) for m in args.model]
         models = [ALL_MODELS[i] for i in indicies]
-        measure_sensitivity(models, csv_fp)
+        cfgs = args.config
+        calib_ds = args.calib_dataset
+        measure_sensitivity(models, cfgs, calib_ds, csv_fp)
 
 
 if __name__ == "__main__":
