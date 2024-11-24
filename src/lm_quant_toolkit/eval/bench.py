@@ -250,6 +250,8 @@ def do_expermient(
                     quant_config["weight_algo"] = kwargs.get("weight_algo", None)
                     quant_config["boost_layers"] = kwargs.get("boost_layers", None)
                     quant_config["decline_layers"] = kwargs.get("decline_layers", None)
+                    quant_config["boost_stop"] = kwargs.get("boost_stop", None)
+                    quant_config["decline_stop"] = kwargs.get("decline_stop", None)
                 model, duration, model_file_size = quant_fn(
                     model,
                     tokenizer,

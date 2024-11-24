@@ -126,6 +126,20 @@ def get_parser_args():
         help="Layers to decrease memory budget",
     )
 
+    parser_llm.add_argument(
+        "--boost-stop",
+        default=None,
+        type=int,
+        help="stops to increase",
+    )
+
+    parser_llm.add_argument(
+        "--decline-stop",
+        default=None,
+        type=int,
+        help="stops to decrease",
+    )
+
     parser_vit = subparsers.add_parser("vit", help="Evaluate ViT models")
     parser_vit.set_defaults(which="vit")
     parser_vit.add_argument(
@@ -391,6 +405,8 @@ def main_llm(args):
         "weight_algo": args.weight_algo,
         "boost_layers": args.boost_layer,
         "decline_layers": args.decline_layer,
+        "boost_stop": args.boost_stop,
+        "decline_stop": args.decline_stop,
     }
     do_expermient(
         experiment_name,
