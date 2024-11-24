@@ -22,7 +22,19 @@ df_layer <- df_all |>
   mutate(
     cfg = paste0("b", nbits, "g", group_size)
   ) |>
-  select(-c("nbits", "group_size"))
+  select(-c("nbits", "group_size")) |>
+  mutate(
+    model = factor(
+      model,
+      levels = c("Llama-2-7b-hf", "Llama-2-13b-hf", "Meta-Llama-3-8B"),
+      labels = c("Llama2-7B", "Llama2-13B", "Llama3-8B")
+    ),
+    dataset = factor(
+      dataset,
+      levels = c("wikitext", "c4", "pileval"),
+      labels = c("WikiText2", "C4", "pileval")
+    )
+  )
 
 plt <- ggplot(df_layer, aes(x = layer, y = sensitivity)) +
   geom_point(
@@ -34,8 +46,15 @@ plt <- ggplot(df_layer, aes(x = layer, y = sensitivity)) +
     aes(color = cfg)
   ) +
   labs(x = "Layer", y = "Sensitivity") +
+  scale_x_continuous(
+    breaks = seq(0, 40, 5)
+  ) +
   scale_y_continuous(trans = "log10") +
   theme_gray(base_size = 14) +
+  theme(
+    legend.position = "bottom"
+  ) +
+  guides(color = guide_legend(nrow = 1)) +
   facet_grid(dataset ~ model, scales = "free") +
   scale_color_solarized()
 ggsave(
