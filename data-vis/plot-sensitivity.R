@@ -60,6 +60,6 @@ plt <- ggplot(df_layer, aes(x = layer, y = sensitivity)) +
 ggsave(
   "pdfs/sensitivity.pdf",
   plot = plt,
-  width = 9,
+  width = 10,
   height = 6
 )
