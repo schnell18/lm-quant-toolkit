@@ -5,33 +5,37 @@ BUDGETS="4.13 4.25 4.51"
 RESULT_DIR="/fdata/llm/mxq/results"
 QUANT_SNAPSHOT_DIR="/fdata/llm/mxq/snapshots"
 
-MODELS="1"
-ATTEMPT="debug-Llama2-13B-boost"
+ATTEMPT="llama-sensi-milp"
 EXP_BASE_NAME=$ATTEMPT
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 
 # Use cached dataset to speedup wikitext, c4 ppl evaluation
 export HF_DATASETS_OFFLINE=1
 
-weight_algo=sensi-directive
-boost_layers="3 39"
-EXP_NAME="${ATTEMPT}"
+weight_algo=sensi-milp
+
 log_file="logs/bench-$(date +%Y%m%d%H%M%S).log"
 
 mkdir -p $QUANT_SNAPSHOT_DIR/$ATTEMPT
 mkdir -p $RESULT_DIR/${EXP_NAME}_ppl
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,stor}/mxq/$ATTEMPT
 
+MODELS="0 2"
+EXP_NAME="${ATTEMPT}_78"
+echo "=========Run perplexity evaluation on Llama-2-7b & Llama-3-8B========="
 python -m pdb ../src/cli.py llm \
   --task eval_ppl \
   --model $MODELS \
   --algo mxq \
   --weight-algo $weight_algo \
-  --boost-layer $boost_layers \
-  --boost-stop 2 \
   --config ${BUDGETS} \
   --experiment-name "${EXP_NAME}_ppl" \
   --quant-snapshot-dir="$QUANT_SNAPSHOT_DIR/$ATTEMPT" \
   --result-dir=$RESULT_DIR \
   2>&1 \
   | tee -a $log_file
+EXIT_CODE=$?
+if [ $EXIT_CODE -ne 0 ]; then
+  echo "Perplexity evaluation failed!"
+  exit $EXIT_CODE
+fi

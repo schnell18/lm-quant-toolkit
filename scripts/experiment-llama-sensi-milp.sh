@@ -5,31 +5,29 @@ BUDGETS="4.13 4.25 4.51"
 RESULT_DIR="/fdata/llm/mxq/results"
 QUANT_SNAPSHOT_DIR="/fdata/llm/mxq/snapshots"
 
-ATTEMPT="boost-decline"
+ATTEMPT="llama-sensi-milp"
 EXP_BASE_NAME=$ATTEMPT
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 
 # Use cached dataset to speedup wikitext, c4 ppl evaluation
 export HF_DATASETS_OFFLINE=1
 
-weight_algo=sensi-directive
-boost_layers="31 1"
-decline_layers="0 2"
-EXP_NAME="${ATTEMPT}"
+weight_algo=sensi-milp
+
 log_file="logs/bench-$(date +%Y%m%d%H%M%S).log"
 
 mkdir -p $QUANT_SNAPSHOT_DIR/$ATTEMPT
 mkdir -p $RESULT_DIR/${EXP_NAME}_ppl
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,stor}/mxq/$ATTEMPT
 
-echo "=========Run perplexity evaluation on batch ${EXP_NAME}========="
+MODELS="0 2"
+EXP_NAME="${ATTEMPT}_78"
+echo "=========Run perplexity evaluation on Llama-2-7b & Llama-3-8B========="
 python ../src/cli.py llm \
   --task eval_ppl \
-  --model 0 \
+  --model $MODELS \
   --algo mxq \
   --weight-algo $weight_algo \
-  --boost-layer $boost_layers \
-  --decline-layer $decline_layers \
   --config ${BUDGETS} \
   --experiment-name "${EXP_NAME}_ppl" \
   --quant-snapshot-dir="$QUANT_SNAPSHOT_DIR/$ATTEMPT" \
@@ -54,7 +52,7 @@ echo "=========Dump quantization configs on batch ${EXP_NAME}========="
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/allot/mxq/$ATTEMPT
 python ../src/cli.py dump \
   --type quant_config \
-  --model 0 \
+  --model $MODELS \
   --budget ${BUDGETS} \
   --attempt $ATTEMPT \
   --quant-snapshot-dir=$QUANT_SNAPSHOT_DIR \
@@ -64,7 +62,7 @@ python ../src/cli.py dump \
 
 echo "=========Run memory evaluation on batch ${EXP_NAME}========="
 algo=mxq
-model_ids="0"
+model_ids=$MODELS
 for m in $model_ids; do
   for cfg in ${BUDGETS}; do
       python ../src/cli.py llm \
@@ -106,7 +104,7 @@ $OLD_DIR/../data-vis/gen-table-mxq-llm.R data/combined.csv
 pdflatex table.tex
 
 # plot configuration allocations for 3 * 12 MXQ combinations
-MODELS="Llama-2-7b-hf"
+MODELS="Llama-2-7b-hf Llama-2-13b-hf"
 BGS="4.13 4.25 4.51"
 for model in $MODELS; do
     for budget in $BGS; do

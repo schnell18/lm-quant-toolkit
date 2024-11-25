@@ -11,7 +11,7 @@ mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 # Use cached dataset to speedup wikitext, c4 ppl evaluation
 export HF_DATASETS_OFFLINE=1
 
-weight_algo=sensitivity
+weight_algo=sensi-directive
 layers="31 1"
 ATTEMPT="${weight_algo}"
 EXP_NAME="${ATTEMPT}"
