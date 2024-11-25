@@ -1,8 +1,9 @@
 #!/bin/bash
 
 CALIB_DATASETS="pileval wikitext c4"
-CONFIGS="b3g128 b3g64 b3g32 b4g128 b4g64 b4g32"
-MODELS="0 1 2"
+#CONFIGS="b3g128 b3g64 b3g32 b4g128 b4g64 b4g32 b8g128 b8g64 b8g32"
+CONFIGS="b8g128 b8g64 b8g32"
+MODELS="0 2"
 
 for DS in $CALIB_DATASETS; do
     for CFG in $CONFIGS; do
