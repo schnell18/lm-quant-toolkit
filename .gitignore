@@ -20,4 +20,7 @@ htmlcov
 *.pickle
 *.parquet
 .*venv/
+# R related files
 .Rproj.user
+.Rhistory
+

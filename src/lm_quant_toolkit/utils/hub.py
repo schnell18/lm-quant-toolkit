@@ -48,6 +48,14 @@ VIT_OPENCLIP_MODELS = {
     "laion/CLIP-ViT-L-14-laion2B-s32B-b82K": {"vlayers": 24, "tlayers": 12},
 }
 
+SENSITIVITY_MODELS = [
+    "meta-llama/Llama-2-7b-hf",
+    "meta-llama/Llama-2-7b-chat-hf",
+    "epfl-llm/meditron-7b",
+    "meta-llama/Llama-3.1-8B",
+    "meta-llama/Llama-3.1-8B-Instruct",
+]
+
 
 def get_hf_model_storge_base_dir(model_id, hf_hub_dir=None):
     model_id_x = model_id.replace("/", "--")
