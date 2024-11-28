@@ -22,16 +22,6 @@ df_layer <- df_all |>
   mutate(
     cfg = paste0("b", nbits, "g", group_size)
   ) |>
-  filter(
-    cfg != "b3g64" &
-      cfg != "b3g128" &
-      cfg != "b2g128" &
-      cfg != "b2g64" &
-      cfg != "b4g128" &
-      cfg != "b4g64" &
-      cfg != "b8g64" &
-      cfg != "b8g128"
-  ) |>
   select(-c("nbits", "group_size")) |>
   mutate(
     dataset = factor(
