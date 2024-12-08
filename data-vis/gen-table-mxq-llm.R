@@ -11,6 +11,7 @@ dump_latex_table <- function(df, latex_file = "table.tex") {
     kable(
       format = "latex",
       booktabs = TRUE,
+      longtable = TRUE,
       linesep = "",
       align = c("cccccccccccc"),
       caption = "My formatted LLM quantization table.",
@@ -22,28 +23,31 @@ dump_latex_table <- function(df, latex_file = "table.tex") {
         "WikiText2", "C4", "MEM"
       )
     ) |>
-    kable_styling(latex_options = c("hold_position")) |>
+    kable_styling(
+      latex_options = c("hold_position", "repeat_header")
+    ) |>
     add_header_above(
       c(" " = 3, "Llama-2-7B" = 3, "Llama-2-13B" = 3, "Llama-3-8B" = 3)
     ) |>
     collapse_rows(columns = 2, latex_hline = "major")
 
-  tabular <- gsub(
-    "\\begin{tabular}",
-    "\\begin{adjustbox}{width=\\textwidth,keepaspectratio}\n\\begin{tabular}",
-    tabular,
-    fixed = TRUE
-  )
-  tabular <- gsub(
-    "\\end{tabular}",
-    "\\end{tabular}\n\\end{adjustbox}",
-    tabular,
-    fixed = TRUE
-  )
+  # tabular <- gsub(
+  #   "\\begin{longtable}",
+  #   "\\begin{adjustbox}{width=\\textwidth,keepaspectratio}\n\\begin{longtable}",
+  #   tabular,
+  #   fixed = TRUE
+  # )
+  # tabular <- gsub(
+  #   "\\end{longtable}",
+  #   "\\end{longtable}\n\\end{adjustbox}",
+  #   tabular,
+  #   fixed = TRUE
+  # )
 
   head <- r"(
 \documentclass{article}
 \usepackage{booktabs,makecell,multirow,threeparttable}
+\usepackage{longtable}
 \usepackage{adjustbox}
 
 \begin{document}
@@ -80,9 +84,9 @@ all_cols <- c(
 )
 
 df_all <- read_csv(csv_fp) |>
-  # filter(
-  #   is.na(attempt)
-  # ) |>
+  filter(
+    is.na(attempt) | attempt == "mxq1"
+  ) |>
   mutate(
     ppl_wikitext = round(ppl_wikitext, digits = 2),
     ppl_c4 = round(ppl_c4, digits = 2),

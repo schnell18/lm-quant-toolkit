@@ -4,7 +4,6 @@ library(tidyverse)
 library(ggthemes)
 library(ggbreak)
 library(readr)
-library(patchwork)
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) == 0) {
@@ -18,6 +17,8 @@ all_cols <- c(
   "bpp", "ppl_wikitext", "ppl_c4"
 )
 df_all <- read_csv(csv_fp) |>
+  filter(is.na(attempt) | attempt == "mxq1") |>
+  filter(algo != "awq" & algo != "gptq") |>
   select(all_of(all_cols)) |>
   mutate(
     model = factor(
@@ -32,26 +33,8 @@ df_all <- read_csv(csv_fp) |>
     ),
     attempt = factor(
       attempt,
-      levels = c(
-        "mxq1",
-        "head-prioritized_1_05",
-        "head-prioritized_1_10",
-        "tail-prioritized_1_05",
-        "tail-prioritized_1_10",
-        "tail-prioritized_1_15",
-        "tail-prioritized_1_20",
-        "kurt-scaled"
-      ),
-      labels = c(
-        "MXQ1",
-        "HP105",
-        "HP110",
-        "TP105",
-        "TP110",
-        "TP115",
-        "TP120",
-        "KURT-SCALED"
-      ),
+      levels = c("mxq1", "kurt-global", "kurt-scaled"),
+      labels = c("MXQ1", "KURT-GLOBAL", "KURT-SCALED"),
     )
   )
 
@@ -60,6 +43,7 @@ df_wikitxt_all <- df_all |>
 df_c4_all <- df_all |>
   rename(ppl = ppl_c4)
 
+guideline_color <- "coral4"
 
 # Plot Llama-2-7b memory drop vs PPL loss ---------------------------------
 
@@ -77,48 +61,59 @@ plt5 <- ggplot(
   geom_point(
     data = subset(df_wikitxt, algo == "MXQ"),
     size = 0.5,
-    aes(shape = algo, color = attempt, y = ppl)
+    aes(shape = algo, color = algo, y = ppl, x = bpp)
   ) +
-  geom_point(size = 1.5, aes(shape = algo, y = ppl)) +
+  geom_point(size = 2.0, aes(shape = algo, color = algo, y = ppl, x = bpp)) +
   geom_hline(
     yintercept = min_ppl * 1.02,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl * 1.01,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   annotate("text", x = 15.8, y = min_ppl * 1.00, label = "FP16") +
   scale_x_break(c(5.5, 15.6)) +
   scale_x_continuous(
     limits = c(2.8, 16.2),
     breaks = seq(2.8, 5.5, 0.20),
-    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memery Reduction")
+    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memory Reduction")
   ) +
   scale_y_continuous(
     limits = c(min_ppl * 0.99, min_ppl * 1.20),
     breaks = seq(5.18, 5.18 * 1.20, 0.20),
     sec.axis = sec_axis(~ 100 * (. - 5.18) / 5.18, name = "% Degradation")
   ) +
-  labs(x = "WikiText2", y = "Perplexity") +
+  labs(x = "Bit Budget", y = "Perplexity") +
   theme_gray(base_size = 14) +
   guides(
-    shape = guide_legend(title = "Method:"),
-    color = guide_legend(title = "Attempt:")
+    color = guide_legend(title = "Method:"),
+    shape = guide_legend(title = "Method:")
   ) +
-  theme(legend.position = "none") +
+  theme(
+    axis.title.x = element_blank(),
+    legend.position = "bottom",
+    legend.text = element_text(size = 14),
+    legend.title = element_text(size = 14)
+  ) +
   facet_wrap(~model, scales = "free") +
   scale_color_solarized()
+plt5
+pdf.options(reset = TRUE, onefile = FALSE)
+ggsave(
+  paste0("pdfs/", "mxq-wikitext-", model_name, ".pdf"),
+  plot = plt5, width = 8, height = 5
+)
 
 df_c4 <- df_c4_all |>
   filter(
@@ -126,51 +121,48 @@ df_c4 <- df_c4_all |>
   )
 min_ppl <- min(df_c4$ppl)
 min_bpp <- min(df_c4$bpp)
-plt6 <- ggplot(
-  subset(df_c4, algo != "MXQ"),
-  aes(x = bpp, y = ppl),
-) +
+plt6 <- ggplot(subset(df_c4, algo != "MXQ")) +
   geom_point(
     data = subset(df_c4, algo == "MXQ"),
     size = 0.5,
-    aes(shape = algo, color = attempt, y = ppl)
+    aes(shape = algo, color = algo, y = ppl, x = bpp)
   ) +
-  geom_point(size = 1.5, aes(shape = algo, y = ppl)) +
+  geom_point(size = 2.0, aes(shape = algo, color = algo, y = ppl, x = bpp)) +
   geom_hline(
     yintercept = min_ppl * 1.02,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl * 1.01,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   annotate("text", x = 15.8, y = min_ppl * 1.00, label = "FP16") +
   scale_x_break(c(5.5, 15.6)) +
   scale_x_continuous(
     limits = c(2.8, 16.2),
     breaks = seq(2.8, 5.5, 0.20),
-    sec.axis = sec_axis(~ 100 * (16 - .) / 16)
+    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memory Reduction")
   ) +
   scale_y_continuous(
     limits = c(min_ppl * 0.99, min_ppl * 1.20),
     breaks = seq(6.95, 6.95 * 1.20, 0.25),
     sec.axis = sec_axis(~ 100 * (. - 6.95) / 6.95, name = "% Degradation")
   ) +
-  labs(x = "C4", y = "Perplexity") +
+  labs(x = "Bit Budget", y = "Perplexity") +
   theme_gray(base_size = 14) +
   guides(
-    shape = guide_legend(title = "Method:"),
-    color = guide_legend(title = "Attempt:")
+    color = guide_legend(title = "Method:"),
+    shape = guide_legend(title = "Method:")
   ) +
   theme(
     legend.position = "bottom",
@@ -179,12 +171,10 @@ plt6 <- ggplot(
   ) +
   facet_wrap(~model, scales = "free") +
   scale_color_solarized()
-
-final_plot1 <- plt5 / plt6 + plot_layout(heights = c(2, 3))
-pdf.options(reset = TRUE, onefile = FALSE)
+plt6
 ggsave(
-  paste0("pdfs/", "mxq-", model_name, ".pdf"),
-  plot = final_plot1, width = 10, height = 7
+  paste0("pdfs/", "mxq-c4-", model_name, ".pdf"),
+  plot = plt6, width = 8, height = 6
 )
 
 # Plot Llama-2-13b memory drop vs PPL loss ---------------------------------
@@ -203,50 +193,57 @@ plt1 <- ggplot(
   geom_point(
     data = subset(df_wikitxt, algo == "MXQ"),
     size = 0.5,
-    aes(shape = algo, color = attempt, y = ppl)
+    aes(shape = algo, color = algo, y = ppl, x = bpp)
   ) +
-  geom_point(size = 1.5, aes(shape = algo, y = ppl)) +
+  geom_point(size = 2.0, aes(shape = algo, color = algo, y = ppl, x = bpp)) +
   geom_hline(
     yintercept = min_ppl * 1.02,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl * 1.01,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   annotate("text", x = 15.8, y = min_ppl * 1.00, label = "FP16") +
   scale_x_break(c(5.5, 15.6)) +
   scale_x_continuous(
     limits = c(2.8, 16.2),
     breaks = seq(2.8, 5.5, 0.20),
-    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memery Reduction")
+    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memory Reduction")
   ) +
   scale_y_continuous(
     limits = c(min_ppl * 0.99, min_ppl * 1.20),
     breaks = seq(4.63, 4.63 * 1.20, 0.20),
     sec.axis = sec_axis(~ 100 * (. - 4.63) / 4.63, name = "% Degradation")
   ) +
-  labs(x = "WikiText2", y = "Perplexity") +
+  labs(x = "Bit Budget", y = "Perplexity") +
   theme_gray(base_size = 14) +
   guides(
-    shape = guide_legend(title = "Method:"),
-    color = guide_legend(title = "Attempt:")
+    color = guide_legend(title = "Method:"),
+    shape = guide_legend(title = "Method:")
   ) +
   theme(
-    legend.position = "none"
+    legend.position = "bottom",
+    legend.text = element_text(size = 14),
+    legend.title = element_text(size = 14)
   ) +
   facet_wrap(~model, scales = "free") +
   scale_color_solarized()
+plt1
+ggsave(
+  paste0("pdfs/", "mxq-wikitext-", model_name, ".pdf"),
+  plot = plt1, width = 8, height = 6
+)
 
 df_c4 <- df_c4_all |>
   filter(
@@ -261,44 +258,44 @@ plt2 <- ggplot(
   geom_point(
     data = subset(df_c4, algo == "MXQ"),
     size = 0.5,
-    aes(shape = algo, color = attempt, y = ppl)
+    aes(shape = algo, color = algo, y = ppl)
   ) +
-  geom_point(size = 1.5, aes(shape = algo, y = ppl)) +
+  geom_point(size = 2.0, aes(shape = algo, color = algo, y = ppl)) +
   geom_hline(
     yintercept = min_ppl * 1.02,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl * 1.01,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   annotate("text", x = 15.8, y = min_ppl * 1.00, label = "FP16") +
   scale_x_break(c(5.5, 15.6)) +
   scale_x_continuous(
     limits = c(2.8, 16.2),
     breaks = seq(2.8, 5.5, 0.20),
-    sec.axis = sec_axis(~ 100 * (16 - .) / 16)
+    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memory Reduction")
   ) +
   scale_y_continuous(
     limits = c(min_ppl * 0.99, min_ppl * 1.20),
     breaks = seq(6.45, 6.45 * 1.20, 0.20),
     sec.axis = sec_axis(~ 100 * (. - 6.45) / 6.45, name = "% Degradation")
   ) +
-  labs(x = "C4", y = "Perplexity") +
+  labs(x = "Bit Budget", y = "Perplexity") +
   theme_gray(base_size = 14) +
   guides(
-    shape = guide_legend(title = "Method:"),
-    color = guide_legend(title = "Attempt:")
+    color = guide_legend(title = "Method:"),
+    shape = guide_legend(title = "Method:")
   ) +
   theme(
     legend.position = "bottom",
@@ -307,14 +304,11 @@ plt2 <- ggplot(
   ) +
   facet_wrap(~model, scales = "free") +
   scale_color_solarized()
-
-final_plot2 <- plt1 / plt2 + plot_layout(heights = c(2, 3))
-pdf.options(reset = TRUE, onefile = FALSE)
+plt2
 ggsave(
-  paste0("pdfs/", "mxq-", model_name, ".pdf"),
-  plot = final_plot2, width = 10, height = 7
+  paste0("pdfs/", "mxq-c4-", model_name, ".pdf"),
+  plot = plt2, width = 8, height = 6
 )
-
 
 # Plot Llama-3-8B memory drop vs PPL loss ---------------------------------
 
@@ -332,50 +326,57 @@ plt3 <- ggplot(
   geom_point(
     data = subset(df_wikitxt, algo == "MXQ"),
     size = 0.5,
-    aes(shape = algo, color = attempt, y = ppl)
+    aes(shape = algo, color = algo, y = ppl)
   ) +
-  geom_point(size = 1.5, aes(shape = algo, y = ppl)) +
+  geom_point(size = 2.0, aes(shape = algo, color = algo, y = ppl)) +
   geom_hline(
     yintercept = min_ppl * 1.02,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl * 1.01,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   annotate("text", x = 15.8, y = min_ppl * 1.00, label = "FP16") +
   scale_x_break(c(5.5, 15.6)) +
   scale_x_continuous(
     limits = c(2.8, 16.2),
     breaks = seq(2.8, 5.5, 0.20),
-    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memery Reduction")
+    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memory Reduction")
   ) +
   scale_y_continuous(
     limits = c(min_ppl * 0.99, min_ppl * 1.35),
     breaks = seq(min_ppl, min_ppl * 1.35, 0.20),
     sec.axis = sec_axis(~ 100 * (. - 5.81) / 5.81, name = "% Degradation")
   ) +
-  labs(x = "WikiText2", y = "Perplexity") +
+  labs(x = "Bit Budget", y = "Perplexity") +
   theme_gray(base_size = 14) +
   guides(
-    shape = guide_legend(title = "Method:"),
-    color = guide_legend(title = "Attempt:")
+    color = guide_legend(title = "Method:"),
+    shape = guide_legend(title = "Method:")
   ) +
   theme(
-    legend.position = "none"
+    legend.position = "bottom",
+    legend.text = element_text(size = 14),
+    legend.title = element_text(size = 14)
   ) +
   facet_wrap(~model, scales = "free") +
   scale_color_solarized()
+plt3
+ggsave(
+  paste0("pdfs/", "mxq-wikitext-", model_name, ".pdf"),
+  plot = plt3, width = 8, height = 6
+)
 
 df_c4 <- df_c4_all |>
   filter(
@@ -390,44 +391,44 @@ plt4 <- ggplot(
   geom_point(
     data = subset(df_c4, algo == "MXQ"),
     size = 0.5,
-    aes(shape = algo, color = attempt, y = ppl)
+    aes(shape = algo, color = algo, y = ppl)
   ) +
-  geom_point(size = 1.5, aes(shape = algo, y = ppl)) +
+  geom_point(size = 2.0, aes(shape = algo, color = algo, y = ppl)) +
   geom_hline(
     yintercept = min_ppl * 1.02,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl * 1.01,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   annotate("text", x = 15.8, y = min_ppl * 1.00, label = "FP16") +
   scale_x_break(c(5.5, 15.6)) +
   scale_x_continuous(
     limits = c(2.8, 16.2),
     breaks = seq(2.8, 5.5, 0.20),
-    sec.axis = sec_axis(~ 100 * (16 - .) / 16)
+    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memory Reduction")
   ) +
   scale_y_continuous(
     limits = c(min_ppl * 0.99, min_ppl * 1.35),
     breaks = seq(min_ppl, min_ppl * 1.35, 0.20),
     sec.axis = sec_axis(~ 100 * (. - 8.98) / 8.98, name = "% Degradation")
   ) +
-  labs(x = "C4", y = "Perplexity") +
+  labs(x = "Bit Budget", y = "Perplexity") +
   theme_gray(base_size = 14) +
   guides(
-    shape = guide_legend(title = "Method:"),
-    color = guide_legend(title = "Attempt:")
+    color = guide_legend(title = "Method:"),
+    shape = guide_legend(title = "Method:")
   ) +
   theme(
     legend.position = "bottom",
@@ -436,11 +437,8 @@ plt4 <- ggplot(
   ) +
   facet_wrap(~model, scales = "free") +
   scale_color_solarized()
-
-final_plot3 <- plt3 / plt4 + plot_layout(heights = c(4, 5))
-pdf.options(reset = TRUE, onefile = FALSE)
+plt4
 ggsave(
-  paste0("pdfs/", "mxq-", model_name, ".pdf"),
-  plot = final_plot3, width = 12, height = 9
+  paste0("pdfs/", "mxq-c4-", model_name, ".pdf"),
+  plot = plt4, width = 8, height = 6
 )
-

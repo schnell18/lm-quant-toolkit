@@ -17,6 +17,7 @@ all_cols <- c(
   "bpp", "ppl_wikitext", "ppl_c4"
 )
 df_all <- read_csv(csv_fp) |>
+  filter(is.na(attempt) | attempt == "mxq1") |>
   select(all_of(all_cols)) |>
   mutate(
     model = factor(
@@ -41,6 +42,7 @@ df_wikitxt_all <- df_all |>
 df_c4_all <- df_all |>
   rename(ppl = ppl_c4)
 
+guideline_color <- "coral4"
 
 # Plot Llama-2-7b memory drop vs PPL loss ---------------------------------
 
@@ -58,44 +60,43 @@ plt5 <- ggplot(
   geom_point(
     data = subset(df_wikitxt, algo == "MXQ"),
     size = 0.5,
-    aes(shape = algo, color = attempt, y = ppl)
+    aes(shape = algo, color = algo, y = ppl)
   ) +
-  geom_point(size = 1.5, aes(shape = algo, y = ppl)) +
+  geom_point(size = 1.5, aes(shape = algo, color = algo, y = ppl)) +
   geom_hline(
     yintercept = min_ppl * 1.02,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl * 1.01,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   annotate("text", x = 15.8, y = min_ppl * 1.00, label = "FP16") +
   scale_x_break(c(5.5, 15.6)) +
   scale_x_continuous(
     limits = c(2.8, 16.2),
     breaks = seq(2.8, 5.5, 0.20),
-    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memery Reduction")
+    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memory Reduction")
   ) +
   scale_y_continuous(
     limits = c(min_ppl * 0.99, min_ppl * 1.20),
     breaks = seq(5.18, 5.18 * 1.20, 0.20),
     sec.axis = sec_axis(~ 100 * (. - 5.18) / 5.18, name = "% Degradation")
   ) +
-  labs(x = "", y = "Perplexity") +
+  labs(x = "Bit Budget", y = "Perplexity") +
   theme_gray(base_size = 14) +
   guides(
-    shape = guide_legend(title = "Method:"),
-    color = guide_legend(title = "Attempt:")
+    color = guide_legend(title = "Method:")
   ) +
   theme(
     axis.title.x = element_blank(),
@@ -125,33 +126,33 @@ plt6 <- ggplot(
   geom_point(
     data = subset(df_c4, algo == "MXQ"),
     size = 0.5,
-    aes(shape = algo, color = attempt, y = ppl)
+    aes(shape = algo, color = algo, y = ppl)
   ) +
   geom_point(size = 1.5, aes(shape = algo, y = ppl)) +
   geom_hline(
     yintercept = min_ppl * 1.02,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl * 1.01,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   annotate("text", x = 15.8, y = min_ppl * 1.00, label = "FP16") +
   scale_x_break(c(5.5, 15.6)) +
   scale_x_continuous(
     limits = c(2.8, 16.2),
     breaks = seq(2.8, 5.5, 0.20),
-    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memery Reduction")
+    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memory Reduction")
   ) +
   scale_y_continuous(
     limits = c(min_ppl * 0.99, min_ppl * 1.20),
@@ -161,8 +162,7 @@ plt6 <- ggplot(
   labs(x = "Bit Budget", y = "Perplexity") +
   theme_gray(base_size = 14) +
   guides(
-    shape = guide_legend(title = "Method:"),
-    color = guide_legend(title = "Attempt:")
+    color = guide_legend(title = "Method:")
   ) +
   theme(
     legend.position = "bottom",
@@ -193,33 +193,33 @@ plt1 <- ggplot(
   geom_point(
     data = subset(df_wikitxt, algo == "MXQ"),
     size = 0.5,
-    aes(shape = algo, color = attempt, y = ppl)
+    aes(shape = algo, color = algo, y = ppl)
   ) +
   geom_point(size = 1.5, aes(shape = algo, y = ppl)) +
   geom_hline(
     yintercept = min_ppl * 1.02,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl * 1.01,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   annotate("text", x = 15.8, y = min_ppl * 1.00, label = "FP16") +
   scale_x_break(c(5.5, 15.6)) +
   scale_x_continuous(
     limits = c(2.8, 16.2),
     breaks = seq(2.8, 5.5, 0.20),
-    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memery Reduction")
+    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memory Reduction")
   ) +
   scale_y_continuous(
     limits = c(min_ppl * 0.99, min_ppl * 1.20),
@@ -229,8 +229,7 @@ plt1 <- ggplot(
   labs(x = "Bit Budget", y = "Perplexity") +
   theme_gray(base_size = 14) +
   guides(
-    shape = guide_legend(title = "Method:"),
-    color = guide_legend(title = "Attempt:")
+    shape = guide_legend(title = "Method:")
   ) +
   theme(
     legend.position = "bottom",
@@ -258,33 +257,33 @@ plt2 <- ggplot(
   geom_point(
     data = subset(df_c4, algo == "MXQ"),
     size = 0.5,
-    aes(shape = algo, color = attempt, y = ppl)
+    aes(shape = algo, color = algo, y = ppl)
   ) +
   geom_point(size = 1.5, aes(shape = algo, y = ppl)) +
   geom_hline(
     yintercept = min_ppl * 1.02,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl * 1.01,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   annotate("text", x = 15.8, y = min_ppl * 1.00, label = "FP16") +
   scale_x_break(c(5.5, 15.6)) +
   scale_x_continuous(
     limits = c(2.8, 16.2),
     breaks = seq(2.8, 5.5, 0.20),
-    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memery Reduction")
+    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memory Reduction")
   ) +
   scale_y_continuous(
     limits = c(min_ppl * 0.99, min_ppl * 1.20),
@@ -294,8 +293,7 @@ plt2 <- ggplot(
   labs(x = "Bit Budget", y = "Perplexity") +
   theme_gray(base_size = 14) +
   guides(
-    shape = guide_legend(title = "Method:"),
-    color = guide_legend(title = "Attempt:")
+    shape = guide_legend(title = "Method:")
   ) +
   theme(
     legend.position = "bottom",
@@ -326,33 +324,33 @@ plt3 <- ggplot(
   geom_point(
     data = subset(df_wikitxt, algo == "MXQ"),
     size = 0.5,
-    aes(shape = algo, color = attempt, y = ppl)
+    aes(shape = algo, color = algo, y = ppl)
   ) +
   geom_point(size = 1.5, aes(shape = algo, y = ppl)) +
   geom_hline(
     yintercept = min_ppl * 1.02,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl * 1.01,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   annotate("text", x = 15.8, y = min_ppl * 1.00, label = "FP16") +
   scale_x_break(c(5.5, 15.6)) +
   scale_x_continuous(
     limits = c(2.8, 16.2),
     breaks = seq(2.8, 5.5, 0.20),
-    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memery Reduction")
+    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memory Reduction")
   ) +
   scale_y_continuous(
     limits = c(min_ppl * 0.99, min_ppl * 1.35),
@@ -362,8 +360,7 @@ plt3 <- ggplot(
   labs(x = "Bit Budget", y = "Perplexity") +
   theme_gray(base_size = 14) +
   guides(
-    shape = guide_legend(title = "Method:"),
-    color = guide_legend(title = "Attempt:")
+    shape = guide_legend(title = "Method:")
   ) +
   theme(
     legend.position = "bottom",
@@ -391,33 +388,33 @@ plt4 <- ggplot(
   geom_point(
     data = subset(df_c4, algo == "MXQ"),
     size = 0.5,
-    aes(shape = algo, color = attempt, y = ppl)
+    aes(shape = algo, color = algo, y = ppl)
   ) +
   geom_point(size = 1.5, aes(shape = algo, y = ppl)) +
   geom_hline(
     yintercept = min_ppl * 1.02,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl * 1.01,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   geom_hline(
     yintercept = min_ppl,
     linetype = "dashed",
     size = 0.1,
-    color = "blue"
+    color = guideline_color
   ) +
   annotate("text", x = 15.8, y = min_ppl * 1.00, label = "FP16") +
   scale_x_break(c(5.5, 15.6)) +
   scale_x_continuous(
     limits = c(2.8, 16.2),
     breaks = seq(2.8, 5.5, 0.20),
-    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memery Reduction")
+    sec.axis = sec_axis(~ 100 * (16 - .) / 16, name = "% Memory Reduction")
   ) +
   scale_y_continuous(
     limits = c(min_ppl * 0.99, min_ppl * 1.35),
@@ -427,8 +424,7 @@ plt4 <- ggplot(
   labs(x = "Bit Budget", y = "Perplexity") +
   theme_gray(base_size = 14) +
   guides(
-    shape = guide_legend(title = "Method:"),
-    color = guide_legend(title = "Attempt:")
+    shape = guide_legend(title = "Method:")
   ) +
   theme(
     legend.position = "bottom",

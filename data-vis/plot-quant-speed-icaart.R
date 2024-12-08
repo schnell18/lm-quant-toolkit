@@ -20,19 +20,19 @@ all_cols1 <- c(
 )
 df_all <- read_csv(csv_fp)
 df_wo_mxq <- df_all |>
-  filter(algo != "mxq" & algo != "fp16") |>
+  filter(algo != "mxq" & algo != "fp16" & algo != "bnb") |>
   select(all_of(all_cols1))
 
 df_hqq <- df_all |> filter(algo == "hqq" & !str_detect(config, "^mxq"))
-df_mxq <- df_all |> filter(algo == "mxq")
+df_mxq <- df_all |>
+  filter(algo == "mxq" & attempt == "mxq1") |>
+  select(all_of(all_cols1))
+
 df_mxq1 <- df_hqq |>
   left_join(
     df_mxq,
     suffix = c(".x", ""),
     join_by(model, bpp)
-  ) |>
-  mutate(
-    algo = paste0(algo, "-", attempt)
   ) |>
   select(c("model", "algo", "config.x", "bpp", "quant_duration")) |>
   rename(
@@ -41,6 +41,7 @@ df_mxq1 <- df_hqq |>
 
 df_all <- bind_rows(df_wo_mxq, df_mxq1)
 
+duration_cutoff <- 10
 disp <- df_all |>
   filter(str_detect(config, "^b4")) |>
   mutate(
@@ -49,36 +50,22 @@ disp <- df_all |>
       levels = c("Llama-2-7b-hf", "Meta-Llama-3-8B", "Llama-2-13b-hf"),
       labels = c("Llama-2-7B", "Llama-3-8B", "Llama-2-13B")
     ),
-    algo = factor(
-      algo,
-      levels = (
-        c(
-          "awq",
-          "gptq",
-          "hqq",
-          "mxq-mxq1",
-          "mxq-kurt-global",
-          "mxq-kurt-scaled",
-          "fp16"
-        )
-      )
-    ),
     config = factor(config, levels = (c("b4g32", "b4g64", "b4g128")))
   )
 
 ggplot(disp, aes(x = algo, y = quant_duration, fill = algo)) +
   geom_col(aes(x = quant_duration, y = algo), show.legend = FALSE) +
   geom_text(
-    data = subset(disp, quant_duration <= 200),
+    data = subset(disp, quant_duration <= duration_cutoff),
     aes(quant_duration * 1.1, y = algo, label = toupper(algo)),
     hjust = 0,
     nudge_x = 0.3,
     size = 3
   ) +
   geom_text(
-    data = subset(disp, quant_duration > 200),
+    data = subset(disp, quant_duration > duration_cutoff),
     aes(0, y = algo, label = toupper(algo)),
-    hjust = 0,
+    hjust = -0.2,
     nudge_x = 0.3,
     colour = "white",
     size = 3
@@ -86,7 +73,6 @@ ggplot(disp, aes(x = algo, y = quant_duration, fill = algo)) +
   labs(y = "Algorithm", x = "Quantation Time(Seconds)") +
   scale_x_continuous(
     limits = c(1, 1600),
-    # breaks = seq(0, 1600, by = 125),
     expand = c(0, 0),
     trans = "log10",
     position = "bottom"
@@ -97,7 +83,7 @@ ggplot(disp, aes(x = algo, y = quant_duration, fill = algo)) +
     panel.grid.major.x = element_line(color = "#A8BAC4", size = 0.2),
     axis.ticks.length = unit(0, "mm"),
     axis.title = element_blank(),
-    axis.text.x = element_text(angle = 45, vjust = 0.9, hjust = 1),
+    axis.text.x = element_text(angle = 30, vjust = 0.9, hjust = 1),
     axis.text.y = element_blank()
   ) +
   # facet_grid(config ~ model, scales = "free" ) +
