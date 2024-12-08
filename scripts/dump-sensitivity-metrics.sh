@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CALIB_DATASETS="pileval wikitext c4"
+CALIB_DATASETS="bos pileval wikitext c4"
 #CONFIGS="b3g128 b3g64 b3g32 b4g128 b4g64 b4g32 b8g128 b8g64 b8g32"
 CONFIGS="b2g128 b2g64 b2g32"
 MODELS="0 2"

@@ -1,0 +1,25 @@
+"Math":15
+"Engineering":15
+"Computer Science":15
+"Chemstry":15
+"Physics":15
+"Geography":10
+"History":7
+"English":9
+"Psychology":8
+"Politics":8
+"Law":10
+"Art":10
+"Music":10
+"Photography":5
+"Medical":10
+"Biology":10
+"Business":10
+"Agiculture":10
+"Architecture":10
+"Journalism":10
+"Oceanography":5
+"Social Science":5
+"Ecology":5
+"Astronomy":5
+"Life Sciences":5

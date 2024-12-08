@@ -5,7 +5,7 @@ import os
 import re
 import time
 from collections import defaultdict
-from typing import List, Union
+from typing import List
 
 import pandas as pd
 import torch
@@ -105,47 +105,30 @@ def get_best_device(idx=None):
 
 
 def get_calib_dataset(
-    data: Union[str, List[str], List[List[int]]] = "pileval",
+    data: str = "pileval",
     tokenizer=None,
     n_samples=512,
     block_size=512,
     split="train",
     text_column="text",
 ):
-    if isinstance(data, str):
-        if data == "pileval":
-            dataset = load_dataset("mit-han-lab/pile-val-backup", split="validation")
-        elif data == "wikitext":
-            dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="validation")
-        elif data == "c4":
-            dataset = load_dataset(
-                "allenai/c4",
-                data_files={"validation": "en/c4-validation.00000-of-00008.json.gz"},
-                split="validation",
-                download_mode="reuse_dataset_if_exists",
-            )
-        else:
-            dataset = load_dataset(data, split=split)
-
-        dataset = dataset.shuffle(seed=42)
-
-    elif isinstance(data, list):
-        if isinstance(data[0], str):
-            dataset = [{text_column: text} for text in data]
-        elif isinstance(data[0][0], int):
-            dataset = data
-        else:
-            raise NotImplementedError(
-                "Either pass a string to a huggingface dataset or a list"
-                "that is preprocessed with one sample of text per element"
-                " or a list of list of int for tokenized words."
-            )
-    else:
-        raise NotImplementedError(
-            "Either pass a string to a huggingface dataset or a list"
-            "that is preprocessed with one sample of text per element"
-            " or a list of list of int for tokenized words."
+    if data == "pileval":
+        dataset = load_dataset("mit-han-lab/pile-val-backup", split="validation")
+    elif data == "wikitext":
+        dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="validation")
+    elif data == "bos":
+        dataset = load_dataset("schnell18/branch-of-science", split="train")
+    elif data == "c4":
+        dataset = load_dataset(
+            "allenai/c4",
+            data_files={"validation": "en/c4-validation.00000-of-00008.json.gz"},
+            split="validation",
+            download_mode="reuse_dataset_if_exists",
         )
+    else:
+        dataset = load_dataset(data, split=split)
+
+    dataset = dataset.shuffle(seed=42)
 
     samples = []
     n_run = 0
@@ -427,7 +410,7 @@ def measure_sensitivity(models, cfgs, calib_datasets, csv_fp):
                     offload_state_dict=False,
                     max_memory={0: "18GiB", "cpu": "60GiB"},
                 )
-                tokenizer = AutoTokenizer.from_pretrained(model_path)
+                tokenizer = AutoTokenizer.from_pretrained(model_path, legacy=False)
                 finder = SensitiveLayerFinder(
                     model,
                     short_name,

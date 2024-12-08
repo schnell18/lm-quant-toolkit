@@ -1,14 +1,11 @@
 #!/bin/bash
 
 RESULT_BASE_DIR="/fdata/llm/mxq/results"
-CALIB_DATASETS="bos pileval wikitext c4"
-CONFIGS="b2g128 b2g64 b2g32 b3g128 b3g64 b3g32 b4g128 b4g64 b4g32 b8g128 b8g64 b8g32"
-# MODELS="meta-llama/Llama-2-7b-hf meta-llama/Llama-2-7b-chat-hf epfl-llm/meditron-7b meta-llama/Llama-3.1-8B meta-llama/Llama-3.1-8B-Instruct"
+CALIB_DATASETS="pileval"
+CONFIGS="b4g64"
+MODELS="mistralai/Ministral-8B-Instruct-2410"
 
-# CONFIGS="b3g128 b3g64 b4g128 b4g64 b8g128 b8g64"
-MODELS="meta-llama/Meta-Llama-3-8B meta-llama/Meta-Llama-3-8B-Instruct"
-
-EXP_NAME=sensi_llama2_3_bos
+EXP_NAME=sensi_mistral
 RESULT_DIR=$RESULT_BASE_DIR/$EXP_NAME
 mkdir -p $RESULT_DIR/data
 
@@ -16,8 +13,8 @@ for DS in $CALIB_DATASETS; do
     for CFG in $CONFIGS; do
         for MODEL in $MODELS; do
             SHORT_ID=$(echo $MODEL | cut -d/ -f2)
-            OUT_FILE="${RESULT_DIR}/data/variant-sensi-${SHORT_ID}-${CFG}-${DS}.csv"
-            python ../src/dump.py dump \
+            OUT_FILE="${RESULT_DIR}/data/qwen25-sensi-${SHORT_ID}-${CFG}-${DS}.csv"
+            python -m pdb ../src/dump.py dump \
                 --type sensitivity \
                 --model $MODEL \
                 --config $CFG \
