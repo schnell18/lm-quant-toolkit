@@ -5,6 +5,36 @@ library(openxlsx)
 library(knitr)
 library(kableExtra)
 
+budget_to_cfg <- function(budget) {
+  if (budget == 3.13) {
+    return("b3g128")
+  } else if (budget == 3.25) {
+    return("b3g64")
+  } else if (budget == 3.51) {
+    return("b3g32")
+  } else if (budget == 4.13) {
+    return("b4g128")
+  } else if (budget == 4.25) {
+    return("b4g64")
+  } else if (budget == 4.51) {
+    return("b4g32")
+  } else if (budget == 8.13) {
+    return("b8g128")
+  } else if (budget == 8.25) {
+    return("b8g64")
+  } else if (budget == 8.51) {
+    return("b8g32")
+  } else if (budget == 2.13) {
+    return("b2g128")
+  } else if (budget == 2.25) {
+    return("b2g64")
+  } else if (budget == 2.51) {
+    return("b2g32")
+  } else {
+    return(NA)
+  }
+}
+
 dump_latex_table <- function(df, latex_file = "table.tex") {
   options(knitr.kable.NA = "-")
   tabular <- df |>
@@ -93,6 +123,9 @@ df_all <- read_csv(csv_fp) |>
     memory = round(load_mem_allot, digits = 2)
   ) |>
   mutate(
+    config = ifelse(algo == "mxq", sapply(bpp, budget_to_cfg), config)
+  ) |>
+  mutate(
     model = factor(
       model,
       levels = c("Llama-2-7b-hf", "Llama-2-13b-hf", "Meta-Llama-3-8B"),
@@ -100,8 +133,8 @@ df_all <- read_csv(csv_fp) |>
     ),
     algo = factor(
       algo,
-      levels = c("mxq", "fp16", "awq", "gptq", "bnb", "hqq"),
-      labels = c("MXQ", "FP16", "AWQ", "GPTQ", "BnB", "HQQ"),
+      levels = c("mxq", "hqq", "fp16", "awq", "gptq", "bnb"),
+      labels = c("MXQ", "HQQ", "FP16", "AWQ", "GPTQ", "BnB"),
     ),
     config = factor(
       config,
@@ -118,6 +151,7 @@ df_all <- read_csv(csv_fp) |>
   ) |>
   select(all_of(all_cols))
 
+
 latex_cols <- c(
   "algo", "config", "bpp",
   "ppl_wikitext_Llama-2-7B", "ppl_c4_Llama-2-7B", "memory_Llama-2-7B",
@@ -127,21 +161,6 @@ latex_cols <- c(
 
 df_latex <- df_all |>
   filter(bpp >= 3.03 & bpp < 8.0 | bpp >= 16.00) |>
-  # filter(
-  #   algo != "MXQ" |
-  #     bpp == 4.51 |
-  #     bpp == 4.25 |
-  #     bpp == 4.13 |
-  #     bpp == 3.51 |
-  #     bpp == 3.25 |
-  #     bpp == 3.13 |
-  #     bpp == 3.65 |
-  #     bpp == 5.72 |
-  #     bpp == 6.89 |
-  #     bpp == 3.07 |
-  #     bpp == 4.01 |
-  #     bpp == 5.02
-  # ) |>
   pivot_wider(
     names_from = model,
     values_from = c(ppl_wikitext, ppl_c4, memory),

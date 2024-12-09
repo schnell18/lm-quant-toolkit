@@ -4,7 +4,7 @@ library(dplyr)
 library(readr)
 library(openxlsx)
 
-save_fnrom_by_model <- function(df) {
+save_fnorm_by_model <- function(df) {
   models <- unique(df$model)
   for (mdl in models) {
     df_by_model <- df |>
@@ -103,4 +103,4 @@ df_com2_2 <- df_fnorm |>
   select(-c("dataset", "part.x", "part.y"))
 
 df_com <- bind_rows(df_com1, df_com2_1, df_com2_2)
-save_fnrom_by_model(df_com)
+save_fnorm_by_model(df_com)
