@@ -5,7 +5,7 @@ BUDGETS="4.13 4.25 4.51"
 RESULT_DIR="/fdata/llm/mxq/results"
 QUANT_SNAPSHOT_DIR="/fdata/llm/mxq/snapshots"
 
-ATTEMPT="sensi-cfg-wise-7b5"
+ATTEMPT="sensi-cfg-wise-7b53"
 EXP_BASE_NAME=$ATTEMPT
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 

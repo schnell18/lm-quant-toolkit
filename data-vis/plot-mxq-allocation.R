@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
 
-# library(plyr)
 library(tidyverse)
 library(dplyr)
 library(readr)
@@ -26,29 +25,35 @@ plot_allot_pair <- function(df_lower, df_upper, disp_fnorm = TRUE) {
     ) +
     scale_color_solarized()
 
-  # Bar plot (on bottom)
+  metric_cutoff <- 1.0
   if (is.na(df_lower$attempt[1])) {
-    module_disp <- paste0(df_lower$module[1], "(HQQ)")
+    module_disp <- paste0("HQQ - ", df_lower$module[1])
   } else {
-    module_disp <- paste0(df_lower$module[1], "(", df_lower$attempt[1], ")")
+    module_disp <- paste0(df_lower$attempt[1], " - ", df_lower$module[1])
   }
   bar_plot <- ggplot(
     df_lower, aes(x = layer, y = metric, fill = cfg, color = cfg)
   ) +
     geom_bar(stat = "identity", color = "gray50") +
     geom_text(
+      data = subset(df_lower, metric <= metric_cutoff),
       aes(x = layer, label = cfg),
+      colour = "black",
+      angle = 90,
+      hjust = -0.20,
+      size = 2
+    ) +
+    geom_text(
+      data = subset(df_lower, metric > metric_cutoff),
+      aes(x = layer, label = cfg),
+      colour = "black",
       angle = 90,
       vjust = 0.20,
       position = position_stack(vjust = 0.5),
-      colour = "black",
       size = 2
     ) +
-    scale_x_continuous(
-      breaks = seq(0, 40, 5)
-    ) +
     theme_gray(base_size = 12) +
-    labs(x = module_disp, y = ylabel) +
+    labs(x = module_disp, y = "FNorm") +
     theme(legend.position = "none") +
     col_scale
 
