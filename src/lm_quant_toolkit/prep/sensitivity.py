@@ -10,11 +10,19 @@ from typing import List
 import pandas as pd
 import torch
 import torch.nn as nn
+from bitsandbytes.functional import dequantize_nf4
+from bitsandbytes.nn import Params4bit
 from datasets import load_dataset
 from hqq.core.quantize import Quantizer as hQuant
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
+
+
+# nbits is defined as placeholder to be consistent with other quant methods
+def quant_nf4(tensor, nbits=4, group_size=64):
+    qw = Params4bit(tensor, blocksize=group_size, quant_type="nf4").to(tensor.device)
+    return dequantize_nf4(qw.data, qw.quant_state)
 
 
 def quant_hqq(tensor, nbits, group_size=64, optimize=True):
@@ -167,6 +175,7 @@ class SensitiveLayerFinder:
         calib_data="pileval",
         split="train",
         text_column="text",
+        quant_method="hqq",
     ) -> None:
         self.model = model
         self.model_name = model_name
@@ -176,7 +185,14 @@ class SensitiveLayerFinder:
         self.calib_data = calib_data
         self.split = split
         self.text_column = text_column
+        self.quant_method = quant_method
         self.layers, self.module_kwargs, self.inps = self.init_quant()
+        if self.quant_method == "rtn":
+            self.quant_func = functools.partial(quant_hqq, optimize=False)
+        elif self.quant_method == "hqq":
+            self.quant_func = functools.partial(quant_hqq, optimize=True)
+        elif self.quant_method == "bnb":
+            self.quant_func = quant_nf4
 
     @torch.no_grad()
     def measure(self, csv_fp):
@@ -255,8 +271,10 @@ class SensitiveLayerFinder:
 
         # Quantize the weights
         for fc in layers:
-            # call HQQ to quantize
-            fc.weight.data = quant_hqq(fc.weight.data, self.w_bit, self.group_size)
+            # call quantization function
+            fc.weight.data = self.quant_func(
+                fc.weight.data, self.w_bit, self.group_size
+            )
 
         # W * X
         int_w_output = module2inspect(inp, **module_kwargs)
@@ -391,7 +409,7 @@ class SensitiveLayerFinder:
         return sanitized_kwargs
 
 
-def measure_sensitivity(models, cfgs, calib_datasets, csv_fp):
+def measure_sensitivity(models, quant_method, cfgs, calib_datasets, csv_fp):
     pat = re.compile(r"b(\d)g(\d+)")
     bgs = []
     for cfg in cfgs:
@@ -418,6 +436,7 @@ def measure_sensitivity(models, cfgs, calib_datasets, csv_fp):
                     bg[1],
                     tokenizer,
                     ds,
+                    quant_method=quant_method,
                 )
                 dikts.extend(finder.measure(csv_fp))
                 clear_memory()

@@ -6,29 +6,16 @@ library(ggplot2)
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) == 0) {
-  data_dir <- "."
+  csv_fp <- "data/llama-sensitivity.csv"
 } else {
-  data_dir <- args[1]
+  csv_fp <- args[1]
 }
 
-dat_dir <- path.expand(data_dir)
-dat_fps <- dir(
-  path = dat_dir,
-  pattern = ".*\\.csv$",
-  recursive = FALSE,
-  full.names = TRUE
-)
-
-df_all <- plyr::ldply(
-  dat_fps,
-  read.csv,
-  stringsAsFactors = FALSE,
-)
-
-write_csv(df_all, "variant-sensi.csv")
+df_all <- read_csv(csv_fp)
 
 df_layer <- df_all |>
-  filter(group_size == 64 | group_size == 32) |>
+  filter(model != "Llama-2-13b-hf") |>
+  filter(nbits != 2 & (group_size == 32 | group_size == 128)) |>
   group_by(dataset, nbits, group_size, model, layer) |>
   summarise(
     sensitivity = sum(sensitivity)
@@ -39,13 +26,17 @@ df_layer <- df_all |>
   ) |>
   select(-c("nbits", "group_size")) |>
   mutate(
+    model = factor(
+      model,
+      levels = c("Llama-2-7b-hf", "Meta-Llama-3-8B"),
+      labels = c("Llama-2-7B", "Llama-3-8B")
+    ),
     dataset = factor(
       dataset,
       levels = c("wikitext", "c4", "pileval", "bos"),
       labels = c("WikiText2", "C4", "pileval", "BoS")
     )
   )
-
 
 plt <- ggplot(df_layer, aes(x = layer, y = sensitivity)) +
   geom_point(
@@ -66,10 +57,15 @@ plt <- ggplot(df_layer, aes(x = layer, y = sensitivity)) +
     legend.position = "bottom"
   ) +
   guides(color = guide_legend(nrow = 1)) +
-  facet_grid(dataset ~ model, scales = "free") +
+  facet_grid(model ~ dataset, scales = "free") +
+  theme(
+    strip.background = element_rect(
+      color = "darkgray", fill = "white", size = 1.0, linetype = "solid"
+    )
+  ) +
   scale_color_solarized()
 ggsave(
-  "pdfs/variant-sensi.pdf",
+  "pdfs/sensi-llama-bit-budget.pdf",
   plot = plt,
   width = 10,
   height = 6

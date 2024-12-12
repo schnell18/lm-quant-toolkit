@@ -33,11 +33,23 @@ def get_parser_args():
         help="Model to evaluate",
     )
     parser_dump.add_argument(
+        "--quant-method",
+        type=str,
+        choices=[
+            "hqq",
+            "rtn",
+            "bnb",
+        ],
+        default="hqq",
+        help="Output file location",
+    )
+    parser_dump.add_argument(
         "--output-file",
         type=str,
         default="sensi.csv",
         help="Output file location",
     )
+
     parser_dump.add_argument(
         "--config",
         default=None,
@@ -78,7 +90,8 @@ def main_dump(args):
         models = args.model
         cfgs = args.config
         calib_ds = args.calib_dataset
-        measure_sensitivity(models, cfgs, calib_ds, csv_fp)
+        quant_method = args.quant_method
+        measure_sensitivity(models, quant_method, cfgs, calib_ds, csv_fp)
 
 
 if __name__ == "__main__":
