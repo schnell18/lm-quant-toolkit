@@ -141,6 +141,13 @@ def get_parser_args():
         help="stops to decrease",
     )
 
+    parser_llm.add_argument(
+        "--factor",
+        default=2.0,
+        type=float,
+        help="factor to apply",
+    )
+
     parser_vit = subparsers.add_parser("vit", help="Evaluate ViT models")
     parser_vit.set_defaults(which="vit")
     parser_vit.add_argument(
@@ -408,6 +415,7 @@ def main_llm(args):
         "decline_layers": args.decline_layer,
         "boost_stop": args.boost_stop,
         "decline_stop": args.decline_stop,
+        "factor": args.factor,
     }
     do_expermient(
         experiment_name,

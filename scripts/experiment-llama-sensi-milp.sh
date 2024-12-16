@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # BUDGETS="2.13 2.25 2.51 3.13 3.25 3.51 4.13 4.25 4.51"
-BUDGETS="4.13 4.25 4.51"
+BUDGETS="3.13 3.25 3.51 4.13 4.25 4.51"
 RESULT_DIR="/fdata/llm/mxq/results"
 QUANT_SNAPSHOT_DIR="/fdata/llm/mxq/snapshots"
 
-ATTEMPT="llama-sensi-milp"
+FACTOR=2
+ATTEMPT="sensi-milp-${FACTOR}x"
 EXP_BASE_NAME=$ATTEMPT
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 
@@ -20,14 +21,15 @@ mkdir -p $QUANT_SNAPSHOT_DIR/$ATTEMPT
 mkdir -p $RESULT_DIR/${EXP_NAME}_ppl
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,stor}/mxq/$ATTEMPT
 
-MODELS="0 2"
-EXP_NAME="${ATTEMPT}_78"
-echo "=========Run perplexity evaluation on Llama-2-7b & Llama-3-8B========="
+MODELS="0 1 2"
+EXP_NAME="${ATTEMPT}"
+echo "=========Run perplexity evaluation========="
 python ../src/cli.py llm \
   --task eval_ppl \
   --model $MODELS \
   --algo mxq \
   --weight-algo $weight_algo \
+  --factor $FACTOR \
   --config ${BUDGETS} \
   --experiment-name "${EXP_NAME}_ppl" \
   --quant-snapshot-dir="$QUANT_SNAPSHOT_DIR/$ATTEMPT" \
@@ -100,20 +102,19 @@ $OLD_DIR/../data-vis/combine.R \
 $OLD_DIR/../data-vis/plot-mxq-paired.R data/combined.csv
 $OLD_DIR/../data-vis/plot-mem-consumption.R data/combined.csv
 $OLD_DIR/../data-vis/plot-quant-speed.R data/combined.csv
-$OLD_DIR/../data-vis/gen-table-mxq-llm.R data/combined.csv
+$OLD_DIR/../data-vis/gen-table-mxq-llm.R --csv_file data/combined.csv --attempt $ATTEMPT
 pdflatex table.tex
 
 # plot configuration allocations for 3 * 12 MXQ combinations
-MODELS="Llama-2-7b-hf Llama-2-13b-hf"
-BGS="4.13 4.25 4.51"
+MODELS="Llama-2-7b-hf Llama-2-13b-hf Meta-Llama-3-8B"
 for model in $MODELS; do
-    for budget in $BGS; do
+    for budget in $BUDGETS; do
         $OLD_DIR/../data-vis/plot-mxq-allocation.R \
           -m $model \
           -b $budget \
           --attempt1 $ATTEMPT \
           --attempt2 mxq1 \
-          --baseline_data_dir $OLD_DIR/../data-vis/data \
+          --baseline_data_dir $OLD_DIR/../src/data \
           --quant_cfg_allot_file data/quant-cfg-allocation.csv
     done
 done

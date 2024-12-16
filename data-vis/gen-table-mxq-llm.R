@@ -4,6 +4,7 @@ library(tidyverse)
 library(openxlsx)
 library(knitr)
 library(kableExtra)
+library(optparse)
 
 budget_to_cfg <- function(budget) {
   if (budget == 3.13) {
@@ -35,16 +36,15 @@ budget_to_cfg <- function(budget) {
   }
 }
 
-dump_latex_table <- function(df, latex_file = "table.tex") {
+dump_latex_table <- function(df, attempt, latex_file = "table.tex") {
   options(knitr.kable.NA = "-")
   tabular <- df |>
     kable(
       format = "latex",
       booktabs = TRUE,
-      longtable = TRUE,
       linesep = "",
       align = c("cccccccccccc"),
-      caption = "My formatted LLM quantization table.",
+      caption = paste0("PPL results of ", attempt),
       label = "tab:experiment-result",
       col.names = c(
         "Method", "Config", "BPP",
@@ -53,31 +53,28 @@ dump_latex_table <- function(df, latex_file = "table.tex") {
         "WikiText2", "C4", "MEM"
       )
     ) |>
-    kable_styling(
-      latex_options = c("hold_position", "repeat_header")
-    ) |>
+    kable_styling(latex_options = c("hold_position")) |>
     add_header_above(
       c(" " = 3, "Llama-2-7B" = 3, "Llama-2-13B" = 3, "Llama-3-8B" = 3)
     ) |>
     collapse_rows(columns = 2, latex_hline = "major")
 
-  # tabular <- gsub(
-  #   "\\begin{longtable}",
-  #   "\\begin{adjustbox}{width=\\textwidth,keepaspectratio}\n\\begin{longtable}",
-  #   tabular,
-  #   fixed = TRUE
-  # )
-  # tabular <- gsub(
-  #   "\\end{longtable}",
-  #   "\\end{longtable}\n\\end{adjustbox}",
-  #   tabular,
-  #   fixed = TRUE
-  # )
+  tabular <- gsub(
+    "\\begin{tabular}",
+    "\\begin{adjustbox}{width=\\textwidth,keepaspectratio}\n\\begin{tabular}",
+    tabular,
+    fixed = TRUE
+  )
+  tabular <- gsub(
+    "\\end{tabular}",
+    "\\end{tabular}\n\\end{adjustbox}",
+    tabular,
+    fixed = TRUE
+  )
 
   head <- r"(
 \documentclass{article}
 \usepackage{booktabs,makecell,multirow,threeparttable}
-\usepackage{longtable}
 \usepackage{adjustbox}
 
 \begin{document}
@@ -100,11 +97,30 @@ dump_latex_table <- function(df, latex_file = "table.tex") {
 }
 
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) == 0) {
+parser <- OptionParser()
+parser <- add_option(
+  parser, c("-d", "--csv_file"),
+  type = "character",
+  help = "The combined csv file",
+  metavar = "character"
+)
+parser <- add_option(
+  parser, c("--attempt"),
+  type = "character",
+  help = "The attempt to plot",
+  metavar = "character"
+)
+
+args <- parse_args(parser)
+if (is.null(args$csv_file)) {
   csv_fp <- "data/combined.csv"
 } else {
-  csv_fp <- args[1]
+  csv_fp <- args$csv_file
+}
+if (is.null(args$attempt)) {
+  the_attempt <- "mxq1"
+} else {
+  the_attempt <- args$attempt
 }
 
 all_cols <- c(
@@ -115,7 +131,7 @@ all_cols <- c(
 
 df_all <- read_csv(csv_fp) |>
   filter(
-    is.na(attempt) | attempt == "mxq1"
+    is.na(attempt) | attempt == the_attempt
   ) |>
   mutate(
     ppl_wikitext = round(ppl_wikitext, digits = 2),
@@ -169,4 +185,4 @@ df_latex <- df_all |>
   select(all_of(latex_cols)) |>
   arrange(config)
 
-dump_latex_table(df_latex)
+dump_latex_table(df_latex, the_attempt)

@@ -78,7 +78,7 @@ if (is.null(args$model)) {
   model_id <- args$model
 }
 
-fnorm_dir <- path.expand("data/fnorm")
+fnorm_dir <- path.expand("../src/data")
 fnorm_fps <- dir(
   path = fnorm_dir,
   pattern = "fnorm-.*\\.csv$",

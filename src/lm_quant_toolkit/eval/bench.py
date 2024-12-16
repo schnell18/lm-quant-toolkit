@@ -252,6 +252,7 @@ def do_expermient(
                     quant_config["decline_layers"] = kwargs.get("decline_layers", None)
                     quant_config["boost_stop"] = kwargs.get("boost_stop", None)
                     quant_config["decline_stop"] = kwargs.get("decline_stop", None)
+                    quant_config["factor"] = kwargs.get("factor", None)
                 model, duration, model_file_size = quant_fn(
                     model,
                     tokenizer,

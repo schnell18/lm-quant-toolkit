@@ -5,7 +5,7 @@ BUDGETS="4.13 4.25 4.51"
 RESULT_DIR="/fdata/llm/mxq/results"
 QUANT_SNAPSHOT_DIR="/fdata/llm/mxq/snapshots"
 
-ATTEMPT="llama-sensi-milp"
+ATTEMPT="llama-sensi-milp2"
 EXP_BASE_NAME=$ATTEMPT
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 
@@ -20,9 +20,9 @@ mkdir -p $QUANT_SNAPSHOT_DIR/$ATTEMPT
 mkdir -p $RESULT_DIR/${EXP_NAME}_ppl
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,stor}/mxq/$ATTEMPT
 
-MODELS="0 2"
-EXP_NAME="${ATTEMPT}_78"
-echo "=========Run perplexity evaluation on Llama-2-7b & Llama-3-8B========="
+MODELS="0"
+EXP_NAME="${ATTEMPT}_7"
+echo "=========Run perplexity evaluation on Llama-2-7b"
 python -m pdb ../src/cli.py llm \
   --task eval_ppl \
   --model $MODELS \
