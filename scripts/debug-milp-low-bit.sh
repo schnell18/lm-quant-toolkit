@@ -10,8 +10,7 @@ RESULT_DIR="/fdata/llm/mxq/results"
 QUANT_SNAPSHOT_DIR="/fdata/llm/mxq/snapshots"
 
 FACTOR=2
-# ATTEMPT="sensi-milp-1-2pct"
-ATTEMPT="debug-lowbits12"
+ATTEMPT="ts-lowbit-mix-sensi"
 EXP_BASE_NAME=$ATTEMPT
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 

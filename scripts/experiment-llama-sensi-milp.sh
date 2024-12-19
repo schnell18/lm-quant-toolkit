@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# BUDGETS="2.13 2.25 2.51 3.13 3.25 3.51 4.13 4.25 4.51"
-BUDGETS="3.13 4.25"
+BUDGETS="2.13 2.25 2.51 3.13 3.25 3.51 4.13 4.25 4.51"
+# BUDGETS="3.13 4.25"
 RESULT_DIR="/fdata/llm/mxq/results"
 QUANT_SNAPSHOT_DIR="/fdata/llm/mxq/snapshots"
 
 FACTOR=2
-# for tracking only: penalize_2b3_3b2
-ATTEMPT="ts-lowbit-3x"
+# for tracking only: favor-sensi-top2
+ATTEMPT="sensi-milp-intg"
 EXP_BASE_NAME=$ATTEMPT
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 
@@ -22,8 +22,8 @@ mkdir -p $QUANT_SNAPSHOT_DIR/$ATTEMPT
 mkdir -p $RESULT_DIR/${EXP_NAME}_ppl
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,stor}/mxq/$ATTEMPT
 
-# MODELS="0 1 2"
-MODELS="0"
+MODELS="0 1 2"
+# MODELS="0"
 EXP_NAME="${ATTEMPT}"
 echo "=========Run perplexity evaluation========="
 python ../src/cli.py llm \
@@ -108,8 +108,8 @@ $OLD_DIR/../data-vis/gen-table-mxq-llm.R --csv_file data/combined.csv --attempt 
 pdflatex table.tex
 
 # plot configuration allocations for 3 * 12 MXQ combinations
-# MODELS="Llama-2-7b-hf Llama-2-13b-hf Meta-Llama-3-8B"
-MODELS="Llama-2-7b-hf"
+MODELS="Llama-2-7b-hf Llama-2-13b-hf Meta-Llama-3-8B"
+# MODELS="Llama-2-7b-hf"
 for model in $MODELS; do
     for budget in $BUDGETS; do
         $OLD_DIR/../data-vis/plot-mxq-allocation.R \
