@@ -51,9 +51,9 @@ parser <- add_option(
   metavar = "double"
 )
 parser <- add_option(
-  parser, c("-d", "--data_dir"),
+  parser, c("-c", "--milp_cost_csv"),
   type = "character",
-  help = "Data directory of fnorm csv files",
+  help = "Dump of MiLP cost csv from the HQQ",
   metavar = "character"
 )
 parser <- add_option(
@@ -71,38 +71,27 @@ parser <- add_option(
 
 args <- parse_args(parser)
 
-if (is.null(args$data_dir)) {
-  fnorm_dir <- "../src/data"
+if (is.null(args$milp_cost_csv)) {
+  milp_cost_csv <- "debug.csv"
 } else {
-  fnorm_dir <- args$data_dir
-}
-if (is.null(args$factor)) {
-  factor <- 2.0
-} else {
-  factor <- args$factor
-}
-if (is.null(args$allot_csv_file)) {
-  allot_csv_file <- "data/allot/mxq/mxq1/quant-cfg-allot-mxq1.csv"
-} else {
-  allot_csv_file <- args$allot_csv_file
+  milp_cost_csv <- args$milp_cost_csv
 }
 if (is.null(args$attempt)) {
   the_attempt <- "mxq1"
 } else {
   the_attempt <- args$attempt
 }
+if (is.null(args$allot_csv_file)) {
+  allot_csv_file <- paste0(
+    "data/allot/mxq/", the_attempt, "/quant-allot-", the_attempt, ".csv"
+  )
+} else {
+  allot_csv_file <- args$allot_csv_file
+}
 
-fnorm_dir <- path.expand(fnorm_dir)
-fnorm_fps <- dir(
-  path = fnorm_dir,
-  pattern = "fnorm-.*\\.csv$",
-  full.names = TRUE
-)
-names(fnorm_fps) <- sapply((basename(fnorm_fps)), strip_name)
-df_fnorm <- ldply(fnorm_fps, read.csv, stringsAsFactors = FALSE, .id = "model")
+df_fnorm <- read_csv(milp_cost_csv)
 
 k_cols <- c(
-  "model",
   "module",
   "layer",
   "cfg",
@@ -114,7 +103,7 @@ k_cols <- c(
   "memmb",
   "params",
   "sensitivity",
-  "kurtosis"
+  "cost"
 )
 df_fnorm <- df_fnorm |>
   mutate(
@@ -133,39 +122,7 @@ df_fnorm <- df_fnorm |>
     )
   )
 
-df_sd_mu <- df_fnorm |>
-  group_by(model) |>
-  dplyr::summarise(
-    sigma = sd(sensitivity),
-    mu = mean(sensitivity),
-    tot_params = sum(params),
-  )
-
-df_kurt_scaled <- df_fnorm |>
-  group_by(model, module) |>
-  dplyr::summarise(
-    min_kurt = min(kurtosis),
-    max_kurt = max(kurtosis)
-  )
-
-df_fnorm <- df_fnorm |>
-  left_join(df_sd_mu, by = c("model")) |>
-  mutate(
-    bpp = nbit1 + 2 * nbit2 / gsize1 + 32 / gsize1 / gsize2
-  ) |>
-  mutate(
-    factor_sensi = ifelse((sensitivity - mu) / sigma > 3, factor, 1)
-  ) |>
-  mutate(
-    cost_sensi = factor_sensi * 100 * 12 * (params / tot_params) / bpp
-  ) |>
-  left_join(df_kurt_scaled, by = c("model", "module")) |>
-  mutate(
-    kurt_scaled = (kurtosis - min_kurt) / (max_kurt - min_kurt),
-    cost_kurt = kurt_scaled * 100 * 12 * (params / tot_params) / bpp
-  )
-
-by <- join_by(model == model, module == module, layer == layer, cfg == cfg)
+by <- join_by(module == module, layer == layer, cfg == cfg)
 df_cfgs <- read_csv(allot_csv_file)
 
 if ("attempt" %in% names(df_cfgs)) {
@@ -195,66 +152,80 @@ df_check <- df_cfgs |>
 df_check_sum <- df_check |>
   left_join(
     df_fnorm,
-    suffix = c("", "_base"),
+    suffix = c("", "_hqq"),
     join_by(
-      model == model,
       module == module,
       layer == layer,
       cfg_base == cfg
     )
-  ) |>
-  group_by(model, cfg_base, bit_budget) |>
+  )
+df_check_det <- df_check_sum |>
+  select(
+    !c(
+      "param_cnt",
+      "params_quant_tot",
+      "params_hqq",
+      "sensitivity_hqq",
+      "nbit1",
+      "nbit2",
+      "gsize1",
+      "gsize2",
+      "nbit1_hqq",
+      "nbit2_hqq",
+      "gsize1_hqq",
+      "gsize2_hqq",
+    )
+  )
+write.xlsx(
+  df_check_det,
+  "allot-check-det.xlsx",
+  overwrite = TRUE,
+  asTable = TRUE
+)
+df_check_sum |>
+  group_by(cfg_base, bit_budget) |>
   dplyr::summarise(
     memmb = sum(memmb),
-    memmb_base = sum(memmb_base),
+    memmb_hqq = sum(memmb_hqq),
     fnorm = sum(fnorm),
-    fnorm_base = sum(fnorm_base),
-    cost_sensi = sum(cost_sensi),
-    cost_kurt = sum(cost_kurt),
-    cost_sensi_base = sum(cost_sensi_base),
-    cost_kurt_base = sum(cost_kurt_base),
+    fnorm_hqq = sum(fnorm_hqq),
+    cost_hqq = sum(cost_hqq),
+    cost = sum(cost),
     params_tot = sum(params)
   ) |>
   mutate(
     memmb = round(memmb, digits = 4),
-    memmb_base = round(memmb_base, digits = 4),
+    memmb_hqq = round(memmb_hqq, digits = 4),
     fnorm = round(fnorm, digits = 4),
-    fnorm_base = round(fnorm_base, digits = 4),
-    cost_sensi_base = round(cost_sensi_base, digits = 4),
-    cost_sensi = round(cost_sensi, digits = 4),
-    sensi_imporved = cost_sensi < cost_sensi_base,
-    cost_kurt = round(cost_kurt, digits = 4),
-    cost_kurt_base = round(cost_kurt_base, digits = 4),
-    kurt_imporved = cost_kurt < cost_kurt_base,
-    fnorm_imporved = fnorm < fnorm_base,
+    fnorm_hqq = round(fnorm_hqq, digits = 4),
+    cost_hqq = round(cost_hqq, digits = 4),
+    cost = round(cost, digits = 4),
+    sensi_imporved = cost < cost_hqq,
+    fnorm_imporved = fnorm < fnorm_hqq,
     theory_memmb = params_tot * bit_budget / 8 / 1024^2,
-    mem_pct_of_base = round(100 * memmb / memmb_base, digits = 4),
+    mem_pct_of_hqq = round(100 * memmb / memmb_hqq, digits = 4),
     mem_pct_of_theory = round(100 * memmb / theory_memmb, digits = 4)
   ) |>
   select(
     c(
-      "model",
       "cfg_base",
       "bit_budget",
-      "cost_sensi_base",
-      "cost_sensi",
+      "cost_hqq",
+      "cost",
       "sensi_imporved",
-      "cost_kurt_base",
-      "cost_kurt",
-      "kurt_imporved",
-      "fnorm_base",
+      "fnorm_hqq",
       "fnorm",
       "fnorm_imporved",
-      "memmb_base",
+      "memmb_hqq",
       "memmb",
-      "mem_pct_of_base",
+      "mem_pct_of_hqq",
       "mem_pct_of_theory"
     )
   )
 
 write.xlsx(
   df_check_sum,
-  "allot-check.xlsx",
+  "allot-check-sum.xlsx",
   overwrite = TRUE,
   asTable = TRUE
 )

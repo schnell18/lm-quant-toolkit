@@ -77,6 +77,13 @@ strip_name <- function(name) {
   return(substr(name, start, stop))
 }
 
+match_hqq_base_config <- function(budget) {
+  buckets <- c(
+    2.13, 2.25, 2.51, 3.13, 3.25, 3.51, 4.13, 4.25, 4.51, 8.13, 8.25, 8.51
+  )
+  idx <- which.min(abs(buckets - budget))
+  return(buckets[[idx]])
+}
 
 parser <- OptionParser()
 parser <- add_option(
@@ -223,10 +230,13 @@ if (bar_value_fnorm) {
     select(-c("fnorm"))
 }
 
+rounded_budget <- match_hqq_base_config(budget)
 df_cfgs <- read_csv("data/quant-cfg-allocation.csv")
 
 df_cfg_1 <- df_cfgs |>
-  filter(bit_budget == budget & model == model_id) |>
+  filter(
+    (bit_budget == budget | bit_budget == rounded_budget) & model == model_id
+  ) |>
   dplyr::mutate(
     cfg = paste0("b", b1, "g", g1)
   ) |>

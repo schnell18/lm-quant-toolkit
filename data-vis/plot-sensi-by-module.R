@@ -8,7 +8,8 @@ df_all <- read_csv("data/llama-sensitivity.csv")
 
 df_layer <- df_all |>
   filter(model == "Llama-2-7b-hf") |>
-  filter(nbits != 2 & (group_size == 32 | group_size == 128)) |>
+  # filter(nbits != 2 & (group_size == 32 | group_size == 128)) |>
+  filter((nbits == 4 | nbits == 8)) |>
   mutate(
     cfg = paste0("b", nbits, "g", group_size)
   ) |>

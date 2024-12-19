@@ -108,11 +108,11 @@ df_fnorm <- df_fnorm |>
   mutate(
     part = sapply(module, map_to_part)
   ) |>
-  select(!c("sensitivity", "kurtosis_scaled"))
+  select(!c("sensitivity"))
 
 df_sensi <- read_csv("data/llama-sensitivity.csv") |>
   filter(
-    dataset == "pileval" & nbits == 3 & group_size == 64
+    dataset == "pileval" & nbits == 4 & group_size == 64
   ) |>
   dplyr::rename(
     sensi = sensitivity

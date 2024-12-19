@@ -12,18 +12,18 @@ from hqq.utils.optimizer import find_optimal_configs
 from lm_quant_toolkit.utils.hub import LLAMA_MODELS, VIT_OPENCLIP_MODELS
 
 HQQ_CONFIGS = [
-    ("b8g32", HQQQuantConfig(nbits=8, group_size=32)),
-    ("b8g64", HQQQuantConfig(nbits=8, group_size=64)),
-    ("b8g128", HQQQuantConfig(nbits=8, group_size=128)),
-    ("b4g32", HQQQuantConfig(nbits=4, group_size=32)),
-    ("b4g64", HQQQuantConfig(nbits=4, group_size=64)),
-    ("b4g128", HQQQuantConfig(nbits=4, group_size=128)),
-    ("b3g32", HQQQuantConfig(nbits=3, group_size=32)),
-    ("b3g64", HQQQuantConfig(nbits=3, group_size=64)),
-    ("b3g128", HQQQuantConfig(nbits=3, group_size=128)),
-    ("b2g16", HQQQuantConfig(nbits=2, group_size=16)),
-    ("b2g32", HQQQuantConfig(nbits=2, group_size=32)),
-    ("b2g64", HQQQuantConfig(nbits=2, group_size=64)),
+    ("b8g32", HQQQuantConfig(nbits=8, group_size=32, quant_scale=True)),
+    ("b8g64", HQQQuantConfig(nbits=8, group_size=64, quant_scale=True)),
+    ("b8g128", HQQQuantConfig(nbits=8, group_size=128, quant_scale=True)),
+    ("b4g32", HQQQuantConfig(nbits=4, group_size=32, quant_scale=True)),
+    ("b4g64", HQQQuantConfig(nbits=4, group_size=64, quant_scale=True)),
+    ("b4g128", HQQQuantConfig(nbits=4, group_size=128, quant_scale=True)),
+    ("b3g32", HQQQuantConfig(nbits=3, group_size=32, quant_scale=True)),
+    ("b3g64", HQQQuantConfig(nbits=3, group_size=64, quant_scale=True)),
+    ("b3g128", HQQQuantConfig(nbits=3, group_size=128, quant_scale=True)),
+    ("b2g16", HQQQuantConfig(nbits=2, group_size=16, quant_scale=True)),
+    ("b2g32", HQQQuantConfig(nbits=2, group_size=32, quant_scale=True)),
+    ("b2g64", HQQQuantConfig(nbits=2, group_size=64, quant_scale=True)),
 ]
 
 

@@ -1,23 +1,16 @@
 #!/bin/bash
 
-# BUDGETS="2.13 2.25 2.51 3.13 3.25 3.51 4.13 4.25 4.51"
-# BUDGETS="4.17 4.29 4.56 4.21 4.34 4.60"
-# BUDGETS="4.09 4.46"
-# BUDGETS="4.25"
-BUDGETS="3.13 3.25 3.51 4.13 4.25 4.51"
+BUDGETS="2.13 2.25 2.51 3.13 3.25 3.51 4.13 4.25 4.51"
+CFGS="b2g128 b2g64 b3g32 b3g128 b3g64 b3g32 b4g128 b4g64 b4g32"
 RESULT_DIR="/fdata/llm/mxq/results"
 QUANT_SNAPSHOT_DIR="/fdata/llm/mxq/snapshots"
 
-FACTOR=2
-# ATTEMPT="sensi-milp-1-2pct"
-ATTEMPT="sensi-milp-debug5"
+ATTEMPT="hqq-quant-scale"
 EXP_BASE_NAME=$ATTEMPT
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 
 # Use cached dataset to speedup wikitext, c4 ppl evaluation
 export HF_DATASETS_OFFLINE=1
-
-weight_algo=sensi-milp
 
 log_file="logs/bench-${ATTEMPT}-$(date +%Y%m%d%H%M%S).log"
 
@@ -25,18 +18,14 @@ mkdir -p $QUANT_SNAPSHOT_DIR/$ATTEMPT
 mkdir -p $RESULT_DIR/${EXP_NAME}_ppl
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,stor}/mxq/$ATTEMPT
 
-# MODELS="0 1 2"
-MODELS="0"
+MODELS="0 1 2"
 EXP_NAME="${ATTEMPT}"
 echo "=========Run perplexity evaluation========="
-# python ../src/cli.py llm \
-python -m pdb ../src/cli.py llm \
+python ../src/cli.py llm \
   --task eval_ppl \
   --model $MODELS \
-  --algo mxq \
-  --weight-algo $weight_algo \
-  --factor $FACTOR \
-  --config ${BUDGETS} \
+  --algo hqq \
+  --config ${CFGS} \
   --experiment-name "${EXP_NAME}_ppl" \
   --quant-snapshot-dir="$QUANT_SNAPSHOT_DIR/$ATTEMPT" \
   --result-dir=$RESULT_DIR \
@@ -61,7 +50,7 @@ mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/allot/mxq/$ATTEMPT
 python ../src/cli.py dump \
   --type quant_config \
   --model $MODELS \
-  --budget ${BUDGETS} \
+  --budget ${CFGS} \
   --attempt $ATTEMPT \
   --quant-snapshot-dir=$QUANT_SNAPSHOT_DIR \
   --output-file "$RESULT_DIR/$EXP_BASE_NAME/data/allot/mxq/$ATTEMPT/quant-allot-${EXP_NAME}.csv" \
@@ -69,10 +58,10 @@ python ../src/cli.py dump \
   | tee -a $log_file
 
 echo "=========Run memory evaluation on batch ${EXP_NAME}========="
-algo=mxq
+algo=hqq
 model_ids=$MODELS
 for m in $model_ids; do
-  for cfg in ${BUDGETS}; do
+  for cfg in ${CFGS}; do
       python ../src/cli.py llm \
           --model $m \
           --algo ${algo} \
