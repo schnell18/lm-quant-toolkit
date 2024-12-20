@@ -7,7 +7,7 @@ QUANT_SNAPSHOT_DIR="/fdata/llm/mxq/snapshots"
 
 FACTOR=2
 # for tracking only: favor-sensi-top2
-ATTEMPT="sensi-milp-intg"
+ATTEMPT="favor-sensi-top1"
 EXP_BASE_NAME=$ATTEMPT
 mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 
