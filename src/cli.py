@@ -148,6 +148,27 @@ def get_parser_args():
         help="factor to apply",
     )
 
+    parser_llm.add_argument(
+        "--top-n-sensi-layer",
+        default=1,
+        type=int,
+        help="The top n most sensitive layers to assign extra memory. 0 means all layers.",
+    )
+
+    parser_llm.add_argument(
+        "--ablation",
+        dest="ablation",
+        action="store_true",
+        help="Enable ablation mode",
+    )
+    parser_llm.add_argument(
+        "--no-ablation",
+        dest="ablation",
+        action="store_false",
+        help="Disable ablation mode",
+    )
+    parser_llm.set_defaults(ablation=False)
+
     parser_vit = subparsers.add_parser("vit", help="Evaluate ViT models")
     parser_vit.set_defaults(which="vit")
     parser_vit.add_argument(
@@ -415,6 +436,8 @@ def main_llm(args):
         "decline_layers": args.decline_layer,
         "boost_stop": args.boost_stop,
         "decline_stop": args.decline_stop,
+        "top_n_sensi_layer": args.top_n_sensi_layer,
+        "ablation": args.ablation,
         "factor": args.factor,
     }
     do_expermient(
