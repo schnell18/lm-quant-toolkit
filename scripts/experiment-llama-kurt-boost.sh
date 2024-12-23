@@ -6,17 +6,23 @@ QUANT_SNAPSHOT_DIR="/fdata/llm/mxq/snapshots"
 
 # Use cached dataset to speedup wikitext, c4 ppl evaluation
 export HF_DATASETS_OFFLINE=1
-weight_algo=sensi-boost
+weight_algo=kurt-boost
 MODELS="0 1 2"
 MODEL_NAMES="Llama-2-7b-hf Llama-2-13b-hf Meta-Llama-3-8B"
 
 
-BOOST_STOPS="2"
-BOOST_TOP_NS="1"
+BOOST_STOPS="2 3"
+BOOST_TOP_NS="1 2 3 0"
+# BOOST_STOPS="2"
+# BOOST_TOP_NS="2"
+
 
 for BOOST_STOP in $BOOST_STOPS; do
     for BOOST_TOP_N in $BOOST_TOP_NS; do
-        ATTEMPT="sensi-ablation-${BOOST_STOP}-${BOOST_TOP_N}"
+        if [[ $BOOST_STOP -eq 2 && $BOOST_TOP_N -eq 1 ]]; then
+            continue
+        fi
+        ATTEMPT="kurt-boost-${BOOST_STOP}-${BOOST_TOP_N}"
         EXP_BASE_NAME=$ATTEMPT
         mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 
@@ -36,7 +42,6 @@ for BOOST_STOP in $BOOST_STOPS; do
           --weight-algo $weight_algo \
           --boost-stop $BOOST_STOP \
           --top-n-layer $BOOST_TOP_N \
-          --ablation \
           --config ${BUDGETS} \
           --experiment-name "${EXP_NAME}_ppl" \
           --quant-snapshot-dir="$QUANT_SNAPSHOT_DIR/$ATTEMPT" \

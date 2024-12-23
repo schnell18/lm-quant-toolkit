@@ -149,7 +149,7 @@ def get_parser_args():
     )
 
     parser_llm.add_argument(
-        "--top-n-sensi-layer",
+        "--top-n-layer",
         default=1,
         type=int,
         help="The top n most sensitive layers to assign extra memory. 0 means all layers.",
@@ -436,7 +436,7 @@ def main_llm(args):
         "decline_layers": args.decline_layer,
         "boost_stop": args.boost_stop,
         "decline_stop": args.decline_stop,
-        "top_n_sensi_layer": args.top_n_sensi_layer,
+        "top_n_layer": args.top_n_layer,
         "ablation": args.ablation,
         "factor": args.factor,
     }
