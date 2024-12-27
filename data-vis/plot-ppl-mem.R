@@ -86,7 +86,8 @@ plot_ppl <- function(df_disp) {
       ),
       sec.axis = sec_axis(
         ~ 100 * (. - min_ppl_c4) / min_ppl_c4,
-        name = "% Degradation"
+        name = "% Degradation",
+        breaks = seq(-30, 20, 5),
       )
     ) +
     labs(x = "Bit Budget", y = "Perplexity") +

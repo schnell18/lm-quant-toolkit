@@ -1,8 +1,26 @@
+#!/usr/bin/env Rscript
+
 library(tidyverse)
 library(ggthemes)
 library(readr)
+library(optparse)
 
-model_id <- "Llama-2-13b-hf"
+parser <- OptionParser()
+parser <- add_option(
+  parser, c("-m", "--model_id"),
+  type = "character",
+  help = "The short HF model id without the organization prefix",
+  metavar = "character"
+)
+
+args <- parse_args(parser)
+
+if (is.null(args$model_id)) {
+  model_id <- "Llama-2-13b-hf"
+} else {
+  model_id <- args$model_id
+}
+
 wdist <- read_csv(paste0("data/wdist/wdist-", model_id, ".csv"))
 percentiles <- c("0", "99", "99.9", "99.99", "100")
 module_param_count <- wdist |>
