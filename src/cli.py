@@ -20,8 +20,6 @@ from lm_quant_toolkit.eval.bench_vit import do_expermient as do_expermient_vit
 from lm_quant_toolkit.eval.common import HQQ_CONFIGS
 from lm_quant_toolkit.misc.quant_sim import dump_mxq_configs, dump_mxq_objectives
 from lm_quant_toolkit.misc.qweight import dump_quant_allocation
-from lm_quant_toolkit.prep.sensitivity import measure_sensitivity
-from lm_quant_toolkit.utils.hub import SENSITIVITY_MODELS
 
 
 def get_parser_args():
@@ -251,7 +249,6 @@ def get_parser_args():
         default=None,
         choices=[
             "objective",
-            "sensitivity",
             "quant_config",
             "quant_config_sim",
         ],
@@ -514,13 +511,6 @@ def main_dump(args):
             weight_algo=args.weight_algo,
             factor=args.factor,
         )
-    elif args.type == "sensitivity":
-        csv_fp = args.output_file
-        indicies = [int(m) for m in args.model]
-        models = [SENSITIVITY_MODELS[i] for i in indicies]
-        cfgs = args.config
-        calib_ds = args.calib_dataset
-        measure_sensitivity(models, cfgs, calib_ds, csv_fp)
 
 
 if __name__ == "__main__":

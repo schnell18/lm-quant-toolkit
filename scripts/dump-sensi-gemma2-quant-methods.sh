@@ -18,8 +18,7 @@ for QNT_MTD in $QUANT_METHODS; do
             for MODEL in $MODELS; do
                 SHORT_ID=$(echo $MODEL | cut -d/ -f2)
                 OUT_FILE="$RESULT_DIR/${QNT_MTD}-${SHORT_ID}-${CFG}-${DS}.csv"
-                python ../src/dump.py dump \
-                    --type sensitivity \
+                python ../src/dump.py sensi \
                     --model $MODEL \
                     --quant-method $QNT_MTD \
                     --config $CFG \

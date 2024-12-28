@@ -14,8 +14,7 @@ for DS in $CALIB_DATASETS; do
         for MODEL in $MODELS; do
             SHORT_ID=$(echo $MODEL | cut -d/ -f2)
             OUT_FILE="${RESULT_DIR}/data/qwen25-sensi-${SHORT_ID}-${CFG}-${DS}.csv"
-            python -m pdb ../src/dump.py dump \
-                --type sensitivity \
+            python -m pdb ../src/dump.py sensi \
                 --model $MODEL \
                 --config $CFG \
                 --calib-dataset $DS \

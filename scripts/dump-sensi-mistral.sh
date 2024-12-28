@@ -14,8 +14,7 @@ mkdir -p $RESULT_DIR/data
 #         for MODEL in $MODELS; do
 #             SHORT_ID=$(echo $MODEL | cut -d/ -f2)
 #             OUT_FILE="${RESULT_DIR}/data/mistral-sensi-${SHORT_ID}-${CFG}-${DS}.csv"
-#             python ../src/dump.py dump \
-#                 --type sensitivity \
+#             python ../src/dump.py sensi \
 #                 --model $MODEL \
 #                 --config $CFG \
 #                 --calib-dataset $DS \

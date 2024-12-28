@@ -11,12 +11,15 @@ MODELS="0 1 2"
 MODEL_NAMES="Llama-2-7b-hf Llama-2-13b-hf Meta-Llama-3-8B"
 
 
-BOOST_STOPS="2"
-BOOST_TOP_NS="1"
+# BOOST_STOPS="2 3"
+# BOOST_TOP_NS="1 2 3 0"
+
+BOOST_STOPS="3"
+BOOST_TOP_NS="3 0"
 
 for BOOST_STOP in $BOOST_STOPS; do
     for BOOST_TOP_N in $BOOST_TOP_NS; do
-        ATTEMPT="sensi-ablation-${BOOST_STOP}-${BOOST_TOP_N}"
+        ATTEMPT="sensi-abl-${BOOST_STOP}-${BOOST_TOP_N}"
         EXP_BASE_NAME=$ATTEMPT
         mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 

@@ -162,7 +162,7 @@ def calc_fnorm_for_vit_model(model_id, base_dir, layer_cfg):
     )
 
 
-def calc_fnorm_for_model(model_id, base_dir, layers):
+def calc_fnorm_for_model(model_id, base_dir, layers, output_dir="data"):
     self_attns = ["q_proj", "v_proj", "k_proj", "o_proj"]
     mlps = ["gate_proj", "up_proj", "down_proj"]
     nbits1 = [2, 3, 4, 8]
@@ -201,7 +201,7 @@ def calc_fnorm_for_model(model_id, base_dir, layers):
             dikts.extend(ds)
 
     df = pd.DataFrame(dikts)
-    file_name = f"data/fnorm-{model_id.split('/')[1]}.csv"
+    file_name = f"{output_dir}/fnorm-{model_id.split('/')[1]}.csv"
     df.to_csv(
         file_name,
         columns=[
