@@ -11,8 +11,6 @@ from langchain.schema.output_parser import StrOutputParser
 from langchain_community.llms import VLLMOpenAI
 from langchain_core.output_parsers.list import CommaSeparatedListOutputParser
 
-from utils import eprint
-
 
 def generate_level1_topic(model, variant, topic, count=10):
     output_parser = CommaSeparatedListOutputParser()
@@ -117,7 +115,7 @@ def generate(plans, llm_output_dir, model="llama", variant="7b", trace=True):
                     sub_topic,
                     output,
                 )
-                eprint(f"{sub_topic} generation took {(ti1 - ti0):.2f} seconds!")
+                print(f"{sub_topic} generation took {(ti1 - ti0):.2f} seconds!")
             records = parse_output(model, sub_topic, output)
             dict_list.extend(records)
     df = pd.DataFrame(dict_list)
@@ -129,7 +127,7 @@ def generate(plans, llm_output_dir, model="llama", variant="7b", trace=True):
 
     t1 = timer()
     if trace:
-        eprint(f"All instructions generation took {t1 - t0} seconds")
+        print(f"All instructions generation took {t1 - t0} seconds")
 
 
 def _parse_args():
