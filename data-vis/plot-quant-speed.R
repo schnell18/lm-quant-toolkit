@@ -3,12 +3,21 @@
 library(tidyverse)
 library(ggthemes)
 library(readr)
+library(optparse)
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) == 0) {
+parser <- OptionParser()
+parser <- add_option(
+  parser, c("-d", "--csv_file"),
+  type = "character",
+  help = "Combined PPL result CSV file",
+  metavar = "character"
+)
+args <- parse_args(parser)
+
+if (is.null(args$csv_file)) {
   csv_fp <- "data/combined.csv"
 } else {
-  csv_fp <- args[1]
+  csv_fp <- args$csv_file
 }
 
 all_cols1 <- c(
