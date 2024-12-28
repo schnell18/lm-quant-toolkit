@@ -13,6 +13,38 @@ from lm_quant_toolkit.utils.pickle import load_state_dict
 from lm_quant_toolkit.utils.safetensors import get_tensor
 
 
+def calculate_kurtosis_llm(model_id, base_dir, layers, output_dir):
+    modules = [
+        "self_attn.q_proj",
+        "self_attn.k_proj",
+        "self_attn.v_proj",
+        "self_attn.o_proj",
+        "mlp.gate_proj",
+        "mlp.down_proj",
+        "mlp.up_proj",
+    ]
+    dikts = []
+    for module in modules:
+        for layer in range(layers):
+            full_name = f"model.layers.{layer}.{module}.weight"
+            w = get_tensor(full_name, base_dir)
+            param_count = w.numel()
+            kurt_pearson = kurtosis(
+                w, axis=None, fisher=False, bias=True, nan_policy="omit"
+            )
+            dikt = {
+                "module": module,
+                "layer": layer,
+                "param_count": param_count,
+                "kurtosis": kurt_pearson,
+            }
+            dikts.append(dikt)
+    df = pd.DataFrame(dikts)
+    short_id = model_id.split("/")[1]
+    csv_fp = f"{output_dir}/kurtosis-{short_id}.csv"
+    df.to_csv(csv_fp, index=False)
+
+
 def summarize_vit_percentiles(
     model_id,
     model_cfg,

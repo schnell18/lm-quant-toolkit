@@ -7,6 +7,7 @@ from timeit import default_timer as timer
 
 from lm_quant_toolkit.prep.fnorm import calc_fnorm_for_model
 from lm_quant_toolkit.prep.sensitivity import measure_sensitivity
+from lm_quant_toolkit.prep.wdist import calculate_kurtosis_llm
 from lm_quant_toolkit.utils.hub import (
     LLAMA_MODELS,
     get_hf_model_storge_base_dir,
@@ -66,10 +67,26 @@ def get_parser_args():
         "--model",
         type=str,
         nargs="+",
-        default="1",
         help="Model to evaluate",
     )
     parser_fnorm.add_argument(
+        "--output-dir",
+        type=str,
+        default="data",
+        help="Output directory",
+    )
+
+    parser_kurt = subparsers.add_parser(
+        "kurtosis", help="Evaluate and dump model kurtosis data"
+    )
+    parser_kurt.set_defaults(which="kurtosis")
+    parser_kurt.add_argument(
+        "--model",
+        type=str,
+        nargs="+",
+        help="Model to evaluate",
+    )
+    parser_kurt.add_argument(
         "--output-dir",
         type=str,
         default="data",
@@ -91,6 +108,8 @@ def main():
             main_sensi(base)
         elif base.which == "fnorm":
             main_fnorm(base)
+        elif base.which == "kurtosis":
+            main_kurt(base)
     except Exception as e:
         print(e)
         return 1
@@ -125,7 +144,29 @@ def main_fnorm(args):
             output_dir,
         )
         t2 = timer()
-        print(f"Finished {model_id} metrics calc in {t2 - t1} seconds")
+        print(f"Finished {model_id} Frobenius norm metrics calc in {t2 - t1} seconds")
+
+
+def main_kurt(args):
+    if not args.model or len(args.model) < 1:
+        raise ValueError("At least one model is required")
+    output_dir = args.output_dir
+    for model_id in args.model:
+        model = LLAMA_MODELS[model_id]
+        if not model:
+            raise ValueError(f"Unsupported model: {model_id}")
+
+        t1 = timer()
+        base_dir = model.get("base_dir", None)
+        model_base_dir = get_hf_model_storge_base_dir(model_id, base_dir)
+        calculate_kurtosis_llm(
+            model_id,
+            model_base_dir,
+            model["layers"],
+            output_dir,
+        )
+        t2 = timer()
+        print(f"Finished {model_id} Kurtosis metrics calc in {t2 - t1} seconds")
 
 
 if __name__ == "__main__":
