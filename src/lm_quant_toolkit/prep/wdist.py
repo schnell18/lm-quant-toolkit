@@ -29,6 +29,7 @@ def calculate_kurtosis_llm(model_id, base_dir, layers, output_dir):
             full_name = f"model.layers.{layer}.{module}.weight"
             w = get_tensor(full_name, base_dir)
             param_count = w.numel()
+            w = w.flatten().float().numpy()
             kurt_pearson = kurtosis(
                 w, axis=None, fisher=False, bias=True, nan_policy="omit"
             )

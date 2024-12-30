@@ -1,7 +1,6 @@
 #!/bin/bash
 
-MODELS="meta-llama/Llama-2-7b-hf"
-# MODELS="meta-llama/Llama-2-7b-hf meta-llama/Llama-2-13b-hf meta-llama/Meta-Llama-3-8B"
+MODELS="meta-llama/Llama-2-7b-hf meta-llama/Llama-2-13b-hf meta-llama/Meta-Llama-3-8B"
 
 # meta-llama/Llama-2-7b-hf
 # meta-llama/Llama-2-13b-hf
