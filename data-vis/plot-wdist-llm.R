@@ -63,6 +63,12 @@ parser <- add_option(
   help = "The short HF model id without the organization prefix",
   metavar = "character"
 )
+parser <- add_option(
+  parser, c("-d", "--wdist_dir"),
+  type = "character",
+  help = "The data directory of weight distribution data",
+  metavar = "character"
+)
 
 args <- parse_args(parser)
 
@@ -71,8 +77,13 @@ if (is.null(args$model_id)) {
 } else {
   model_id <- args$model_id
 }
+if (is.null(args$wdist_dir)) {
+  wdist_dir <- "data/wdist"
+} else {
+  wdist_dir <- args$wdist_dir
+}
 
-df_wdist <- read_csv(paste0("data/wdist/wdist-", model_id, ".csv"))
+df_wdist <- read_csv(paste0(wdist_dir, "/wdist-", model_id, ".csv"))
 percentiles <- c("0", "99", "99.9", "99.99", "100")
 df_module_param_count <- df_wdist |>
   select(

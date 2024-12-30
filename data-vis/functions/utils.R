@@ -1,0 +1,62 @@
+calc_bpp <- function(config) {
+  if (config == "base") {
+    return(16.0)
+  } else if (startsWith(config, "b")) {
+    b1 <- strtoi(substr(config, 2, 2))
+    g1 <- strtoi(substr(config, 4, nchar(config)))
+    b2 <- 8
+    g2 <- 128
+    return(round(b1 + 2 * b2 / g1 + 32 / g1 / g2, digits = 6))
+  } else {
+    return(round(as.numeric(sub("_", ".", config)), digits = 6))
+  }
+}
+
+budget_to_cfg <- function(budget) {
+  if (budget == 3.13) {
+    return("b3g128")
+  } else if (budget == 3.25) {
+    return("b3g64")
+  } else if (budget == 3.51) {
+    return("b3g32")
+  } else if (budget == 4.13) {
+    return("b4g128")
+  } else if (budget == 4.25) {
+    return("b4g64")
+  } else if (budget == 4.51) {
+    return("b4g32")
+  } else if (budget == 8.13) {
+    return("b8g128")
+  } else if (budget == 8.25) {
+    return("b8g64")
+  } else if (budget == 8.51) {
+    return("b8g32")
+  } else if (budget == 2.13) {
+    return("b2g128")
+  } else if (budget == 2.25) {
+    return("b2g64")
+  } else if (budget == 2.51) {
+    return("b2g32")
+  } else {
+    return(NA)
+  }
+}
+
+abbrev_sensi_kurt <- function(attempt) {
+  attempt <- gsub("sensi-boost", "SB", attempt)
+  attempt <- gsub("sensi-abl", "SBAB", attempt)
+  attempt <- gsub("kurt-boost", "KB", attempt)
+  attempt <- gsub("kurt-abl", "KBAB", attempt)
+  attempt <- gsub("-", "", attempt)
+  return(attempt)
+}
+
+zipcat <- function(vc1, vc2) {
+  stopifnot(length(vc1) == length(vc2))
+  result <- character(2 * length(vc1))
+  for (i in 1:length(vc1)) {
+    result[2 * i - 1] <- vc1[i]
+    result[2 * i] <- vc2[i]
+  }
+  return(result)
+}

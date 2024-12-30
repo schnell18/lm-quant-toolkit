@@ -1,0 +1,439 @@
+#!/usr/bin/env Rscript
+
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(openxlsx)
+library(ggmagnify)
+library(optparse)
+library(this.path)
+
+# make reference to library function portable
+source(file.path(here("functions"), "utils.R"))
+
+calc_mem_inc <- function(df_cfgs) {
+  df_cfg_mem <- df_cfgs |>
+    dplyr::mutate(
+      base_cfg = sapply(bit_budget, budget_to_cfg),
+      cfg = paste0("b", b1, "g", g1),
+      bpp = sapply(cfg, calc_bpp),
+      base_bpp = sapply(base_cfg, calc_bpp),
+      mem_orig = param_cnt * base_bpp,
+      mem_new = param_cnt * bpp
+    ) |>
+    select(-c("b1", "g1", "b2", "g2", "base_bpp", "base_cfg", "memmb")) |>
+    dplyr::mutate(
+      cfg = factor(
+        cfg,
+        levels = c(
+          "b2g128", "b2g64", "b2g32",
+          "b3g128", "b3g64", "b3g32",
+          "b4g128", "b4g64", "b4g32",
+          "b8g128", "b8g64", "b8g32"
+        )
+      )
+    ) |>
+    group_by(attempt, model, bit_budget) |>
+    summarise(
+      mem_orig = sum(mem_orig),
+      mem_new = sum(mem_new)
+    ) |>
+    mutate(
+      mem_orig = mem_orig / 8 / 1024^2,
+      mem_new = mem_new / 8 / 1024^2,
+      increment = round(100 * (mem_new - mem_orig) / mem_orig, digits = 2)
+    )
+  return(df_cfg_mem)
+}
+
+plot_sensi_vs_ablation <- function(
+    model_id,
+    the_dataset,
+    df_ppl_mem_inc,
+    df_hqq,
+    mag_from,
+    mag_to,
+    low_bound_scale = 0.99) {
+  df_disp <- df_ppl_mem_inc |>
+    filter(model == model_id & dataset == the_dataset) |>
+    filter(method == "SensiBoost")
+  plt <- plot_meta(
+    aes(x = increment, y = ppl, shape = ablation, color = ablation),
+    "sbab", model_id, the_dataset, df_disp, df_hqq, mag_from, mag_to,
+    low_bound_scale
+  )
+  return(plt)
+}
+
+plot_kurt_vs_ablation <- function(
+    model_id,
+    the_dataset,
+    df_ppl_mem_inc,
+    df_hqq,
+    mag_from,
+    mag_to,
+    low_bound_scale = 0.99) {
+  df_disp <- df_ppl_mem_inc |>
+    filter(model == model_id & dataset == the_dataset) |>
+    filter(method == "KurtBoost")
+  plt <- plot_meta(
+    aes(x = increment, y = ppl, shape = ablation, color = ablation),
+    "kbab", model_id, the_dataset, df_disp, df_hqq, mag_from, mag_to,
+    low_bound_scale
+  )
+  return(plt)
+}
+
+plot_sensi_vs_kurt <- function(
+    model_id,
+    the_dataset,
+    df_ppl_mem_inc,
+    df_hqq,
+    mag_from,
+    mag_to,
+    low_bound_scale = 0.99) {
+  df_disp <- df_ppl_mem_inc |>
+    filter(model == model_id & dataset == the_dataset) |>
+    filter(ablation == FALSE)
+
+  plt <- plot_meta(
+    aes(x = increment, y = ppl, shape = method, color = method),
+    "sk", model_id, the_dataset, df_disp, df_hqq, mag_from, mag_to,
+    low_bound_scale
+  )
+  return(plt)
+}
+
+plot_meta <- function(
+    ass,
+    type,
+    model_id,
+    the_dataset,
+    df_disp,
+    df_hqq,
+    mag_from,
+    mag_to,
+    low_bound_scale = 0.99) {
+  df_hqq_mark <- df_hqq |> filter(model == model_id & bpp < 8)
+  line_hqq_451 <- df_hqq_mark |> filter(bpp == 4.51)
+  line_hqq_425 <- df_hqq_mark |> filter(bpp == 4.25)
+  line_hqq_413 <- df_hqq_mark |> filter(bpp == 4.13)
+  line_hqq_351 <- df_hqq_mark |> filter(bpp == 3.51)
+  line_hqq_325 <- df_hqq_mark |> filter(bpp == 3.25)
+  line_hqq_313 <- df_hqq_mark |> filter(bpp == 3.13)
+  baseline_451 <- ifelse(
+    the_dataset == "WikiText2", line_hqq_451$ppl_wikitext, line_hqq_451$ppl_c4
+  )
+  baseline_425 <- ifelse(
+    the_dataset == "WikiText2", line_hqq_425$ppl_wikitext, line_hqq_425$ppl_c4
+  )
+  baseline_413 <- ifelse(
+    the_dataset == "WikiText2", line_hqq_413$ppl_wikitext, line_hqq_413$ppl_c4
+  )
+  baseline_351 <- ifelse(
+    the_dataset == "WikiText2", line_hqq_351$ppl_wikitext, line_hqq_351$ppl_c4
+  )
+  baseline_325 <- ifelse(
+    the_dataset == "WikiText2", line_hqq_325$ppl_wikitext, line_hqq_325$ppl_c4
+  )
+  baseline_313 <- ifelse(
+    the_dataset == "WikiText2", line_hqq_313$ppl_wikitext, line_hqq_313$ppl_c4
+  )
+
+  min_ppl <- min(df_disp$ppl) * low_bound_scale
+  max_ppl <- max(df_disp$ppl)
+  max_hqq_ppl <- ifelse(
+    the_dataset == "WikiText2",
+    max(df_hqq_mark$ppl_wikitext),
+    max(df_hqq_mark$ppl_c4)
+  )
+  max_ppl <- ifelse(max_ppl > max_hqq_ppl, max_ppl, max_hqq_ppl)
+  min_ppl <- floor(min_ppl * 10) / 10
+  max_ppl <- ceiling(max_ppl * 10) / 10
+  step <- round((max_ppl - min_ppl) / 15, digits = 2)
+  legend_title <- "Method:"
+  if (type == "sbab") {
+    legend_title <- "SensiBoost Ablation:"
+  } else if (type == "kbab") {
+    legend_title <- "KurtBoost Ablation:"
+  }
+
+  # aes(x = increment, y = ppl, shape = method, color = method)
+  plt <- ggplot(df_disp, ass) +
+    scale_x_continuous(
+      limits = c(0, 9.0),
+      breaks = seq(0, 9.0, 0.50)
+    ) +
+    scale_y_continuous(
+      limits = c(min_ppl, max_ppl),
+      breaks = seq(min_ppl, max_ppl, step)
+    ) +
+    geom_point(size = 2) +
+    geom_magnify(from = mag_from, to = mag_to, axes = "xy") +
+    geom_hline(
+      yintercept = baseline_451,
+      linetype = "dashed",
+      linewidth = 0.1
+    ) +
+    annotate(
+      "text",
+      x = 8.5, y = baseline_451 - 0.01, size = 2, label = "HQQ b4g32"
+    ) +
+    geom_hline(
+      yintercept = baseline_425,
+      linetype = "dashed",
+      linewidth = 0.1
+    ) +
+    annotate(
+      "text",
+      x = 8.5, y = baseline_425 + 0.01, size = 2, label = "HQQ b4g64"
+    ) +
+    geom_hline(
+      yintercept = baseline_413,
+      linetype = "dashed",
+      linewidth = 0.1
+    ) +
+    annotate(
+      "text",
+      x = 8.5, y = baseline_413 + 0.01, size = 2, label = "HQQ b4g128"
+    ) +
+    geom_hline(
+      yintercept = baseline_351,
+      linetype = "dashed",
+      linewidth = 0.1
+    ) +
+    annotate(
+      "text",
+      x = 8.5, y = baseline_351 + 0.01, size = 2, label = "HQQ b3g32"
+    ) +
+    geom_hline(
+      yintercept = baseline_325,
+      linetype = "dashed",
+      linewidth = 0.1
+    ) +
+    annotate(
+      "text",
+      x = 8.5, y = baseline_325 + 0.01, size = 2, label = "HQQ b3g64"
+    ) +
+    geom_hline(
+      yintercept = baseline_313,
+      linetype = "dashed",
+      linewidth = 0.1
+    ) +
+    annotate(
+      "text",
+      x = 8.5, y = baseline_313 - 0.01, size = 2, label = "HQQ b3g128"
+    ) +
+    labs(x = "% Memory Increment", y = "Perplexity") +
+    theme(
+      strip.background = element_rect(
+        color = "darkgray", fill = "white", linewidth = 1.0, linetype = "solid"
+      ),
+      strip.text.x = element_text(face = "bold", size = 12),
+      strip.text.y = element_text(face = "bold", size = 12),
+      legend.position = "bottom"
+    ) +
+    guides(
+      shape = guide_legend(title = legend_title),
+      color = guide_legend(title = legend_title)
+    ) +
+    facet_grid(dataset ~ model, scales = "free")
+
+  ggsave(
+    paste0("pdfs/ppl-", type, "-", model_id, "-", the_dataset, ".pdf"),
+    plot = plt,
+    width = 8,
+    height = 6,
+    dpi = 600
+  )
+  return(plt)
+}
+
+parser <- OptionParser()
+parser <- add_option(
+  parser, c("-d", "--combined_csv_file"),
+  type = "character",
+  help = "The combined csv file",
+  metavar = "character"
+)
+parser <- add_option(
+  parser, c("-a", "--allot_csv_file"),
+  type = "character",
+  help = "Allocation CSV file",
+  metavar = "character"
+)
+parser <- add_option(
+  parser, c("-t", "--type"),
+  type = "character",
+  help = "Type diagram",
+  metavar = "character"
+)
+
+args <- parse_args(parser)
+if (is.null(args$csv_file)) {
+  combined_csv_fp <- "data/combined.csv"
+} else {
+  combined_csv_fp <- args$combined_csv_file
+}
+if (is.null(args$csv_file)) {
+  allot_cfg_csv_fp <- "data/quant-cfg-allocation.csv"
+} else {
+  allot_cfg_csv_fp <- args$allot_csv_file
+}
+if (is.null(args$type)) {
+  type <- "sensi-vs-kurt"
+} else {
+  type <- args$type
+}
+
+df_cfgs <- read_csv(allot_cfg_csv_fp) |>
+  mutate(
+    model = factor(
+      model,
+      levels = c("Llama-2-7b-hf", "Llama-2-13b-hf", "Meta-Llama-3-8B"),
+      labels = c("Llama-2-7B", "Llama-2-13B", "Llama-3-8B")
+    )
+  )
+
+df_w_base <- read_csv(combined_csv_fp) |>
+  mutate(
+    model = factor(
+      model,
+      levels = c("Llama-2-7b-hf", "Llama-2-13b-hf", "Meta-Llama-3-8B"),
+      labels = c("Llama-2-7B", "Llama-2-13B", "Llama-3-8B")
+    )
+  )
+
+df_hqq <- df_w_base |>
+  filter(
+    algo == "hqq"
+  )
+
+df_cfg_mem <- calc_mem_inc(df_cfgs)
+
+df_ppl_mem_inc <- df_cfg_mem |>
+  left_join(
+    df_hqq,
+    suffix = c("", "_h"),
+    by = join_by(model, bit_budget == bpp)
+  ) |>
+  left_join(
+    df_w_base,
+    suffix = c("_hqq", ""),
+    by = join_by(model, attempt, bit_budget == bpp)
+  ) |>
+  mutate(
+    ppl_wikitext_decr = round(
+      100 * (ppl_wikitext_hqq - ppl_wikitext) / ppl_wikitext_hqq,
+      digits = 2
+    ),
+    ppl_c4_decr = round(
+      100 * (ppl_c4_hqq - ppl_c4) / ppl_c4_hqq,
+      digits = 2
+    ),
+    mem_incr = round(
+      100 * (load_mem_allot - load_mem_allot_hqq) / load_mem_allot_hqq,
+      digits = 2
+    )
+  ) |>
+  rename(bpp = bit_budget) |>
+  select(
+    c(
+      "model",
+      "attempt",
+      "bpp",
+      "increment",
+      "ppl_wikitext_decr",
+      "ppl_c4_decr",
+      "mem_incr",
+      "ppl_wikitext",
+      "ppl_c4",
+      "ppl_wikitext_hqq",
+      "ppl_c4_hqq",
+      "mem_orig",
+      "mem_new",
+      "load_mem_allot",
+      "load_mem_allot_hqq"
+    )
+  )
+
+
+df_ppl_mem_inc <- df_ppl_mem_inc |>
+  filter(
+    !is.na(attempt) & attempt != "mxq1"
+  ) |>
+  separate_wider_regex(
+    attempt,
+    c(method = "\\w+-\\w+", "-", stop_topm = "\\d-\\d")
+  ) |>
+  mutate(
+    ablation = ifelse(grepl("-abl", method), TRUE, FALSE),
+    method1 = ifelse(grepl("sensi-", method), "SensiBoost", "KurtBoost")
+  ) |>
+  mutate(method = method1) |>
+  select(!c("method1")) |>
+  pivot_longer(
+    cols = c("ppl_wikitext", "ppl_c4"),
+    names_to = c(".value", "dataset"),
+    names_sep = "_"
+  ) |>
+  mutate(
+    dataset = factor(
+      dataset,
+      levels = c("wikitext", "c4"),
+      labels = c("WikiText2", "C4")
+    )
+  )
+
+write.xlsx(df_ppl_mem_inc, "df_ppl_mem_inc.xlsx", asTable = TRUE)
+
+
+if (type == "sensi-vs-kurt") {
+  plot_func <- plot_sensi_vs_kurt
+} else if (type == "sensi-vs-ablation") {
+  plot_func <- plot_sensi_vs_ablation
+} else if (type == "kurt-vs-ablation") {
+  plot_func <- plot_kurt_vs_ablation
+}
+
+models <- unique(df_ppl_mem_inc$model)
+# models <- c("Llama-2-13B")
+for (model_id in models) {
+  if (model_id == "Llama-2-7B") {
+    from_wk <- c(2.5, 3.2, 5.25, 5.38)
+    to_wk <- c(5, 7, 5.5, 6.0)
+    from_c4 <- c(2.5, 3.2, 7.04, 7.18)
+    to_c4 <- c(4, 6, 7.4, 8.08)
+    low_bound_scale <- 1.0
+  } else if (model_id == "Llama-2-13B") {
+    from_wk <- c(1.9, 2.5, 4.66, 4.75)
+    to_wk <- c(4.5, 6.5, 4.85, 5.15)
+    from_c4 <- c(1.9, 2.5, 6.5, 6.6)
+    to_c4 <- c(4, 6.0, 6.7, 7.00)
+    low_bound_scale <- 0.99
+  } else if (model_id == "Llama-3-8B") {
+    from_wk <- c(2.5, 3.2, 6.02, 6.42)
+    to_wk <- c(4.0, 6.0, 6.80, 8.65)
+    from_c4 <- c(2.5, 3.2, 9.31, 10.04)
+    to_c4 <- c(4, 6, 11, 14)
+    low_bound_scale <- 0.98
+  }
+  plot_func(
+    model_id,
+    "WikiText2",
+    df_ppl_mem_inc,
+    df_hqq,
+    from_wk,
+    to_wk,
+    low_bound_scale
+  )
+  plot_func(
+    model_id,
+    "C4",
+    df_ppl_mem_inc,
+    df_hqq,
+    from_c4,
+    to_c4,
+    low_bound_scale
+  )
+}

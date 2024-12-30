@@ -6,7 +6,10 @@ library(tidyverse)
 library(readr)
 library(openxlsx)
 library(optparse)
+library(this.path)
 
+# make reference to library function portable
+source(file.path(here("functions"), "utils.R"))
 
 abbr_method <- function(method) {
   if (method == "SensiBoost") {
@@ -18,16 +21,6 @@ abbr_method <- function(method) {
   }
   return(method)
 }
-
-shorten <- function(attempt) {
-  attempt <- gsub("sensi-boost", "SB", attempt)
-  attempt <- gsub("sensi-abl", "SBAB", attempt)
-  attempt <- gsub("kurt-boost", "KB", attempt)
-  attempt <- gsub("kurt-abl", "KBAB", attempt)
-  attempt <- gsub("-", "", attempt)
-  return(attempt)
-}
-
 
 parser <- OptionParser()
 parser <- add_option(
@@ -82,7 +75,7 @@ df_sb <- df_all |>
     )
   ) |>
   mutate(
-    attempt = sapply(attempt, shorten)
+    attempt = sapply(attempt, abbrev_sensi_kurt)
   ) |>
   pivot_wider(
     names_from = "attempt",
@@ -159,7 +152,7 @@ df_sb_mxq <- df_all |>
     )
   ) |>
   mutate(
-    attempt = sapply(attempt, shorten)
+    attempt = sapply(attempt, abbrev_sensi_kurt)
   ) |>
   pivot_wider(
     names_from = "attempt",
@@ -236,7 +229,7 @@ df_kb_mxq <- df_all |>
     )
   ) |>
   mutate(
-    attempt = sapply(attempt, shorten)
+    attempt = sapply(attempt, abbrev_sensi_kurt)
   ) |>
   pivot_wider(
     names_from = "attempt",
@@ -314,7 +307,7 @@ df_kb <- df_all |>
     )
   ) |>
   mutate(
-    attempt = sapply(attempt, shorten)
+    attempt = sapply(attempt, abbrev_sensi_kurt)
   ) |>
   pivot_wider(
     names_from = "attempt",
@@ -391,7 +384,7 @@ df_kbab <- df_all |>
     )
   ) |>
   mutate(
-    attempt = sapply(attempt, shorten)
+    attempt = sapply(attempt, abbrev_sensi_kurt)
   ) |>
   pivot_wider(
     names_from = "attempt",
@@ -468,7 +461,7 @@ df_sbab <- df_all |>
     )
   ) |>
   mutate(
-    attempt = sapply(attempt, shorten)
+    attempt = sapply(attempt, abbrev_sensi_kurt)
   ) |>
   pivot_wider(
     names_from = "attempt",
@@ -548,7 +541,7 @@ df_sensi_kurt <- df_all |>
     )
   ) |>
   mutate(
-    attempt = sapply(attempt, shorten)
+    attempt = sapply(attempt, abbrev_sensi_kurt)
   ) |>
   pivot_wider(
     names_from = "attempt",
@@ -716,6 +709,6 @@ plt <- ggplot(
 ggsave(
   "pdfs/wtl-llama-comparison.pdf",
   plot = plt,
-  width = 16,
-  height = 9
+  width = 13,
+  height = 7
 )

@@ -6,6 +6,7 @@ library(ggbreak)
 library(readr)
 library(patchwork)
 library(optparse)
+library(ggmagnify)
 
 # Plot memory drop vs PPL loss ---------------------------------
 plot_ppl <- function(df_disp) {
@@ -68,6 +69,20 @@ plot_ppl <- function(df_disp) {
       linetype = "dashed",
       size = 0.1,
       color = guideline_color
+    ) +
+    geom_magnify(
+      from = c(4.10, 4.55, 4.65, 4.75),
+      to = c(3.70, 5.20, 5.20, 6.20),
+      colour = "#fc8d62",
+      linewidth = 0.3,
+      axes = "xy"
+    ) +
+    geom_magnify(
+      from = c(4.10, 4.55, 6.47, 6.62),
+      to = c(3.80, 5.30, 6.85, 7.80),
+      colour = "#fc8d62",
+      linewidth = 0.3,
+      axes = "xy"
     ) +
     annotate("text", x = 15.8, y = min_ppl_wt * 1.00, label = "FP16") +
     annotate("text", x = 15.8, y = min_ppl_c4 * 1.00, label = "FP16") +
@@ -176,6 +191,7 @@ df_all <- read_csv(csv_fp) |>
       ),
     )
   )
+
 models <- unique(df_all$model)
 for (mdl in models) {
   df_disp <- proc_data(df_all, mdl)
@@ -189,3 +205,16 @@ for (mdl in models) {
     height = 5
   )
 }
+
+# mdl <- "Llama-2-13B"
+# df_disp <- proc_data(df_all, mdl)
+# plt <- plot_ppl(df_disp)
+#
+# pdf.options(reset = TRUE, onefile = FALSE)
+# ggsave(
+#   paste0("pdfs/ppl-mem-", mdl, ".png"),
+#   plot = plt,
+#   width = 8,
+#   height = 5,
+#   dpi = 600
+# )
