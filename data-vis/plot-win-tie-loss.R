@@ -626,11 +626,6 @@ df_sum <- bind_rows(
       labels = c("Llama-2-7B", "Llama-2-13B", "Llama-3-8B")
     ),
   )
-write_csv(
-  df_sum,
-  "df_win_loss.csv"
-)
-
 
 # Calculate percentages and convert to long format
 df_disp <- df_sum |>
