@@ -29,7 +29,11 @@ plot_allot_pair <- function(df_lower, df_upper, disp_fnorm = TRUE) {
   if (is.na(df_lower$attempt[1])) {
     module_disp <- paste0("HQQ - ", df_lower$module[1])
   } else {
-    module_disp <- paste0(df_lower$attempt[1], " - ", df_lower$module[1])
+    module_disp <- paste0(
+      R.utils::toCamelCase(df_lower$attempt[1], split = "-", capitalize = TRUE),
+      " - ",
+      df_lower$module[1]
+    )
   }
   bar_plot <- ggplot(
     df_lower, aes(x = layer, y = metric, fill = cfg, color = cfg)

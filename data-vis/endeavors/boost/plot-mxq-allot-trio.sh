@@ -11,7 +11,7 @@ Llama-2-7b-hf
 Llama-2-13b-hf
 Meta-Llama-3-8B
 "
-BUDGETS="3.13 3.25 3.51 4.13 3.25 4.51"
+BUDGETS="3.13 3.25 3.51 4.13 4.25 4.51"
 
 STOP=2
 TOPM=2
