@@ -235,7 +235,8 @@ df_cfgs <- read_csv("data/quant-cfg-allocation.csv")
 
 df_cfg_1 <- df_cfgs |>
   filter(
-    (bit_budget == budget | bit_budget == rounded_budget) & model == model_id
+    # (bit_budget == budget | bit_budget == rounded_budget) & model == model_id
+    bit_budget == budget & model == model_id
   ) |>
   dplyr::mutate(
     cfg = paste0("b", b1, "g", g1)

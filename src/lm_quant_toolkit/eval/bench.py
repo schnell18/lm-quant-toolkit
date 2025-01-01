@@ -253,7 +253,7 @@ def do_expermient(
                     quant_config["boost_stop"] = kwargs.get("boost_stop", None)
                     quant_config["decline_stop"] = kwargs.get("decline_stop", None)
                     quant_config["ablation"] = kwargs.get("ablation", None)
-                    quant_config["top_n_layer"] = kwargs.get("top_n_layer", None)
+                    quant_config["top_m_layer"] = kwargs.get("top_m_layer", None)
                     quant_config["factor"] = kwargs.get("factor", None)
                 model, duration, model_file_size = quant_fn(
                     model,

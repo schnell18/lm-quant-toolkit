@@ -13,14 +13,14 @@ MODEL_NAMES="Llama-2-7b-hf Llama-2-13b-hf Meta-Llama-3-8B"
 
 # BOOST_STOPS="2 3"
 BOOST_STOPS="3"
-BOOST_TOP_NS="0"
+BOOST_TOP_MS="0"
 
 for BOOST_STOP in $BOOST_STOPS; do
-    for BOOST_TOP_N in $BOOST_TOP_NS; do
-        if [[ $BOOST_STOP -eq 2 && $BOOST_TOP_N -eq 1 ]]; then
+    for BOOST_TOP_M in $BOOST_TOP_MS; do
+        if [[ $BOOST_STOP -eq 2 && $BOOST_TOP_M -eq 1 ]]; then
             continue
         fi
-        ATTEMPT="sensi-boost-${BOOST_STOP}-${BOOST_TOP_N}"
+        ATTEMPT="sensi-boost-${BOOST_STOP}-${BOOST_TOP_M}"
         EXP_BASE_NAME=$ATTEMPT
         mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
 
@@ -39,7 +39,7 @@ for BOOST_STOP in $BOOST_STOPS; do
           --algo mxq \
           --weight-algo $weight_algo \
           --boost-stop $BOOST_STOP \
-          --top-n-layer $BOOST_TOP_N \
+          --top-n-layer $BOOST_TOP_M \
           --config ${BUDGETS} \
           --experiment-name "${EXP_NAME}_ppl" \
           --quant-snapshot-dir="$QUANT_SNAPSHOT_DIR/$ATTEMPT" \
