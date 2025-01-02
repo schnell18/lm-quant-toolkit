@@ -8,6 +8,7 @@ library(patchwork)
 library(optparse)
 library(ggmagnify)
 
+mxq_attempt <- "MXQ2"
 # Plot memory drop vs PPL loss ---------------------------------
 plot_ppl <- function(df_disp) {
   guideline_color <- "coral4"
@@ -125,7 +126,7 @@ proc_data <- function(df, model_name) {
     filter(
       grepl(mdl, model) & bpp >= 2.5
     ) |>
-    filter(is.na(attempt) | attempt == "MXQ1") |>
+    filter(is.na(attempt) | attempt == mxq_attempt) |>
     pivot_longer(
       cols = c("ppl_wikitext", "ppl_c4"),
       names_to = c(".value", "dataset"),

@@ -6,6 +6,10 @@ library(readr)
 library(plotly)
 library(optparse)
 
+second_largest <- function(x) {
+  sort(unique(x), decreasing = TRUE)[2L]
+}
+
 parser <- OptionParser()
 parser <- add_option(
   parser, c("-d", "--csv_file"),
@@ -52,7 +56,10 @@ df_baseline <- df_all |>
   )
 
 df_hqq <- df_wo_mxq |> filter(algo == "hqq" & !str_detect(config, "^mxq"))
-df_mxq <- df_all |> filter(algo == "mxq")
+df_mxq <- df_all |>
+  filter(
+    algo == "mxq" & attempt != "mxq-kurt-global" & attempt != "mxq-kurt-scaled"
+  )
 df_mxq1 <- df_hqq |>
   left_join(
     df_mxq,
@@ -76,18 +83,52 @@ df_disp <- bind_rows(df_wo_mxq, df_baseline, df_mxq1) |>
       levels = c("Llama-2-7b-hf", "Meta-Llama-3-8B", "Llama-2-13b-hf"),
       labels = c("Llama-2-7B", "Llama-3-8B", "Llama-2-13B")
     ),
-    algo = factor(algo, levels = (c("awq", "gptq", "hqq", "mxq-mxq1", "mxq-kurt-global", "mxq-kurt-scaled", "bnb", "fp16"))),
+    algo = factor(
+      algo,
+      levels = (
+        c(
+          "awq",
+          "gptq",
+          "hqq",
+          "mxq-mxq1",
+          "mxq-mxq2",
+          "bnb",
+          "fp16"
+        )
+      )
+    ),
     config = factor(config, levels = (c("b4g32", "b4g64", "b4g128")))
   ) |>
   filter(algo != "bnb")
 
+df_2nd_largest <- df_disp |>
+  group_by(model) |>
+  summarise(
+    second_max_mem = second_largest(load_mem_allot)
+  ) |>
+  ungroup()
+df_disp <- df_disp |>
+  left_join(
+    df_2nd_largest,
+    join_by(model)
+  )
+
 plt1 <- ggplot(df_disp, aes(x = algo, y = load_mem_allot, fill = algo)) +
   geom_col(aes(x = load_mem_allot, y = algo), show.legend = FALSE) +
   geom_text(
-    aes(0, y = algo, label = toupper(algo)),
+    data = subset(df_disp, algo == "fp16"),
+    aes(second_max_mem, y = algo, label = toupper(algo)),
+    hjust = 0,
+    nudge_x = -0.5,
+    colour = "white",
+    size = 3
+  ) +
+  geom_text(
+    data = subset(df_disp, algo != "fp16"),
+    aes(x = load_mem_allot, y = algo, label = toupper(algo)),
     hjust = 0,
     nudge_x = 0.3,
-    colour = "white",
+    colour = "black",
     size = 3
   ) +
   labs(y = "Algorithm", x = "GPU Memory(GiB)") +
