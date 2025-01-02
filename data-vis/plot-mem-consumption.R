@@ -17,12 +17,24 @@ parser <- add_option(
   help = "Combined PPL result CSV file",
   metavar = "character"
 )
+parser <- add_option(
+  parser, c("--attempt"),
+  type = "character",
+  help = "The attempt to plot",
+  metavar = "character"
+)
+
 args <- parse_args(parser)
 
 if (is.null(args$csv_file)) {
   csv_fp <- "data/combined.csv"
 } else {
   csv_fp <- args$csv_file
+}
+if (is.null(args$attempt)) {
+  the_attempt <- "mxq1"
+} else {
+  the_attempt <- args$attempt
 }
 
 all_cols1 <- c(
@@ -87,6 +99,7 @@ df_disp <- bind_rows(df_wo_mxq, df_baseline, df_mxq1) |>
       algo,
       levels = (
         c(
+          the_attempt,
           "awq",
           "gptq",
           "hqq",
