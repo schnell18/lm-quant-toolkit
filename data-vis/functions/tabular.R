@@ -123,7 +123,7 @@ process_dataframe <- function(df, algo_levels, algo_labels) {
       names_vary = "slowest"
     ) |>
     select(all_of(latex_cols)) |>
-    arrange(config, algo)
+    arrange(config, algo, desc(bpp))
 
   return(df_latex)
 }
