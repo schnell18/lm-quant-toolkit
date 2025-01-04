@@ -205,16 +205,17 @@ df_wdist <- df_wdist |>
     ),
   )
 
-# models <- unique(df_wdist$model)
-models <- c("Llama-2-7B", "Llama-2-13B")
+models <- unique(df_wdist$model)
 model_cnt <- length(models)
-# Open a PDF device
-pdf("pdfs/circos_diagram.pdf", width = 16, height = 8)
-
-layout(matrix(1:model_cnt, 1, model_cnt))
+# layout(matrix(1:model_cnt, 1, model_cnt))
 for (model_id in models) {
+  pdf(
+    paste0("pdfs/circos-", model_id, ".pdf"),
+    width = 8,
+    height = 8
+  )
   df_disp <- df_wdist |> filter(model == model_id)
   plot_wdist_circle(df_disp, model_id)
   circos.clear()
+  dev.off()
 }
-dev.off()
