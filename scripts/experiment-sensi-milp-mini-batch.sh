@@ -118,7 +118,7 @@ for MXQ_BATCH in "${MXQ_BATCHES[@]}"; do
           $OLD_DIR/../data-vis/plot-mxq-allocation.R \
             -m $model \
             -b $budget \
-            --baseline_data_dir $OLD_DIR/../data-vis/data \
+            --fnorm_data_dir $OLD_DIR/../src/data \
             --attempt1 mxq1 \
             --attempt2 $ATTEMPT \
             --quant_cfg_allot_file data/quant-cfg-allocation.csv

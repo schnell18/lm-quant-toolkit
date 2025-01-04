@@ -99,9 +99,9 @@ parser <- add_option(
   metavar = "double"
 )
 parser <- add_option(
-  parser, c("-d", "--baseline_data_dir"),
+  parser, c("-d", "--fnorm_data_dir"),
   type = "character",
-  help = "Data directory of baseline results",
+  help = "Data directory of fnorm meta data",
   metavar = "character"
 )
 parser <- add_option(
@@ -146,10 +146,10 @@ if (is.null(args$budget)) {
   budget <- args$budget
 }
 
-if (is.null(args$baseline_data_dir)) {
-  baseline_data_dir <- "../src/data"
+if (is.null(args$fnorm_data_dir)) {
+  fnorm_data_dir <- "../src/data"
 } else {
-  baseline_data_dir <- args$baseline_data_dir
+  fnorm_data_dir <- args$fnorm_data_dir
 }
 
 if (is.null(args$quant_cfg_allot_file)) {
@@ -182,7 +182,7 @@ if (is.null(args$fnorm)) {
   bar_value_fnorm <- args$fnorm
 }
 
-fnorm_dir <- path.expand(baseline_data_dir)
+fnorm_dir <- path.expand(fnorm_data_dir)
 fnorm_fps <- dir(
   path = fnorm_dir,
   pattern = paste0("fnorm-", model_id, "\\.csv$"),

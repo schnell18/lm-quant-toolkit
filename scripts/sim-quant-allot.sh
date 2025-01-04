@@ -54,7 +54,7 @@ for model in $MODELS; do
           -b $budget \
           --attempt1 tail-prioritized_2_00 \
           --attempt2 tail-prioritized_4_00 \
-          --baseline_data_dir $OLD_DIR/../data-vis/data \
+          --fnorm_data_dir $OLD_DIR/../src/data \
           --quant_cfg_allot_file data/quant-cfg-allocation.csv
     done
 done

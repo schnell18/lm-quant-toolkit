@@ -115,7 +115,7 @@ MODELS="Llama-2-7b-hf Llama-2-13b-hf Meta-Llama-3-8B"
 for model in $MODELS; do
     for budget in $BUDGETS; do
         $OLD_DIR/../data-vis/plot-mxq-allocation.R -m $model -b $budget \
-          --baseline_data_dir $OLD_DIR/../data-vis/data \
+          --fnorm_data_dir $OLD_DIR/../src/data \
           --quant_cfg_allot_file data/quant-cfg-allocation.csv
     done
 done

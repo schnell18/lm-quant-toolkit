@@ -117,7 +117,7 @@ for model in $MODELS; do
           -b $budget \
           --attempt1 $ATTEMPT \
           --attempt2 mxq1 \
-          --baseline_data_dir $OLD_DIR/../src/data \
+          --fnorm_data_dir $OLD_DIR/../src/data \
           --quant_cfg_allot_file data/quant-cfg-allocation.csv
     done
 done

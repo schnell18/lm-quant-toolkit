@@ -102,8 +102,7 @@ k_cols <- c(
   "fnorm",
   "memmb",
   "params",
-  "sensitivity",
-  "cost"
+  "sensitivity"
 )
 df_fnorm <- df_fnorm |>
   mutate(
@@ -182,15 +181,14 @@ write.xlsx(
   overwrite = TRUE,
   asTable = TRUE
 )
-df_check_sum |>
+
+df_final <- df_check_sum |>
   group_by(cfg_base, bit_budget) |>
   dplyr::summarise(
     memmb = sum(memmb),
     memmb_hqq = sum(memmb_hqq),
     fnorm = sum(fnorm),
     fnorm_hqq = sum(fnorm_hqq),
-    cost_hqq = sum(cost_hqq),
-    cost = sum(cost),
     params_tot = sum(params)
   ) |>
   mutate(
@@ -198,9 +196,6 @@ df_check_sum |>
     memmb_hqq = round(memmb_hqq, digits = 4),
     fnorm = round(fnorm, digits = 4),
     fnorm_hqq = round(fnorm_hqq, digits = 4),
-    cost_hqq = round(cost_hqq, digits = 4),
-    cost = round(cost, digits = 4),
-    sensi_imporved = cost < cost_hqq,
     fnorm_imporved = fnorm < fnorm_hqq,
     theory_memmb = params_tot * bit_budget / 8 / 1024^2,
     mem_pct_of_hqq = round(100 * memmb / memmb_hqq, digits = 4),
@@ -210,9 +205,6 @@ df_check_sum |>
     c(
       "cfg_base",
       "bit_budget",
-      "cost_hqq",
-      "cost",
-      "sensi_imporved",
       "fnorm_hqq",
       "fnorm",
       "fnorm_imporved",
@@ -224,8 +216,8 @@ df_check_sum |>
   )
 
 write.xlsx(
-  df_check_sum,
-  "allot-check-sum.xlsx",
+  df_final,
+  "df_final.xlsx",
   overwrite = TRUE,
   asTable = TRUE
 )
