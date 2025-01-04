@@ -83,7 +83,7 @@ process_dataframe <- function(df, algo_levels, algo_labels) {
     ) |>
     mutate(
       algo = ifelse(
-        algo == "mxq" & !is.na(attempt) & attempt != "mxq1",
+        algo == "mxq" & !is.na(attempt) & attempt != "mxq1" & attempt != "mxq2",
         paste0(algo, "-", attempt),
         algo
       ),

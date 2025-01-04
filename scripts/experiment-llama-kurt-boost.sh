@@ -38,7 +38,7 @@ for BOOST_STOP in $BOOST_STOPS; do
           --algo mxq \
           --weight-algo $weight_algo \
           --boost-stop $BOOST_STOP \
-          --top-n-layer $BOOST_TOP_M \
+          --top-m-layer $BOOST_TOP_M \
           --config ${BUDGETS} \
           --experiment-name "${EXP_NAME}_ppl" \
           --quant-snapshot-dir="$QUANT_SNAPSHOT_DIR/$ATTEMPT" \
