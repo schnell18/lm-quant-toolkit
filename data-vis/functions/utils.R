@@ -12,6 +12,22 @@ calc_bpp <- function(config) {
   }
 }
 
+# model = factor(
+#   model,
+#   levels = c("Llama-2-7b-hf", "Meta-Llama-3-8B", "Llama-2-13b-hf"),
+#   labels = c("Llama-2-7B", "Llama-3-8B", "Llama-2-13B")
+# )
+
+simplify_model_id <- function(model_id) {
+  if (model_id == "Llama-2-7b-hf") {
+    return("Llama-2-7B")
+  } else if (model_id == "Meta-Llama-3-8B") {
+    return("Llama-3-8B")
+  } else if (model_id == "Llama-2-13b-hf") {
+    return("Llama-2-13B")
+  }
+}
+
 budget_to_cfg <- function(budget) {
   if (budget == 3.13) {
     return("b3g128")

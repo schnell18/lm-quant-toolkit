@@ -109,7 +109,7 @@ plot_allot_one <- function(
   plot_allot_track(df, model_id, color_map, attempt3, "self_attn.o_proj")
   plot_allot_track(df, model_id, color_map, attempt4, "self_attn.o_proj")
 
-  text(0, 0, model_id, cex = 1.5, col = "darkblue")
+  text(0, 0, simplify_model_id(model_id), cex = 1.5, col = "darkblue")
   bpp <- unique(df_ppl$bpp)
   df_ppl_at1 <- df_ppl |> filter(attempt == attempt1)
   df_ppl_at2 <- df_ppl |> filter(attempt == attempt2)
@@ -140,43 +140,50 @@ plot_allot_one <- function(
 }
 
 plot_allot_circos <- function(
-    df_allot, df_ppl, models, attempt1, attempt2, attempt3, attempt4) {
+    df_allot,
+    df_ppl,
+    model_id,
+    budget,
+    attempt1,
+    attempt2,
+    attempt3,
+    attempt4) {
   model_cnt <- length(models)
   layout(matrix(1:model_cnt, nrow = 1, ncol = model_cnt))
+
   color_map <- list(
-    b2g128 =  "#a6cee3",
-    b2g64 =   "#1f78b4",
-    b2g32 =   "#b2df8a",
-    b3g128 =  "#33a02c",
-    b3g64 =   "#fb9a99",
-    b3g32 =   "#e31a1c",
-    b4g128 =  "#fdbf6f",
-    b4g64 =   "#ff7f00",
-    b4g32 =   "#cab2d6",
-    b8g128 =  "#6a3d9a",
-    b8g64 =   "#ffff99",
-    b8g32 =   "#b15928"
+    b2g128 = "#2ca25f",
+    b2g64 = "#41ae76",
+    b2g32 = "#66c2a4",
+    b3g128 = "#99d8c9",
+    b3g64 = "#ccece6",
+    b3g32 = "#e0ecf4",
+    b4g128 = "#9ebcda",
+    b4g64 = "#8c96c6",
+    b4g32 = "#8c6bb1",
+    b8g128 = "#88419d",
+    b8g64 = "#810f7c",
+    b8g32 = "#4d004b"
   )
+
   pdf(
-    paste0("pdfs/circos-", "combined", ".pdf"),
+    paste0("pdfs/circos-", model_id, "-", budget, ".pdf"),
     width = 10,
     height = 8
   )
-  for (model_id in models) {
-    df_by_model <- df_allot |> filter(model == model_id)
-    df_ppl_by_model <- df_ppl |> filter(model == model_id)
-    plot_allot_one(
-      df_by_model,
-      df_ppl_by_model,
-      model_id,
-      color_map,
-      attempt1,
-      attempt2,
-      attempt3,
-      attempt4
-    )
-    circos.clear()
-  }
+  df_by_model <- df_allot |> filter(model == model_id)
+  df_ppl_by_model <- df_ppl |> filter(model == model_id)
+  plot_allot_one(
+    df_by_model,
+    df_ppl_by_model,
+    model_id,
+    color_map,
+    attempt1,
+    attempt2,
+    attempt3,
+    attempt4
+  )
+  circos.clear()
 
   lgd_grids <- Legend(
     at = names(color_map),
@@ -229,6 +236,12 @@ parser <- add_option(
   metavar = "character"
 )
 parser <- add_option(
+  parser, c("-p", "--ppl_csv_file"),
+  type = "character",
+  help = "The combined PPL csv file",
+  metavar = "character"
+)
+parser <- add_option(
   parser, c("--attempt1"),
   type = "character",
   help = "The first attempt to plot",
@@ -238,6 +251,18 @@ parser <- add_option(
   parser, c("--attempt2"),
   type = "character",
   help = "The second attempt to plot",
+  metavar = "character"
+)
+parser <- add_option(
+  parser, c("--attempt3"),
+  type = "character",
+  help = "The third attempt to plot",
+  metavar = "character"
+)
+parser <- add_option(
+  parser, c("--attempt4"),
+  type = "character",
+  help = "The fourth attempt to plot",
   metavar = "character"
 )
 
@@ -267,10 +292,10 @@ if (is.null(args$quant_cfg_allot_file)) {
   quant_cfg_allot_file <- args$quant_cfg_allot_file
 }
 
-if (is.null(args$output_dir)) {
-  output_dir <- "pdfs/allot"
+if (is.null(args$ppl_csv_file)) {
+  ppl_csv_file <- "data/combined.csv"
 } else {
-  output_dir <- args$output_dir
+  ppl_csv_file <- args$ppl_csv_file
 }
 
 if (is.null(args$attempt1)) {
@@ -278,12 +303,9 @@ if (is.null(args$attempt1)) {
 } else {
   attempt1 <- args$attempt1
 }
-
-if (is.null(args$attempt2)) {
-  attempt2 <- "kurt-scaled"
-} else {
-  attempt2 <- args$attempt2
-}
+attempt2 <- args$attempt2
+attempt3 <- args$attempt3
+attempt4 <- args$attempt4
 
 if (is.null(args$ppl_csv_file)) {
   ppl_csv_file <- "data/combined.csv"
@@ -291,12 +313,14 @@ if (is.null(args$ppl_csv_file)) {
   ppl_csv_file <- args$ppl_csv_file
 }
 
-fnorm_dir <- path.expand(fnorm_data_dir)
+fnorm_dir <- normalizePath(fnorm_data_dir)
 fnorm_fps <- dir(
   path = fnorm_dir,
   pattern = paste0("fnorm-", model_id, "\\.csv$"),
   full.names = TRUE
 )
+print(fnorm_dir)
+print(fnorm_fps)
 names(fnorm_fps) <- sapply((basename(fnorm_fps)), strip_name)
 df_fnorm <- plyr::ldply(
   fnorm_fps,
@@ -314,20 +338,11 @@ df_fnorm <- df_fnorm |>
   ) |>
   select(all_of(k_cols))
 
-# TODO: remove debug lines
-ppl_csv_file <- "endeavors/boost/data/combined.csv"
 df_ppl_all <- read_csv(ppl_csv_file) |>
   dplyr::mutate(
-    model = factor(
-      model,
-      levels = c("Llama-2-7b-hf", "Meta-Llama-3-8B", "Llama-2-13b-hf"),
-      labels = c("Llama-2-7B", "Llama-3-8B", "Llama-2-13B")
-    ),
     attempt = R.utils::toCamelCase(attempt, split = "-", capitalize = TRUE)
   )
 
-# TODO: remove debug lines
-quant_cfg_allot_file <- "endeavors/boost/data/quant-cfg-allocation.csv"
 df_cfgs <- read_csv(quant_cfg_allot_file)
 
 df_cfg_by_budget <- df_cfgs |>
@@ -352,21 +367,10 @@ df_cfg_by_budget <- df_cfgs |>
         "b8g128", "b8g64", "b8g32"
       )
     ),
-    attempt = R.utils::toCamelCase(attempt, split = "-", capitalize = TRUE),
-    model = factor(
-      model,
-      levels = c("Llama-2-7b-hf", "Meta-Llama-3-8B", "Llama-2-13b-hf"),
-      labels = c("Llama-2-7B", "Llama-3-8B", "Llama-2-13B")
-    )
+    attempt = R.utils::toCamelCase(attempt, split = "-", capitalize = TRUE)
   )
 
-# models <- unique(df_disp$model)
-# models <- c("Llama-2-7B", "Llama-2-13B")
-models <- c("Llama-2-13B")
-attempt1 <- "Mxq1"
-attempt2 <- "SensiBoost21"
-attempt3 <- "SensiBoost22"
-attempt4 <- "SensiBoost23"
+models <- c(model_id)
 df_ppl_disp <- df_ppl_all |>
   filter(
     bpp == budget &
@@ -386,6 +390,18 @@ df_ppl_disp <- df_ppl_all |>
       "load_mem_allot"
     )
   )
-plot_allot_circos(df_cfg_by_budget, df_ppl_disp, models, attempt1, attempt2, attempt3, attempt4)
+
+for (model_id in models) {
+  plot_allot_circos(
+    df_cfg_by_budget,
+    df_ppl_disp,
+    model_id,
+    budget,
+    attempt1,
+    attempt2,
+    attempt3,
+    attempt4
+  )
+}
 
 # plot_bar(df_ppl_disp)
