@@ -47,37 +47,62 @@ plot_bar <- function(df_ppl_disp) {
   )
 }
 
-plot_allot_track <- function(df, model_id, color_map, the_attempt, the_sector) {
-  circos.track(
-    df$module,
-    ylim = c(0, 1.05),
-    bg.border = NA,
-    panel.fun = function(x, y) {
-      df_mod <- df |>
-        filter(module == CELL_META$sector.index & attempt == the_attempt)
+description_for_ppl <- function(df, the_attempt) {
+  str_content <- ""
+  df_ppl_at1 <- df |> filter(attempt == the_attempt)
+  if (dim(df_ppl_at1)[1] > 0) {
+    attempt_str <- R.utils::toCamelCase(
+      the_attempt,
+      split = "-", capitalize = TRUE
+    )
+    abbrv1 <- toupper(abbreviate(attempt_str))
+    at1_ppl_wk <- formatC(df_ppl_at1$ppl_wikitext, format = "f", digits = 2)
+    at1_ppl_c4 <- formatC(df_ppl_at1$ppl_c4, format = "f", digits = 2)
+    str_content <- paste0(
+      abbrv1, " PPL: WikiText2: ", at1_ppl_wk, " C4: ", at1_ppl_c4, "\n"
+    )
+  }
+  return(str_content)
+}
 
-      if (CELL_META$sector.index == the_sector) {
-        circos.text(
-          CELL_META$xcenter,
-          CELL_META$cell.ylim[2],
-          paste0(the_attempt, "(", toupper(abbreviate(the_attempt)), ")"),
-          cex = 0.7,
-          facing = "bending.inside",
-          niceFacing = TRUE
-        )
+plot_allot_track <- function(df, model_id, color_map, the_attempt, the_sector) {
+  df_exist_test <- df |> filter(attempt == the_attempt)
+  if (dim(df_exist_test)[1] > 0) {
+    circos.track(
+      df$module,
+      ylim = c(0, 1.05),
+      bg.border = NA,
+      panel.fun = function(x, y) {
+        df_mod <- df |>
+          filter(module == CELL_META$sector.index & attempt == the_attempt)
+
+        if (CELL_META$sector.index == the_sector) {
+          attempt_str <- R.utils::toCamelCase(
+            the_attempt,
+            split = "-", capitalize = TRUE
+          )
+          circos.text(
+            CELL_META$xcenter,
+            CELL_META$cell.ylim[2],
+            paste0(attempt_str, "(", toupper(abbreviate(attempt_str)), ")"),
+            cex = 0.7,
+            facing = "bending.inside",
+            niceFacing = TRUE
+          )
+        }
+        for (i in 1:nrow(df_mod)) {
+          row <- df_mod[i, ]
+          color <- color_map[[row$cfg]]
+          circos.rect(
+            row$layer - 1 + 0.02, 0.05,
+            row$layer - 0.02, 1,
+            border = "darkgray",
+            col = color
+          )
+        }
       }
-      for (i in 1:nrow(df_mod)) {
-        row <- df_mod[i, ]
-        color <- color_map[[row$cfg]]
-        circos.rect(
-          row$layer - 1 + 0.02, 0.05,
-          row$layer - 0.02, 1,
-          border = "darkgray",
-          col = color
-        )
-      }
-    }
-  )
+    )
+  }
 }
 
 plot_allot_one <- function(
@@ -111,29 +136,17 @@ plot_allot_one <- function(
 
   text(0, 0, simplify_model_id(model_id), cex = 1.5, col = "darkblue")
   bpp <- unique(df_ppl$bpp)
-  df_ppl_at1 <- df_ppl |> filter(attempt == attempt1)
-  df_ppl_at2 <- df_ppl |> filter(attempt == attempt2)
-  df_ppl_at3 <- df_ppl |> filter(attempt == attempt3)
-  df_ppl_at4 <- df_ppl |> filter(attempt == attempt4)
-  at1_ppl_wk <- formatC(df_ppl_at1$ppl_wikitext, format = "f", digits = 2)
-  at1_ppl_mem <- formatC(df_ppl_at1$load_mem_allot, format = "f", digits = 2)
-  at2_ppl_wk <- formatC(df_ppl_at2$ppl_wikitext, format = "f", digits = 2)
-  at2_ppl_mem <- formatC(df_ppl_at2$load_mem_allot, format = "f", digits = 2)
-  at3_ppl_wk <- formatC(df_ppl_at3$ppl_wikitext, format = "f", digits = 2)
-  at3_ppl_mem <- formatC(df_ppl_at3$load_mem_allot, format = "f", digits = 2)
-  at4_ppl_wk <- formatC(df_ppl_at4$ppl_wikitext, format = "f", digits = 2)
-  at4_ppl_mem <- formatC(df_ppl_at4$load_mem_allot, format = "f", digits = 2)
-  abbrv1 <- toupper(abbreviate(attempt1))
-  abbrv2 <- toupper(abbreviate(attempt2))
-  abbrv3 <- toupper(abbreviate(attempt3))
-  abbrv4 <- toupper(abbreviate(attempt4))
+  descr1 <- description_for_ppl(df_ppl, attempt1)
+  descr2 <- description_for_ppl(df_ppl, attempt2)
+  descr3 <- description_for_ppl(df_ppl, attempt3)
+  descr4 <- description_for_ppl(df_ppl, attempt4)
 
   str_content <- paste0(
     "Bit Budget: ", bpp, "\n",
-    abbrv1, ": PPL: ", at1_ppl_wk, " MEM: ", at1_ppl_mem, "\n",
-    abbrv2, ": PPL: ", at2_ppl_wk, " MEM: ", at2_ppl_mem, "\n",
-    abbrv3, ": PPL: ", at3_ppl_wk, " MEM: ", at3_ppl_mem, "\n",
-    abbrv4, ": PPL: ", at4_ppl_wk, " MEM: ", at4_ppl_mem, "\n"
+    descr1,
+    descr2,
+    descr3,
+    descr4
   )
 
   text(0, 0.25, str_content, cex = 0.8)
@@ -152,24 +165,24 @@ plot_allot_circos <- function(
   layout(matrix(1:model_cnt, nrow = 1, ncol = model_cnt))
 
   color_map <- list(
-    b2g128 = "#2ca25f",
-    b2g64 = "#41ae76",
-    b2g32 = "#66c2a4",
-    b3g128 = "#99d8c9",
-    b3g64 = "#ccece6",
-    b3g32 = "#e0ecf4",
-    b4g128 = "#9ebcda",
-    b4g64 = "#8c96c6",
-    b4g32 = "#8c6bb1",
-    b8g128 = "#88419d",
-    b8g64 = "#810f7c",
-    b8g32 = "#4d004b"
+    b2g128 =  "#a6cee3",
+    b2g64 =   "#1f78b4",
+    b2g32 =   "#b2df8a",
+    b3g128 =  "#33a02c",
+    b3g64 =   "#fb9a99",
+    b3g32 =   "#e31a1c",
+    b4g128 =  "#fdbf6f",
+    b4g64 =   "#ff7f00",
+    b4g32 =   "#cab2d6",
+    b8g128 =  "#6a3d9a",
+    b8g64 =   "#ffff99",
+    b8g32 =   "#b15928"
   )
 
   pdf(
-    paste0("pdfs/circos-", model_id, "-", budget, ".pdf"),
-    width = 10,
-    height = 8
+    paste0("pdfs/allot/circos-", model_id, "-", budget, ".pdf"),
+    width = 8,
+    height = 6
   )
   df_by_model <- df_allot |> filter(model == model_id)
   df_ppl_by_model <- df_ppl |> filter(model == model_id)
@@ -338,10 +351,7 @@ df_fnorm <- df_fnorm |>
   ) |>
   select(all_of(k_cols))
 
-df_ppl_all <- read_csv(ppl_csv_file) |>
-  dplyr::mutate(
-    attempt = R.utils::toCamelCase(attempt, split = "-", capitalize = TRUE)
-  )
+df_ppl_all <- read_csv(ppl_csv_file)
 
 df_cfgs <- read_csv(quant_cfg_allot_file)
 
@@ -366,8 +376,7 @@ df_cfg_by_budget <- df_cfgs |>
         "b4g128", "b4g64", "b4g32",
         "b8g128", "b8g64", "b8g32"
       )
-    ),
-    attempt = R.utils::toCamelCase(attempt, split = "-", capitalize = TRUE)
+    )
   )
 
 models <- c(model_id)

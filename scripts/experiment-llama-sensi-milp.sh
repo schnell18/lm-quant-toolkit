@@ -11,7 +11,7 @@ MODELS="0 1 2"
 MODEL_NAMES="Llama-2-7b-hf Llama-2-13b-hf Meta-Llama-3-8B"
 
 
-BOOST_TOP_MS="1 2 3"
+BOOST_TOP_MS="3"
 
 for BOOST_TOP_M in $BOOST_TOP_MS; do
     ATTEMPT="sensi-milp-${BOOST_TOP_M}"
@@ -93,33 +93,37 @@ for BOOST_TOP_M in $BOOST_TOP_MS; do
 
     # echo "=========Delete quantized models of batch ${batch_name}========="
     # find $QUANT_SNAPSHOT_DIR/$ATTEMPT -maxdepth 1 -type d | xargs rm -fr
-
     OLD_DIR=$(pwd)
     cd $RESULT_DIR/$EXP_BASE_NAME
-    if [ ! -d pdfs/allot ]; then
-        mkdir -p pdfs/allot
+    if [ ! -d pdfs ]; then
+        mkdir pdfs
     fi
     $OLD_DIR/../data-vis/combine.R \
         --baseline_data_dir $OLD_DIR/../data-vis/data \
         --mxq_data_dir data
     $OLD_DIR/../data-vis/plot-ppl-mem.R -d data/combined.csv
-    $OLD_DIR/../data-vis/plot-mem-consumption.R data/combined.csv
-    $OLD_DIR/../data-vis/plot-quant-speed.R data/combined.csv
+    $OLD_DIR/../data-vis/plot-mem-consumption.R -d data/combined.csv
+    $OLD_DIR/../data-vis/plot-quant-speed.R -d data/combined.csv
     $OLD_DIR/../data-vis/gen-table-mxq-llm.R --csv_file data/combined.csv --attempt $ATTEMPT
+    cd pdfs
     pdflatex table.tex
+    cd ..
 
     # plot configuration allocations for 3 * 12 MXQ combinations
-    for model in $MODEL_NAMES; do
+    MODELS="Llama-2-7b-hf Llama-2-13b-hf Meta-Llama-3-8B"
+    BUDGETS=${MXQ_BATCH[@]:1}
+    for model in $MODELS; do
         for budget in $BUDGETS; do
             $OLD_DIR/../data-vis/plot-mxq-allocation.R \
               -m $model \
               -b $budget \
-              --attempt1 $ATTEMPT \
-              --attempt2 mxq1 \
               --fnorm_data_dir $OLD_DIR/../src/data \
+              --attempt1 mxq1 \
+              --attempt2 $ATTEMPT \
               --quant_cfg_allot_file data/quant-cfg-allocation.csv
         done
     done
     cd $OLD_DIR
+
 done
 
