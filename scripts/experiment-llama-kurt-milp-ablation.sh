@@ -6,14 +6,14 @@ QUANT_SNAPSHOT_DIR="/fdata/llm/mxq/snapshots"
 
 # Use cached dataset to speedup wikitext, c4 ppl evaluation
 export HF_DATASETS_OFFLINE=1
-weight_algo=sensi-milp
+weight_algo=kurt-milp
 MODELS="0 1 2"
 MODEL_NAMES="Llama-2-7b-hf Llama-2-13b-hf Meta-Llama-3-8B"
 
 
 # for SensiMiLP ablation test, all topm values are equivalent
 
-ATTEMPT="sensi-milp-abl"
+ATTEMPT="kurt-milp-abl"
 EXP_BASE_NAME=$ATTEMPT
 EXP_NAME="${ATTEMPT}"
 

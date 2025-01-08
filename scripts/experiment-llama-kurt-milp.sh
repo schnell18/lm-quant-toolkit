@@ -11,7 +11,7 @@ MODELS="0 1 2"
 MODEL_NAMES="Llama-2-7b-hf Llama-2-13b-hf Meta-Llama-3-8B"
 
 
-BOOST_TOP_MS="1 2 3"
+BOOST_TOP_MS="2 3"
 
 for BOOST_TOP_M in $BOOST_TOP_MS; do
     ATTEMPT="kurt-milp-${BOOST_TOP_M}"

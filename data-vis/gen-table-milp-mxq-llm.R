@@ -51,25 +51,28 @@ if (is.null(args$comparison)) {
 baseline_levels <- c("hqq", "fp16", "awq", "gptq", "bnb")
 baseline_labels <- c("HQQ", "FP16", "AWQ", "GPTQ", "BnB")
 
-sm_levels <- c("mxq-SM2")
-sm_labels <- c("MXQ-SM2")
-km_levels <- c("mxq-KM")
-km_labels <- c("MXQ-KM")
+sm_levels <- c("mxq-SM1", "mxq-SM2", "mxq-SM3")
+sm_labels <- c("MXQ-SM1", "MXQ-SM2", "MXQ-SM3")
+km_levels <- c("mxq-KM1", "mxq-KM2", "mxq-KM3")
+km_labels <- c("MXQ-KM1", "MXQ-KM2", "MXQ-KM3")
 
-if (comparison == "sensi-vs-kurt") {
-  df_all <- read_csv(csv_fp)
-  level_pairs <- zipcat(sm_levels, km_levels)
-  label_pairs <- zipcat(sm_labels, km_labels)
+# if (comparison == "sensi-vs-kurt") {
+# }
 
-  df_latex <- process_dataframe(
-    df_all,
-    c(level_pairs, baseline_levels, "mxq"),
-    c(label_pairs, baseline_labels, "MXQ")
-  )
+# TODO: remove debug line
+csv_fp <- "endeavors/milp/data/combined.csv"
+df_all <- read_csv(csv_fp)
+level_pairs <- zipcat(sm_levels, km_levels)
+label_pairs <- zipcat(sm_labels, km_labels)
 
-  dump_latex_table(
-    df_latex,
-    paste0(experiment),
-    paste0(comparison, ".tex")
-  )
-}
+df_latex <- process_dataframe(
+  df_all,
+  c(level_pairs, baseline_levels, "mxq"),
+  c(label_pairs, baseline_labels, "MXQ")
+)
+
+dump_latex_table(
+  df_latex,
+  paste0(experiment),
+  paste0(comparison, ".tex")
+)
