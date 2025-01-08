@@ -47,19 +47,30 @@ plot_bar <- function(df_ppl_disp) {
   )
 }
 
+to_display_attempt <- function(attempt) {
+  if (attempt == "mxq1" || attempt == "mxq2") {
+    return("mxq")
+  } else if (attempt == "hqq") {
+    return("hqq")
+  } else {
+    attempt_str <- R.utils::toCamelCase(
+      attempt,
+      split = "-", capitalize = TRUE
+    )
+    return(attempt_str)
+  }
+}
+
 description_for_ppl <- function(df, the_attempt) {
   str_content <- ""
   df_ppl_at1 <- df |> filter(attempt == the_attempt)
   if (dim(df_ppl_at1)[1] > 0) {
-    attempt_str <- R.utils::toCamelCase(
-      the_attempt,
-      split = "-", capitalize = TRUE
-    )
+    attempt_str <- to_display_attempt(the_attempt)
     abbrv1 <- toupper(abbreviate(attempt_str))
     at1_ppl_wk <- formatC(df_ppl_at1$ppl_wikitext, format = "f", digits = 2)
     at1_ppl_c4 <- formatC(df_ppl_at1$ppl_c4, format = "f", digits = 2)
     str_content <- paste0(
-      abbrv1, " PPL: WikiText2: ", at1_ppl_wk, " C4: ", at1_ppl_c4, "\n"
+      abbrv1, " PPL WT: ", at1_ppl_wk, " C4: ", at1_ppl_c4, "\n"
     )
   }
   return(str_content)
@@ -77,10 +88,7 @@ plot_allot_track <- function(df, model_id, color_map, the_attempt, the_sector) {
           filter(module == CELL_META$sector.index & attempt == the_attempt)
 
         if (CELL_META$sector.index == the_sector) {
-          attempt_str <- R.utils::toCamelCase(
-            the_attempt,
-            split = "-", capitalize = TRUE
-          )
+          attempt_str <- to_display_attempt(the_attempt)
           circos.text(
             CELL_META$xcenter,
             CELL_META$cell.ylim[2],
@@ -118,7 +126,7 @@ plot_allot_one <- function(
     panel.fun = function(x, y) {
       circos.text(
         CELL_META$xcenter,
-        CELL_META$cell.ylim[2] - 0.7,
+        CELL_META$cell.ylim[2] - 0.8,
         CELL_META$sector.index,
         facing = "bending.inside",
         niceFacing = TRUE
@@ -149,7 +157,7 @@ plot_allot_one <- function(
     descr4
   )
 
-  text(0, 0.25, str_content, cex = 0.8)
+  text(0, 0.20, str_content, cex = 0.75)
 }
 
 plot_allot_circos <- function(
@@ -320,20 +328,12 @@ attempt2 <- args$attempt2
 attempt3 <- args$attempt3
 attempt4 <- args$attempt4
 
-if (is.null(args$ppl_csv_file)) {
-  ppl_csv_file <- "data/combined.csv"
-} else {
-  ppl_csv_file <- args$ppl_csv_file
-}
-
 fnorm_dir <- normalizePath(fnorm_data_dir)
 fnorm_fps <- dir(
   path = fnorm_dir,
   pattern = paste0("fnorm-", model_id, "\\.csv$"),
   full.names = TRUE
 )
-print(fnorm_dir)
-print(fnorm_fps)
 names(fnorm_fps) <- sapply((basename(fnorm_fps)), strip_name)
 df_fnorm <- plyr::ldply(
   fnorm_fps,
@@ -351,7 +351,10 @@ df_fnorm <- df_fnorm |>
   ) |>
   select(all_of(k_cols))
 
-df_ppl_all <- read_csv(ppl_csv_file)
+df_ppl_all <- read_csv(ppl_csv_file) |>
+  dplyr::mutate(
+    attempt = ifelse(is.na(attempt), algo, attempt)
+  )
 
 df_cfgs <- read_csv(quant_cfg_allot_file)
 
@@ -360,6 +363,7 @@ df_cfg_by_budget <- df_cfgs |>
     bit_budget == budget
   ) |>
   dplyr::mutate(
+    attempt = ifelse(is.na(attempt), "hqq", attempt),
     cfg = paste0("b", b1, "g", g1)
   ) |>
   select(-c("b1", "g1", "b2", "g2", "bit_budget", "memmb")) |>
