@@ -6,6 +6,12 @@ ATTMPTS="
 sensi-milp-1
 sensi-milp-2
 sensi-milp-3
+kurt-milp-1
+kurt-milp-2
+kurt-milp-3
+sensi-milp-abl-1
+sensi-milp-abl-2
+sensi-milp-abl-3
 "
 
 # copy PPL results

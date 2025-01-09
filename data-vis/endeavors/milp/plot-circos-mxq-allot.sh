@@ -11,8 +11,9 @@ Llama-2-7b-hf
 Llama-2-13b-hf
 Meta-Llama-3-8B
 "
-BUDGETS="6.89 5.72 5.02 4.51 4.25 4.21 4.17 4.13 4.11 4.07 3.95 3.87 3.83 3.65 3.51 3.25 3.19 3.15 3.13 3.11 3.07"
+#BUDGETS="6.89 5.72 5.02 4.51 4.25 4.21 4.17 4.13 4.11 4.07 3.95 3.87 3.83 3.65 3.51 3.25 3.19 3.15 3.13 3.11 3.07"
 
+BUDGETS="4.51 4.25 4.13"
 if [[ ! -d pdfs/allot ]]; then
     mkdir -p pdfs/allot
 fi
@@ -28,6 +29,6 @@ for MODEL in $MODELS; do
           --attempt1 sensi-milp-1 \
           --attempt2 sensi-milp-2 \
           --attempt3 sensi-milp-3 \
-          --attempt4 mxq2
+          --attempt4 sensi-milp-abl-1
     done
 done
