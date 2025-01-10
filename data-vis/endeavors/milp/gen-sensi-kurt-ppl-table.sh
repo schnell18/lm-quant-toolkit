@@ -11,12 +11,30 @@ $TOOLKIT_DIR/data-vis/gen-table-milp-mxq-llm.R \
   --comparison "sensi-vs-kurt" \
   --experiment "SensiMiLP vs KurtMiLP"
 
-cat<<EOF > pdfs/Makefile
-all:    sensi-vs-kurt
+$TOOLKIT_DIR/data-vis/gen-table-milp-mxq-llm.R \
+  -d data/combined.csv \
+  --comparison "sensi-vs-ablation" \
+  --experiment "SensiMiLP vs Ablation"
 
-sensi-vs-kurt: sensi-vs-kurt.tex
-	pdflatex -sync-tex=1 -shell-escape sensi-vs-kurt.tex
-	pdflatex -sync-tex=1 -shell-escape sensi-vs-kurt.tex
+$TOOLKIT_DIR/data-vis/gen-table-milp-mxq-llm.R \
+  -d data/combined.csv \
+  --comparison "kurt-vs-ablation" \
+  --experiment "KurtMiLP vs Ablation"
+
+cat<<EOF > pdfs/Makefile
+all:    sensi-vs-kurt-4bit sensi-vs-kurt-3bit sensi-vs-kurt-others
+
+sensi-vs-kurt-4bit: sensi-vs-kurt-4bit.tex
+	pdflatex -sync-tex=1 -shell-escape sensi-vs-kurt-4bit.tex
+	pdflatex -sync-tex=1 -shell-escape sensi-vs-kurt-4bit.tex
+
+sensi-vs-kurt-3bit: sensi-vs-kurt-3bit.tex
+	pdflatex -sync-tex=1 -shell-escape sensi-vs-kurt-3bit.tex
+	pdflatex -sync-tex=1 -shell-escape sensi-vs-kurt-3bit.tex
+
+sensi-vs-kurt-others: sensi-vs-kurt-others.tex
+	pdflatex -sync-tex=1 -shell-escape sensi-vs-kurt-others.tex
+	pdflatex -sync-tex=1 -shell-escape sensi-vs-kurt-others.tex
 
 clean:
 	rm -f *.aux *.log *.xml *.out *.pdf *.bcf *.toc *.blg *.bbl *.dvi *.fls

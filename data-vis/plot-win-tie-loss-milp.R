@@ -40,8 +40,6 @@ if (is.null(args$ppl_csv_file)) {
   csv_file <- args$ppl_csv_file
 }
 
-# TODO: remove debug lines
-csv_file <- "endeavors/milp/data/combined.csv"
 df_all <- read_csv(csv_file)
 
 df_hqq <- df_all |>

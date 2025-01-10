@@ -63,8 +63,10 @@ abbrev_sensi_kurt <- function(attempt) {
   attempt <- gsub("sensi-abl", "SBAB", attempt)
   attempt <- gsub("kurt-boost", "KB", attempt)
   attempt <- gsub("kurt-abl", "KBAB", attempt)
-  attempt <- gsub("sensi-milp-mini", "SM", attempt)
-  attempt <- gsub("kurt-milp-mini", "KM", attempt)
+  attempt <- gsub("sensi-milp-abl", "SMAB", attempt)
+  attempt <- gsub("kurt-milp-abl", "KMAB", attempt)
+  attempt <- gsub("sensi-milp", "SM", attempt)
+  attempt <- gsub("kurt-milp", "KM", attempt)
   attempt <- gsub("-", "", attempt)
   return(attempt)
 }

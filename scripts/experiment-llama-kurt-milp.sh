@@ -11,21 +11,19 @@ MODELS="0 1 2"
 MODEL_NAMES="Llama-2-7b-hf Llama-2-13b-hf Meta-Llama-3-8B"
 
 
-BOOST_TOP_MS="2 3"
+BOOST_TOP_MS="1 2 3"
 
 for BOOST_TOP_M in $BOOST_TOP_MS; do
     ATTEMPT="kurt-milp-${BOOST_TOP_M}"
     EXP_BASE_NAME=$ATTEMPT
-    mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
-
+    EXP_NAME="${ATTEMPT}"
     log_file="logs/bench-${ATTEMPT}-$(date +%Y%m%d%H%M%S).log"
 
+    mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,qnt,stor}
     mkdir -p $QUANT_SNAPSHOT_DIR/$ATTEMPT
     mkdir -p $RESULT_DIR/${EXP_NAME}_ppl
     mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,stor}/mxq/$ATTEMPT
 
-    # MODELS="0"
-    EXP_NAME="${ATTEMPT}"
     echo "=========Run perplexity evaluation========="
     python ../src/cli.py llm \
       --task eval_ppl \
@@ -102,10 +100,6 @@ for BOOST_TOP_M in $BOOST_TOP_MS; do
         --baseline_data_dir $OLD_DIR/../data-vis/data \
         --mxq_data_dir data
     $OLD_DIR/../data-vis/plot-ppl-mem.R -d data/combined.csv
-    $OLD_DIR/../data-vis/gen-table-mxq-llm.R --csv_file data/combined.csv --attempt $ATTEMPT
-    cd pdfs
-    pdflatex table.tex
-    cd ..
 
     cd $OLD_DIR
 

@@ -56,23 +56,78 @@ sm_labels <- c("MXQ-SM1", "MXQ-SM2", "MXQ-SM3")
 km_levels <- c("mxq-KM1", "mxq-KM2", "mxq-KM3")
 km_labels <- c("MXQ-KM1", "MXQ-KM2", "MXQ-KM3")
 
-# if (comparison == "sensi-vs-kurt") {
-# }
+sm_ab_levels <- c("mxq-SMAB")
+sm_ab_labels <- c("MXQ-SMAB")
+km_ab_levels <- c("mxq-KMAB")
+km_ab_labels <- c("MXQ-KMAB")
 
-# TODO: remove debug line
-csv_fp <- "endeavors/milp/data/combined.csv"
-df_all <- read_csv(csv_fp)
-level_pairs <- zipcat(sm_levels, km_levels)
-label_pairs <- zipcat(sm_labels, km_labels)
+if (comparison == "sensi-vs-kurt") {
+  df_no_abl <- read_csv(csv_fp) |>
+    filter(
+      !grepl("-abl", attempt)
+    )
+  level_pairs <- zipcat(sm_levels, km_levels)
+  label_pairs <- zipcat(sm_labels, km_labels)
 
-df_latex <- process_dataframe(
-  df_all,
-  c(level_pairs, baseline_levels, "mxq"),
-  c(label_pairs, baseline_labels, "MXQ")
-)
-
-dump_latex_table(
-  df_latex,
-  paste0(experiment),
-  paste0(comparison, ".tex")
-)
+  level_pairs <- zipcat(sm_levels, km_levels)
+  label_pairs <- zipcat(sm_labels, km_labels)
+  df_latex <- process_dataframe(
+    df_no_abl,
+    c(level_pairs, baseline_levels, "mxq"),
+    c(label_pairs, baseline_labels, "MXQ")
+  )
+  df_latex_4bit <- df_latex |> filter(bpp == 4.13 | bpp == 4.25 | bpp == 4.51)
+  dump_latex_table(
+    df_latex_4bit,
+    paste0(experiment, " (4-bit)"),
+    paste0(comparison, "-4bit.tex")
+  )
+  df_latex_3bit <- df_latex |> filter(bpp == 3.13 | bpp == 3.25 | bpp == 3.51)
+  dump_latex_table(
+    df_latex_3bit,
+    paste0(experiment, " (3-bit)"),
+    paste0(comparison, "-3bit.tex")
+  )
+  df_latex_others <- df_latex |>
+    filter(
+      bpp != 3.13 & bpp != 3.25 & bpp != 3.51 &
+        bpp != 4.13 & bpp != 4.25 & bpp != 4.51
+    )
+  dump_latex_table(
+    df_latex_others,
+    paste0(experiment, " (other-bit)"),
+    paste0(comparison, "-others.tex")
+  )
+} else if (comparison == "sensi-vs-ablation") {
+  df_no_kurt <- read_csv(csv_fp) |>
+    filter(
+      !grepl("kurt", attempt) & attempt != "mxq1"
+    ) |>
+    filter(algo == "mxq" | algo == "hqq")
+  df_latex <- process_dataframe(
+    df_no_kurt,
+    c(sm_levels, baseline_levels, sm_ab_levels, "mxq"),
+    c(sm_labels, baseline_labels, sm_ab_labels, "MXQ")
+  )
+  dump_latex_table(
+    df_latex,
+    experiment,
+    paste0(comparison, ".tex")
+  )
+} else if (comparison == "kurt-vs-ablation") {
+  df_no_sensi <- read_csv(csv_fp) |>
+    filter(
+      !grepl("sensi", attempt) & attempt != "mxq1"
+    ) |>
+    filter(algo == "mxq" | algo == "hqq")
+  df_latex <- process_dataframe(
+    df_no_sensi,
+    c(km_levels, baseline_levels, km_ab_levels, "mxq"),
+    c(km_labels, baseline_labels, km_ab_labels, "MXQ")
+  )
+  dump_latex_table(
+    df_latex,
+    experiment,
+    paste0(comparison, ".tex")
+  )
+}

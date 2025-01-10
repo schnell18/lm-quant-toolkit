@@ -10,8 +10,8 @@ kurt-milp-1
 kurt-milp-2
 kurt-milp-3
 sensi-milp-abl-1
-kurt-milp-abl
 "
+# kurt-milp-abl
 
 # copy PPL results
 mkdir -p "data/ppl/mxq"
@@ -27,6 +27,11 @@ done
 cp -r "$TOOLKIT_DIR/data-vis/data/ppl/mxq/mxq2" data/ppl/mxq
 cp -r "$TOOLKIT_DIR/data-vis/data/stor/mxq/mxq2" data/stor/mxq
 cp -r "$TOOLKIT_DIR/data-vis/data/allot/mxq/mxq2" data/allot/mxq
+
+# rename sensi-milp-abl-1 to sensi-milp-abl
+mv data/ppl/mxq/sensi-milp-abl-1 data/ppl/mxq/sensi-milp-abl
+mv data/stor/mxq/sensi-milp-abl-1 data/stor/mxq/sensi-milp-abl
+mv data/allot/mxq/sensi-milp-abl-1 data/allot/mxq/sensi-milp-abl
 
 $TOOLKIT_DIR/data-vis/combine.R \
     --baseline_data_dir $TOOLKIT_DIR/data-vis/data \
