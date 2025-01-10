@@ -77,7 +77,8 @@ df_sm_mxq_sum <- calc_wtl_score(
   df_side_a,
   df_mxq,
   sidea_name,
-  sideb_name
+  sideb_name,
+  dump_det_data = TRUE
 )
 
 # kurt-milp vs MXQ ------------------------------------------------------
@@ -90,7 +91,8 @@ df_km_mxq_sum <- calc_wtl_score(
   df_side_a,
   df_mxq,
   sidea_name,
-  sideb_name
+  sideb_name,
+  dump_det_data = TRUE
 )
 
 # kurt-milp vs HQQ ------------------------------------------------------

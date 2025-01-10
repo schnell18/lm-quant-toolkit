@@ -38,7 +38,8 @@ calc_wtl_score <- function(
     df_side_b,
     sidea_name,
     sideb_name,
-    join_cond = c("model", "bpp")) {
+    join_cond = c("model", "bpp"),
+    dump_det_data = FALSE) {
   key_fields <- c(
     "algo",
     "config",
@@ -81,15 +82,23 @@ calc_wtl_score <- function(
         "algo",
         "config",
         "bpp",
+        "attempt_sidea",
         "wins",
         "losses",
         "ties",
         "ppl_wikitext_sidea",
-        "ppl_c4_sidea",
         "ppl_wikitext",
+        "ppl_c4_sidea",
         "ppl_c4"
       )
     )
+  if (dump_det_data) {
+    write.xlsx(
+      df_det,
+      paste0("df_det-", sidea_name, "-", sideb_name, ".xlsx"),
+      asTable = TRUE
+    )
+  }
 
   df_sum <- df_det |>
     group_by(model) |>

@@ -22,7 +22,7 @@ $TOOLKIT_DIR/data-vis/gen-table-milp-mxq-llm.R \
   --experiment "KurtMiLP vs Ablation"
 
 cat<<EOF > pdfs/Makefile
-all:    sensi-vs-kurt-4bit sensi-vs-kurt-3bit sensi-vs-kurt-others
+all:    sensi-vs-kurt-4bit sensi-vs-kurt-3bit sensi-vs-kurt-others sensi-abl kurt-abl
 
 sensi-vs-kurt-4bit: sensi-vs-kurt-4bit.tex
 	pdflatex -sync-tex=1 -shell-escape sensi-vs-kurt-4bit.tex
@@ -35,6 +35,14 @@ sensi-vs-kurt-3bit: sensi-vs-kurt-3bit.tex
 sensi-vs-kurt-others: sensi-vs-kurt-others.tex
 	pdflatex -sync-tex=1 -shell-escape sensi-vs-kurt-others.tex
 	pdflatex -sync-tex=1 -shell-escape sensi-vs-kurt-others.tex
+
+sensi-abl: sensi-vs-ablation.tex
+	pdflatex -sync-tex=1 -shell-escape sensi-vs-ablation.tex
+	pdflatex -sync-tex=1 -shell-escape sensi-vs-ablation.tex
+
+kurt-abl: kurt-vs-ablation.tex
+	pdflatex -sync-tex=1 -shell-escape kurt-vs-ablation.tex
+	pdflatex -sync-tex=1 -shell-escape kurt-vs-ablation.tex
 
 clean:
 	rm -f *.aux *.log *.xml *.out *.pdf *.bcf *.toc *.blg *.bbl *.dvi *.fls
