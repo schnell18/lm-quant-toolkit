@@ -10,8 +10,8 @@ kurt-milp-1
 kurt-milp-2
 kurt-milp-3
 sensi-milp-abl-1
+kurt-milp-abl
 "
-# kurt-milp-abl
 
 # copy PPL results
 mkdir -p "data/ppl/mxq"
