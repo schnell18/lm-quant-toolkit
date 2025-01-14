@@ -145,7 +145,13 @@ def try_solvable(model_arch, bit_budget, step):
         _, fp = get_mxq_quant_meta_data_file(model_id)
         while True:
             try:
-                find_optimal_configs(fp, feasible_budget, time_limit=200)
+                # find_optimal_configs(fp, feasible_budget, time_limit=200)
+                find_optimal_configs(
+                    fp,
+                    feasible_budget,
+                    time_limit=200,
+                    weight_algo="sensi-milp",
+                )
                 dikt[model_id] = feasible_budget
                 break
             except ValueError:
@@ -228,4 +234,6 @@ def fill_gaps():
 
 
 if __name__ == "__main__":
-    fill_gaps()
+    # fill_gaps()
+    plan_432_bits()
+    plan_567_bits()

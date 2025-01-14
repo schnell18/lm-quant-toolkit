@@ -19,7 +19,7 @@ LLAMA_MODELS = {
     "meta-llama/Llama-3.1-8B": {
         "layers": 32,
         "llama2": False,
-        "experiment": True,
+        "experiment": False,
     },
     "meta-llama/Meta-Llama-3-70B": {
         "layers": 80,
