@@ -6,7 +6,7 @@ fi
 
 python ../src/cli.py vit \
     --task eval_linear_probe \
-    --model 0 1 2 \
+    --model 0 1 \
     --algo mxq \
     --experiment-name eval_lp_BLH_mxq \
     --quant-snapshot-dir="/fdata/llm/mxq/snapshots" \

@@ -26,7 +26,10 @@ def eval_clip_benchmark(
         if mixed:
             budget = quant_config["budget"]
             qmf = quant_config["quant_metrics_file"]
-            extra_args = f"budget={budget},quant_metrics_file={qmf}"
+            weight_algo = quant_config["weight_algo"]
+            boost_stop = quant_config["boost_stop"]
+            top_m_layer = quant_config["top_m_layer"]
+            extra_args = f"budget={budget},quant_metrics_file={qmf},weight_algo={weight_algo},boost_stop={boost_stop},top_m_layer={top_m_layer}"
         else:
             b = quant_config["weight_quant_params"]["nbits"]
             g = quant_config["weight_quant_params"]["group_size"]

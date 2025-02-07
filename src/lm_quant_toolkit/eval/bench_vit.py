@@ -82,6 +82,7 @@ def do_expermient(
     quant_dir="snapshots",
     result_dir="results",
     track_cuda_memory=False,
+    **kwargs,
 ):
     df_all = gen_experiment_items(models, tasks)
     progress_path = os.path.join(result_dir, experiment_name, "progress.csv")
@@ -141,6 +142,10 @@ def do_expermient(
                     print(f"Quantization meta data file: {metric_fp} doesn't exists!")
                     return
                 quant_config["quant_metrics_file"] = metric_fp
+                quant_config["weight_algo"] = kwargs.get("weight_algo", None)
+                quant_config["boost_stop"] = kwargs.get("boost_stop", None)
+                quant_config["decline_stop"] = kwargs.get("decline_stop", None)
+                quant_config["top_m_layer"] = kwargs.get("top_m_layer", None)
         if task_type == "eval_zeroshot_cls":
             # avoid interventions between models
             metric = eval_zeroshot_classification(

@@ -240,6 +240,54 @@ def get_parser_args():
         help="name of the experiment",
     )
 
+    parser_vit.add_argument(
+        "--weight-algo",
+        default=None,
+        type=str,
+        help="Apply weighted F Norm for MiLP objective, None or `kurt-scaled`",
+    )
+
+    parser_vit.add_argument(
+        "--boost-stop",
+        default=None,
+        type=int,
+        help="stops to increase",
+    )
+
+    parser_vit.add_argument(
+        "--decline-stop",
+        default=None,
+        type=int,
+        help="stops to decrease",
+    )
+
+    parser_vit.add_argument(
+        "--factor",
+        default=2.0,
+        type=float,
+        help="factor to apply",
+    )
+
+    parser_vit.add_argument(
+        "--top-m-layer",
+        default=1,
+        type=int,
+        help="The top m most sensitive layers to assign extra memory. 0 means all layers.",
+    )
+
+    parser_vit.add_argument(
+        "--ablation",
+        dest="ablation",
+        action="store_true",
+        help="Enable ablation mode",
+    )
+    parser_vit.add_argument(
+        "--no-ablation",
+        dest="ablation",
+        action="store_false",
+        help="Disable ablation mode",
+    )
+
     parser_dump = subparsers.add_parser("dump", help="Dump MXQ meta data")
     parser_dump.set_defaults(which="dump")
 
@@ -458,6 +506,14 @@ def main_vit(args):
         algo_str = "-".join(args.algo)
         cfg_str = "-".join(args.config)
         experiment_name = f"{args.task}-{algo_str}-{cfg_str}"
+    kwargs = {
+        "weight_algo": args.weight_algo,
+        "boost_stop": args.boost_stop,
+        "decline_stop": args.decline_stop,
+        "top_m_layer": args.top_m_layer,
+        "ablation": args.ablation,
+        "factor": args.factor,
+    }
     do_expermient_vit(
         experiment_name,
         models,
@@ -465,6 +521,7 @@ def main_vit(args):
         quant_dir=args.quant_snapshot_dir,
         result_dir=args.result_dir,
         track_cuda_memory=args.track_cuda_memory,
+        **kwargs,
     )
 
 

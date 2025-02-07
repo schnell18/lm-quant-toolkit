@@ -46,6 +46,40 @@ def calculate_kurtosis_llm(model_id, base_dir, layers, output_dir):
     df.to_csv(csv_fp, index=False)
 
 
+def calculate_kurtosis_vit(model_id, model_cfg, output_dir):
+    modules = [
+        "mlp.c_fc",
+        "mlp.c_proj",
+    ]
+    dikts = []
+    state_dict = load_state_dict(model_id)
+    for layer_type, layers in model_cfg.items():
+        if layer_type == "vlayers":
+            model_type = "vision"
+            prefix = "visual.transformer"
+        else:
+            model_type = "text"
+            prefix = "transformer"
+        for i, module in enumerate(modules):
+            for layer in range(layers):
+                full_name = f"{prefix}.resblocks.{layer}.{module}.weight"
+                w = state_dict[full_name]
+                w = w.flatten().float().numpy()
+                kurt_pearson = kurtosis(
+                    w, axis=None, fisher=False, bias=True, nan_policy="omit"
+                )
+                dikt = {
+                    "module": f"{model_type}.{module}",
+                    "layer": layer,
+                    "kurtosis": kurt_pearson,
+                }
+                dikts.append(dikt)
+    df = pd.DataFrame(dikts)
+    short_id = model_id.split("/")[1]
+    csv_fp = f"{output_dir}/kurtosis-{short_id}.csv"
+    df.to_csv(csv_fp, index=False)
+
+
 def summarize_vit_percentiles(
     model_id,
     model_cfg,
@@ -245,8 +279,13 @@ def summarize_vit_wdist(base_dir="data"):
     for model_id, cfg in VIT_OPENCLIP_MODELS.items():
         csv_file = f"data/wdist-{model_id.split('/')[1]}.csv"
         summarize_vit_percentiles(model_id, cfg, csv_file)
-        # dump_vit_weight_names(model_id)
+
+
+def calculate_vit_kurtosis():
+    for model_id, cfg in VIT_OPENCLIP_MODELS.items():
+        calculate_kurtosis_vit(model_id, cfg, "data")
 
 
 if __name__ == "__main__":
-    summarize_known_vit_quantable_params()
+    calculate_vit_kurtosis()
+    # summarize_known_vit_quantable_params()
