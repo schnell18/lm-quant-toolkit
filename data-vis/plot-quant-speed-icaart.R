@@ -89,4 +89,4 @@ ggplot(disp, aes(x = algo, y = quant_duration, fill = algo)) +
   # facet_grid(config ~ model, scales = "free" ) +
   facet_grid(config ~ model) +
   scale_color_tableau()
-ggsave("pdfs/llama-quant-speed.pdf", width = 8, height = 6)
+ggsave("pdfs/llama-quant-speed.pdf", width = 10, height = 4)

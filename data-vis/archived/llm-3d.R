@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 library(plotly)
 library(safetensors)
 library(jsonlite)
@@ -91,6 +93,6 @@ fig2 <- subplot(p2) |>
       camera = list(eye = list(x = 1.5, y = 1.5, z = 0.3))
     )
   )
-save_image(fig1, "llama2-7b-3D-orig.pdf", weight = 1400, height = 1000)
-save_image(fig2, "llama2-7b-3D-quant.pdf", scale = 2)
-save_image(fig1, "llama2-7b-3D-orig.pdf", scale = 3)
+save_image(fig1, "pdfs/llama2-7b-3D.pdf", weight = 1400, height = 1000)
+save_image(fig2, "pdfs/llama2-7b-3D-quant.pdf", scale = 2)
+save_image(fig1, "pdfs/llama2-7b-3D-orig.pdf", scale = 3)

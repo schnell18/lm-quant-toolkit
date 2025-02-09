@@ -69,7 +69,8 @@ df_sb_sum <- calc_wtl_score(
   df_side_a,
   df_hqq,
   sidea_name,
-  sideb_name
+  sideb_name,
+  dump_det_data = TRUE
 )
 
 # sensi-boost vs MXQ ------------------------------------------------------
@@ -103,7 +104,8 @@ df_kb_sum <- calc_wtl_score(
   df_all |> filter(grepl(sidea_name, attempt)),
   df_hqq,
   sidea_name,
-  sideb_name
+  sideb_name,
+  dump_det_data = TRUE
 )
 
 # kurt-boost vs kurt-boost ablation ----------------------------------------
@@ -145,7 +147,8 @@ df_sk_sum <- calc_wtl_score(
   df_side_b,
   sidea_name,
   sideb_name,
-  c("model", "bpp", "setting")
+  c("model", "bpp", "setting"),
+  dump_det_data = TRUE
 )
 
 # df_ks_sum <- df_sk_sum |>

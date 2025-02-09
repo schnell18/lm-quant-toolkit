@@ -29,11 +29,10 @@ pick_attempt_data_milp <- function(df, attempt_prefix) {
   return(df_side)
 }
 
-
 # Mandatory columns df_side_x:
 #   model, algo, config, bpp, attempt, ppl_wikitext, ppl_c4, load_mem_allot
 # Optional columns df_side_x: setting
-calc_wtl_score <- function(
+calc_wtl_score_det <- function(
     df_side_a,
     df_side_b,
     sidea_name,
@@ -99,7 +98,27 @@ calc_wtl_score <- function(
       asTable = TRUE
     )
   }
+  return(df_det)
+}
 
+# Mandatory columns df_side_x:
+#   model, algo, config, bpp, attempt, ppl_wikitext, ppl_c4, load_mem_allot
+# Optional columns df_side_x: setting
+calc_wtl_score <- function(
+    df_side_a,
+    df_side_b,
+    sidea_name,
+    sideb_name,
+    join_cond = c("model", "bpp"),
+    dump_det_data = FALSE) {
+  df_det <- calc_wtl_score_det(
+    df_side_a,
+    df_side_b,
+    sidea_name,
+    sideb_name,
+    join_cond = join_cond,
+    dump_det_data = dump_det_data
+  )
   df_sum <- df_det |>
     group_by(model) |>
     summarise(

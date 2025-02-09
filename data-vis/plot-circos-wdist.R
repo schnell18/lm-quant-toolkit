@@ -5,7 +5,7 @@ library(readr)
 library(optparse)
 library(circlize)
 
-plot_wdist_circle <- function(df, model_id) {
+plot_wdist_circle <- function(df, model_id, draw_sensitivity = TRUE) {
   circos.clear()
   circos.par("track.height" = 0.3)
   circos.par("gap.degree" = 7)
@@ -58,28 +58,33 @@ plot_wdist_circle <- function(df, model_id) {
       )
     }
   )
-  circos.track(
-    df$module,
-    x = df$layer,
-    y = df$sensitivity,
-    track.height = 0.15,
-    panel.fun = function(x, y) {
-      df_mod <- df |>
-        filter(module == CELL_META$sector.index)
 
-      if (CELL_META$sector.index == "self_attn.q_proj") {
-        circos.text(
-          CELL_META$xcenter,
-          CELL_META$cell.ylim[1] + 1.1,
-          "Sensitivity",
-          cex = 0.7,
-          facing = "bending.inside",
-          niceFacing = TRUE
-        )
+  if (draw_sensitivity) {
+    circos.track(
+      df$module,
+      x = df$layer,
+      y = df$sensitivity,
+      track.height = 0.15,
+      panel.fun = function(x, y) {
+        df_mod <- df |>
+          filter(module == CELL_META$sector.index)
+
+        if (CELL_META$sector.index == "self_attn.q_proj") {
+          circos.text(
+            CELL_META$xcenter,
+            CELL_META$cell.ylim[1] + 1.1,
+            "Sensitivity",
+            cex = 0.7,
+            facing = "bending.inside",
+            niceFacing = TRUE
+          )
+        }
+        circos.lines(df_mod$layer, df_mod$sensitivity, col = "brown")
       }
-      circos.lines(df_mod$layer, df_mod$sensitivity, col = "brown")
-    }
-  )
+    )
+  }
+
+
   circos.track(
     df$module,
     x = df$layer,
@@ -215,7 +220,7 @@ for (model_id in models) {
     height = 8
   )
   df_disp <- df_wdist |> filter(model == model_id)
-  plot_wdist_circle(df_disp, model_id)
+  plot_wdist_circle(df_disp, model_id, draw_sensitivity = FALSE)
   circos.clear()
   dev.off()
 }
