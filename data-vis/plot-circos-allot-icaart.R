@@ -97,7 +97,7 @@ plot_allot_track <- function(df, model_id, color_map, the_attempt, the_sector) {
           circos.text(
             CELL_META$xcenter,
             CELL_META$cell.ylim[2],
-            paste0(attempt_str, "(", toupper(abbreviate(attempt_str)), ")"),
+            toupper(abbreviate(attempt_str)),
             cex = 0.7,
             facing = "bending.inside",
             niceFacing = TRUE
@@ -121,13 +121,13 @@ plot_allot_track <- function(df, model_id, color_map, the_attempt, the_sector) {
 plot_allot_one <- function(
     df, df_ppl, model_id, color_map, attempt1, attempt2, attempt3, attempt4) {
   circos.clear()
-  circos.par("track.height" = 0.12)
+  circos.par("track.height" = 0.14)
   circos.par("gap.degree" = 2)
   circos.initialize(df$module, x = df$layer)
 
   circos.track(
     ylim = c(0, 1),
-    track.height = 0.12,
+    track.height = 0.14,
     panel.fun = function(x, y) {
       circos.text(
         CELL_META$xcenter,
@@ -144,22 +144,16 @@ plot_allot_one <- function(
   )
   plot_allot_track(df, model_id, color_map, attempt1, "self_attn.o_proj")
   plot_allot_track(df, model_id, color_map, attempt2, "self_attn.o_proj")
-  # plot_allot_track(df, model_id, color_map, attempt3, "self_attn.o_proj")
-  # plot_allot_track(df, model_id, color_map, attempt4, "self_attn.o_proj")
 
   text(0, 0, simplify_model_id(model_id), cex = 1.5, col = "darkblue")
   bpp <- unique(df_ppl$bpp)
   descr1 <- description_for_ppl(df_ppl, attempt1)
   descr2 <- description_for_ppl(df_ppl, attempt2)
-  # descr3 <- description_for_ppl(df_ppl, attempt3)
-  # descr4 <- description_for_ppl(df_ppl, attempt4)
 
   str_content <- paste0(
     "Bit Budget: ", bpp, "\n",
     descr1,
     descr2
-    # descr3,
-    # descr4
   )
 
   text(0, 0.20, str_content, cex = 0.75)

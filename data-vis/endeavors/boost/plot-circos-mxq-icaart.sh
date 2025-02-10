@@ -15,7 +15,7 @@ BUDGETS="4.25 4.13 4.51"
 
 for MODEL in $MODELS; do
     for BUDGET in $BUDGETS; do
-        $TOOLKIT_DIR/data-vis/plot-circos-allot.R \
+        $TOOLKIT_DIR/data-vis/plot-circos-allot-icaart.R \
           --model $MODEL \
           --budget $BUDGET \
           --fnorm_data_dir $TOOLKIT_DIR/src/data/ \
