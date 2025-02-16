@@ -15,6 +15,17 @@ results. Specifically, lm-quant-toolkit consists of:
 - Calibration Dataset Generation Tool
 - Visualization Tools
 
+## Citation
+
+~~~~
+@inproceedings{zhang2025mxq,
+  title = {A Mixed Quantization Approach for Data-Free Quantization of LLMs},
+  author = {Feng Zhang and Yanbin Liu and Weihua Li and Xiaodan Wang and Quan Bai},
+  year = {2025},
+  url = {https://openreview.net/forum?id=M3Y74vmsMcY},
+}
+~~~~
+
 ## Setup test harness
 
 Most tools are implemented in Python and are extensively tested under the
