@@ -58,6 +58,21 @@ budget_to_cfg <- function(budget) {
   }
 }
 
+boost_budget <- function(budget, stop = 1) {
+  budget_list <- list(
+    2.13, 2.25, 2.51, 3.13, 3.25, 3.51, 4.13, 4.25, 4.51, 8.13, 8.25, 8.51
+  )
+  len_budget <- length(budget_list)
+  idx <- which(budget_list == budget)
+  if (length(idx) > 0) {
+    while (idx + stop > len_budget) {
+      stop <- stop - 1
+    }
+    return(budget_list[[idx + stop]])
+  }
+  return(budget)
+}
+
 abbrev_sensi_kurt <- function(attempt) {
   attempt <- gsub("sensi-boost", "SB", attempt)
   attempt <- gsub("sensi-abl", "SBAB", attempt)
