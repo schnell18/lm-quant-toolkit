@@ -4,10 +4,6 @@ library(ggplot2)
 library(dplyr)
 library(tidyverse)
 library(readr)
-library(openxlsx)
-library(optparse)
-library(this.path)
-library(viridis)
 
 combined_csv_fp <- "endeavors/boost/data/combined.csv"
 
@@ -58,6 +54,7 @@ df_kb <- read_csv(combined_csv_fp) |>
 for (mdl in unique(df_kb$model)) {
   df_plot <- df_kb |> filter(model == mdl)
   plt <- ggplot(df_plot, aes(x = bpp, y = ppl, fill = dataset)) +
+    scale_fill_manual(values = c("#fc8d62", "#66c2a5")) +
     geom_bar(
       aes(fill = dataset),
       stat = "identity", color = "white",

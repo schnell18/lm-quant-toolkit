@@ -159,7 +159,7 @@ for (model in models) {
   # Create histograms with normal curve overlay for trimmed data
   plt_hist_kurt <- ggplot(df_plot_trimmed_kurt, aes(x = kurt_diff_trimmed)) +
     geom_histogram(
-      aes(y = ..density..),
+      aes(y = after_stat(density)),
       bins = 10,
       fill = "lightblue",
       color = "black"
@@ -193,7 +193,7 @@ for (model in models) {
   # Create histograms with normal curve overlay for trimmed data
   plt_hist_sensi <- ggplot(df_plot_trimmed_sensi, aes(x = sensi_diff_trimmed)) +
     geom_histogram(
-      aes(y = ..density..),
+      aes(y = after_stat(density)),
       bins = 10,
       fill = "lightblue",
       color = "black"
