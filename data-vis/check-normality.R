@@ -47,6 +47,8 @@ for (model in models) {
     filter(!is.na(kurt_diff)) |>
     filter(!is.na(sensi_diff))
 
+  kurt_trim_pct <- 0.10
+  sensi_trim_pct <- 0.20
   # Apply trimming for each module and perform Shapiro-Wilk test
   trimmed_results <- df_diff |>
     group_by(module) |>
@@ -54,7 +56,7 @@ for (model in models) {
 
       # Create a trimmed version of kurt_diff
       kurt_diff_trimmed = list(
-        trim_extreme_values(kurt_diff, trim_percent = 0.10)
+        trim_extreme_values(kurt_diff, trim_percent = kurt_trim_pct)
       ),
       kurt_n_trimmed = sapply(kurt_diff_trimmed, length),
 
@@ -71,7 +73,7 @@ for (model in models) {
 
       # Create a trimmed version of sensi_diff
       sensi_diff_trimmed = list(
-        trim_extreme_values(sensi_diff, trim_percent = 0.20)
+        trim_extreme_values(sensi_diff, trim_percent = sensi_trim_pct)
       ),
       sensi_n_trimmed = sapply(sensi_diff_trimmed, length),
 
@@ -94,7 +96,7 @@ for (model in models) {
     do({
       kurt_trimmed_values <- trim_extreme_values(
         .$kurt_diff,
-        trim_percent = 0.1
+        trim_percent = kurt_trim_pct
       )
       data.frame(
         module = .$module[1],
@@ -107,7 +109,7 @@ for (model in models) {
     do({
       sensi_trimmed_values <- trim_extreme_values(
         .$kurt_diff,
-        trim_percent = 0.2
+        trim_percent = sensi_trim_pct
       )
       data.frame(
         module = .$module[1],
@@ -156,35 +158,42 @@ for (model in models) {
     height = 6
   )
 
+  hist_fill_color <- "#66c2a5"
+  density_line_color <- "#fc8d62"
+  norm_line_color <- "blue"
   # Create histograms with normal curve overlay for trimmed data
   plt_hist_kurt <- ggplot(df_plot_trimmed_kurt, aes(x = kurt_diff_trimmed)) +
     geom_histogram(
       aes(y = after_stat(density)),
       bins = 10,
-      fill = "lightblue",
+      fill = hist_fill_color,
       color = "black"
     ) +
-    geom_density(color = "red", linewidth = 1) +
+    geom_density(color = density_line_color, linewidth = 1) +
     stat_function(
       fun = dnorm,
       args = list(
         mean = mean(df_plot_trimmed_kurt$kurt_diff_trimmed),
         sd = sd(df_plot_trimmed_kurt$kurt_diff_trimmed)
       ),
-      color = "blue", linewidth = 1, linetype = "dashed"
+      color = norm_line_color, linewidth = 1, linetype = "dashed"
     ) +
     facet_wrap(~module, scales = "free") +
     labs(
-      title = paste0(
-        model,
-        " - Histograms of Kurtosis Differences with Normal Curve Overlay"
+      # title = paste0(
+      #   model,
+      #   " - Histograms of Kurtosis Differences with Normal Curve Overlay"
+      # ),
+      x = paste0(
+        "Kurtosis Difference (",
+        formatC(kurt_trim_pct * 100, format = "f", digits = 0),
+        "% Trimmed)"
       ),
-      x = "Kurtosis Difference (Trimmed)",
       y = "Density"
     ) +
     theme_minimal()
   ggsave(
-    paste0("pdfs/hist_kurt", model, ".pdf"),
+    paste0("pdfs/hist-kurt-", model, ".pdf"),
     plot = plt_hist_kurt,
     width = 10,
     height = 6
@@ -195,30 +204,34 @@ for (model in models) {
     geom_histogram(
       aes(y = after_stat(density)),
       bins = 10,
-      fill = "lightblue",
+      fill = hist_fill_color,
       color = "black"
     ) +
-    geom_density(color = "red", linewidth = 1) +
+    geom_density(color = density_line_color, linewidth = 1) +
     stat_function(
       fun = dnorm,
       args = list(
         mean = mean(df_plot_trimmed_sensi$sensi_diff_trimmed),
         sd = sd(df_plot_trimmed_sensi$sensi_diff_trimmed)
       ),
-      color = "blue", linewidth = 1, linetype = "dashed"
+      color = norm_line_color, linewidth = 1, linetype = "dashed"
     ) +
     facet_wrap(~module, scales = "free") +
     labs(
-      title = paste0(
-        model,
-        " - Histograms of Sensitivity Differences with Normal Curve Overlay"
+      # title = paste0(
+      #   model,
+      #   " - Histograms of Sensitivity Differences with Normal Curve Overlay"
+      # ),
+      x = paste0(
+        "Sensitivity Difference (",
+        formatC(sensi_trim_pct * 100, format = "f", digits = 0),
+        "% Trimmed)"
       ),
-      x = "Sensitivity Difference (Trimmed)",
       y = "Density"
     ) +
     theme_minimal()
   ggsave(
-    paste0("pdfs/hist_sensi", model, ".pdf"),
+    paste0("pdfs/hist-sensi-", model, ".pdf"),
     plot = plt_hist_sensi,
     width = 10,
     height = 6
