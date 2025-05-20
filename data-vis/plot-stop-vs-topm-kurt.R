@@ -10,7 +10,6 @@ combined_csv_fp <- "endeavors/boost/data/combined.csv"
 df_kb <- read_csv(combined_csv_fp) |>
   filter(
     grepl("kurt-boost", attempt)
-    # grepl("kurt-boost", attempt) | grepl("sensi-boost", attempt)
   ) |>
   separate_wider_regex(
     attempt,
@@ -30,12 +29,12 @@ df_kb <- read_csv(combined_csv_fp) |>
     stop = factor(
       stop,
       levels = c(2, 3),
-      labels = c("2 Stops", "3 Stops")
+      labels = c("2 Boost Levels", "3 Boost Levels")
     ),
     topm = factor(
       topm,
-      levels = c(1, 2, 3),
-      labels = c("Top 1", "Top 2", "Top 3")
+      levels = c(1, 2, 3, 0),
+      labels = c("1", "2", "3", "Max")
     ),
     bpp = factor(
       bpp,
@@ -48,54 +47,42 @@ df_kb <- read_csv(combined_csv_fp) |>
       labels = c("WikiText2", "C4")
     ),
   ) |>
-  filter(topm != 0) |>
   select(c("model", "bpp", "ppl", "dataset", "method", "stop", "topm"))
 
-for (mdl in unique(df_kb$model)) {
-  df_plot <- df_kb |> filter(model == mdl)
-  plt <- ggplot(df_plot, aes(x = bpp, y = ppl, fill = dataset)) +
-    scale_fill_manual(values = c("#fc8d62", "#66c2a5")) +
-    geom_bar(
-      aes(fill = dataset),
-      stat = "identity", color = "white",
-      position = position_dodge(0.9)
-    ) +
-    geom_text(
-      data = subset(df_plot, dataset == "WikiText2"),
-      aes(y = ppl, label = formatC(ppl, format = "f", digits = 2)),
-      nudge_x = -0.25,
-      nudge_y = 0.3,
-      size = 2.8
-    ) +
-    geom_text(
-      data = subset(df_plot, dataset == "C4"),
-      aes(y = ppl, label = formatC(ppl, format = "f", digits = 2)),
-      nudge_x = 0.2,
-      nudge_y = 0.3,
-      size = 2.8
-    ) +
-    labs(
-      # title = paste0(
-      #   "Perplexity of ",
-      #   mdl,
-      #   " under various boost stops and topm"
-      # ),
-      x = "Bit Per Parameter",
-      y = "Perplexity"
-    ) +
-    theme(
-      legend.position = "bottom",
-      strip.background = element_rect(
-        color = "darkgray", fill = "white", linewidth = 1.0, linetype = "solid"
-      ),
-      legend.title = element_blank()
-    ) +
-    facet_grid(stop ~ topm)
-  ggsave(
-    create.dir = TRUE,
-    plot = plt,
-    paste0("pdfs/ppl-stop-vs-topm-", mdl, ".pdf"),
-    height = 6,
-    width = 10
-  )
-}
+df_plot <- df_kb |>
+  filter(bpp == 4.13 | bpp == 4.25 | bpp == 4.51) |>
+  filter(dataset == "WikiText2")
+# filter(model == "Llama-2-13B")
+
+plt <- ggplot(df_plot, aes(x = topm, y = ppl)) +
+  scale_fill_manual(values = c("#fc8d62", "#66c2a5")) +
+  geom_point(aes(shape = stop, color = stop)) +
+  geom_line(aes(group = stop, color = stop)) +
+  labs(
+    x = "Topm",
+    y = "Perplexity"
+  ) +
+  theme(
+    legend.position = "bottom",
+    strip.background = element_rect(
+      color = "darkgray", fill = "white", linewidth = 1.0, linetype = "solid"
+    ),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14),
+    legend.title = element_blank()
+  ) +
+  scale_y_continuous(
+    labels = function(y) format(y, nsmall = 3, scientific = FALSE)
+  ) +
+  facet_grid(model ~ bpp, scales = "free")
+# facet_grid(dataset ~ bpp, scales = "free")
+
+ggsave(
+  create.dir = TRUE,
+  plot = plt,
+  paste0("pdfs/ppl-stop-vs-topm.pdf"),
+  height = 6,
+  width = 7
+)
