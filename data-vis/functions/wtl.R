@@ -148,10 +148,10 @@ plot_win_tie_loss <- function(df_disp, output_file) {
     # Add percentage labels
     geom_text(
       data = subset(df_disp, Percentage > 0),
-      aes(label = sprintf("%.0f%%", Percentage)),
+      aes(label = sprintf("%.0f", Percentage)),
       position = position_stack(vjust = 0.5),
       color = "white",
-      size = 4.5
+      size = 7.0
     ) +
     theme_minimal() +
     labs(
@@ -170,10 +170,10 @@ plot_win_tie_loss <- function(df_disp, output_file) {
         hjust = 0.5, size = 14, face = "bold", color = "black"
       ),
       legend.position = "left",
-      legend.text = element_text(color = "black"),
-      strip.text.x = element_text(face = "bold", size = 16),
-      strip.text.y = element_text(size = 12, angle = 60, face = "bold"),
-      legend.title = element_text(color = "black", face = "bold")
+      legend.text = element_text(color = "black", size = 30),
+      legend.title = element_blank(),
+      strip.text.x = element_text(face = "bold", size = 30),
+      strip.text.y = element_text(size = 15, angle = 40, face = "bold")
     ) +
     facet_grid(Method ~ model)
   ggsave(

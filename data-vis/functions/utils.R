@@ -83,7 +83,7 @@ abbrev_sensi_kurt <- function(attempt) {
   attempt <- gsub("sensi-milp", "SM", attempt)
   attempt <- gsub("kurt-milp", "KM", attempt)
   attempt <- gsub("-", "", attempt)
-  return(attempt)
+  attempt
 }
 
 zipcat <- function(vc1, vc2) {

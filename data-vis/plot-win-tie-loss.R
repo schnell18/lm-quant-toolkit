@@ -198,12 +198,12 @@ df_disp <- df_sum |>
       Method,
       levels = c(
         "SB vs ABL",
-        "SB vs HQQ",
-        "SB vs MXQ",
-        "SB vs KB",
         "KB vs ABL",
+        "SB vs HQQ",
         "KB vs HQQ",
-        "KB vs MXQ"
+        "SB vs MXQ",
+        "KB vs MXQ",
+        "SB vs KB"
       )
     ),
     Result = factor(
