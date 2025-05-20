@@ -31,7 +31,7 @@ fi
 # done
 #
 MODEL="Meta-Llama-3-8B"
-BUDGET=4.25
+BUDGET=4.13
 
 $TOOLKIT_DIR/data-vis/plot-circos-allot.R \
   --model $MODEL \
@@ -40,6 +40,6 @@ $TOOLKIT_DIR/data-vis/plot-circos-allot.R \
   --ppl_csv_file data/combined.csv \
   --quant_cfg_allot_file data/quant-cfg-allocation.csv \
   --attempt1 sensi-boost-2-2 \
-  --attempt2 kurt-boost-2-2 \
-  --attempt3 sensi-abl-2-2 \
+  --attempt2 sensi-abl-2-2 \
+  --attempt3 kurt-boost-2-2 \
   --attempt4 hqq

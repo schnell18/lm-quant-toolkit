@@ -152,18 +152,23 @@ plt <- ggplot(
     strip.background = element_rect(
       color = "darkgray", fill = "white", linewidth = 1.0, linetype = "solid"
     ),
-    strip.text.x = element_text(face = "bold", size = 11),
-    strip.text.y = element_text(face = "bold", size = 11),
+    strip.text.x = element_text(face = "bold", size = 12),
+    strip.text.y = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14),
     legend.position = "bottom"
   ) +
   guides(
     color = guide_legend(title = "Dataset"),
     shape = guide_legend(title = "Method")
   ) +
+  scale_y_continuous(labels = function(y) format(y, nsmall = 2, scientific = FALSE)) +
   facet_grid(model ~ bpp, scales = "free")
 
 ggsave(
-  "pdfs/ppl-decr-men-inc.pdf",
+  "pdfs/ppl-decr-mem-inc.pdf",
   plot = plt,
   width = 8,
   height = 5,

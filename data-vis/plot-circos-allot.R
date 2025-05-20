@@ -92,7 +92,11 @@ plot_allot_track <- function(df, model_id, color_map, the_attempt, the_sector) {
           circos.text(
             CELL_META$xcenter,
             CELL_META$cell.ylim[2],
-            paste0(attempt_str, "(", toupper(abbreviate(attempt_str)), ")"),
+            ifelse(
+              grepl("hqq", the_attempt),
+              toupper(abbreviate(attempt_str)),
+              paste0(attempt_str, " (", toupper(abbreviate(attempt_str)), ")")
+            ),
             cex = 0.7,
             facing = "bending.inside",
             niceFacing = TRUE
@@ -132,7 +136,7 @@ plot_allot_one <- function(
         niceFacing = TRUE
       )
       circos.axis(
-        labels.cex = 0.7,
+        labels.cex = 0.95,
         major.at = c(0, 5, 10, 15, 20, 25, 30, 35, 40)
       )
     }
@@ -142,7 +146,7 @@ plot_allot_one <- function(
   plot_allot_track(df, model_id, color_map, attempt3, "self_attn.o_proj")
   plot_allot_track(df, model_id, color_map, attempt4, "self_attn.o_proj")
 
-  text(0, 0, simplify_model_id(model_id), cex = 1.5, col = "darkblue")
+  text(0, -0.05, simplify_model_id(model_id), cex = 1.5, col = "darkblue")
   bpp <- unique(df_ppl$bpp)
   descr1 <- description_for_ppl(df_ppl, attempt1)
   descr2 <- description_for_ppl(df_ppl, attempt2)
@@ -150,6 +154,7 @@ plot_allot_one <- function(
   descr4 <- description_for_ppl(df_ppl, attempt4)
 
   str_content <- paste0(
+    # "             \n",
     "Bit Budget: ", bpp, "\n",
     descr1,
     descr2,
@@ -157,7 +162,7 @@ plot_allot_one <- function(
     descr4
   )
 
-  text(0, 0.20, str_content, cex = 0.75)
+  text(0, 0.16, str_content, cex = 0.95)
 }
 
 plot_allot_circos <- function(
@@ -212,8 +217,10 @@ plot_allot_circos <- function(
     ncol = 1,
     nrow = 12,
     legend_gp = gpar(fill = unlist(color_map, use.names = FALSE)),
+    labels_gp = gpar(fontsize = 15),
     title_position = "topleft",
-    title = "Config"
+    title = ""
+    # title = "Config"
   )
   draw(
     packLegend(lgd_grids),

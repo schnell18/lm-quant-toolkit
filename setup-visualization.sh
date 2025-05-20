@@ -33,7 +33,21 @@ install.packages(
         "readr",
         "safetensors",
         "stringr",
+        "this.path",
         "tidyverse"
+    )
+)
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("ComplexHeatmap")
+
+install.packages(
+    "ggmagnify",
+    repos = c(
+        "https://hughjonesd.r-universe.dev",
+        "https://cloud.r-project.org"
     )
 )
 '

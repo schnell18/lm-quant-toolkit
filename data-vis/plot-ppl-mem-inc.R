@@ -127,8 +127,8 @@ plot_meta <- function(
   # aes(x = increment, y = ppl, shape = method, color = method)
   plt <- ggplot(df_disp, ass) +
     scale_x_continuous(
-      limits = c(0, 9.0),
-      breaks = seq(0, 9.0, 0.50)
+      limits = c(0, 8.0),
+      breaks = seq(0, 8.0, 0.50)
     ) +
     scale_y_continuous(
       limits = c(min_ppl, max_ppl),
@@ -142,7 +142,7 @@ plot_meta <- function(
     ) +
     annotate(
       "text",
-      x = 8.5, y = baseline_451 - 0.01, size = 2, label = "HQQ b4g32"
+      x = 7.5, y = baseline_451 - 0.01, size = 3, label = "HQQ b4g32"
     ) +
     geom_hline(
       yintercept = baseline_425,
@@ -151,7 +151,7 @@ plot_meta <- function(
     ) +
     annotate(
       "text",
-      x = 8.5, y = baseline_425 + 0.01, size = 2, label = "HQQ b4g64"
+      x = 7.5, y = baseline_425 + 0.01, size = 3, label = "HQQ b4g64"
     ) +
     geom_hline(
       yintercept = baseline_413,
@@ -160,7 +160,7 @@ plot_meta <- function(
     ) +
     annotate(
       "text",
-      x = 8.5, y = baseline_413 + 0.01, size = 2, label = "HQQ b4g128"
+      x = 7.5, y = baseline_413 + 0.01, size = 3, label = "HQQ b4g128"
     ) +
     geom_hline(
       yintercept = baseline_351,
@@ -169,7 +169,7 @@ plot_meta <- function(
     ) +
     annotate(
       "text",
-      x = 8.5, y = baseline_351 + 0.01, size = 2, label = "HQQ b3g32"
+      x = 7.5, y = baseline_351 + 0.01, size = 3, label = "HQQ b3g32"
     ) +
     geom_hline(
       yintercept = baseline_325,
@@ -178,7 +178,7 @@ plot_meta <- function(
     ) +
     annotate(
       "text",
-      x = 8.5, y = baseline_325 + 0.01, size = 2, label = "HQQ b3g64"
+      x = 7.5, y = baseline_325 + 0.01, size = 3, label = "HQQ b3g64"
     ) +
     geom_hline(
       yintercept = baseline_313,
@@ -187,7 +187,7 @@ plot_meta <- function(
     ) +
     annotate(
       "text",
-      x = 8.5, y = baseline_313 - 0.01, size = 2, label = "HQQ b3g128"
+      x = 7.5, y = baseline_313 - 0.01, size = 3, label = "HQQ b3g128"
     ) +
     geom_magnify(from = mag_from, to = mag_to, axes = "xy") +
     labs(x = "% Memory Increment", y = "Perplexity") +
@@ -197,6 +197,10 @@ plot_meta <- function(
       ),
       strip.text.x = element_text(face = "bold", size = 12),
       strip.text.y = element_text(face = "bold", size = 12),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12),
+      axis.title.x = element_text(size = 14),
+      axis.title.y = element_text(size = 14),
       legend.position = "bottom"
     ) +
     guides(
