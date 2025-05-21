@@ -151,9 +151,10 @@ plot_win_tie_loss <- function(df_disp, output_file) {
       aes(label = sprintf("%.0f", Percentage)),
       position = position_stack(vjust = 0.5),
       color = "white",
-      size = 7.0
+      size = 6.0
     ) +
     theme_minimal() +
+    guides(fill = guide_legend(reverse = TRUE)) +
     labs(
       title = "",
       x = NULL,
@@ -170,10 +171,10 @@ plot_win_tie_loss <- function(df_disp, output_file) {
         hjust = 0.5, size = 14, face = "bold", color = "black"
       ),
       legend.position = "left",
-      legend.text = element_text(color = "black", size = 30),
+      legend.text = element_text(color = "black", size = 26),
       legend.title = element_blank(),
-      strip.text.x = element_text(face = "bold", size = 30),
-      strip.text.y = element_text(size = 15, angle = 40, face = "bold")
+      strip.text.x = element_text(face = "bold", size = 26),
+      strip.text.y = element_text(size = 14, angle = 40, face = "bold", hjust = 0.01, vjust = -0.01)
     ) +
     facet_grid(Method ~ model)
   ggsave(

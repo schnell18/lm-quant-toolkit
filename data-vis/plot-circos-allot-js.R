@@ -215,9 +215,9 @@ plot_allot_circos <- function(
     b3g128 =  "#33a02c",
     b3g64 =   "#fb9a99",
     b3g32 =   "#e31a1c",
-    b4g128 =  "#fdbf6f",
+    b4g128 =  "#66c2a5",
     b4g64 =   "#ff7f00",
-    b4g32 =   "#cab2d6",
+    b4g32 =   "#fc8d62",
     b8g128 =  "#6a3d9a",
     b8g64 =   "#ffff99",
     b8g32 =   "#b15928"

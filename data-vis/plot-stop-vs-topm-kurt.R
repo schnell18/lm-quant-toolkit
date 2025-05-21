@@ -55,9 +55,14 @@ df_plot <- df_kb |>
 # filter(model == "Llama-2-13B")
 
 plt <- ggplot(df_plot, aes(x = topm, y = ppl)) +
-  scale_fill_manual(values = c("#fc8d62", "#66c2a5")) +
   geom_point(aes(shape = stop, color = stop)) +
   geom_line(aes(group = stop, color = stop)) +
+  scale_color_manual(
+    values = c(
+      "2 Boost Levels" = "#66c2a5",
+      "3 Boost Levels" = "#fc8d62"
+    )
+  ) +
   labs(
     x = "Topm",
     y = "Perplexity"

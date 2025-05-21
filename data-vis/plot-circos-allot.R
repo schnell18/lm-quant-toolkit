@@ -108,7 +108,8 @@ plot_allot_track <- function(df, model_id, color_map, the_attempt, the_sector) {
           circos.rect(
             row$layer - 1 + 0.02, 0.05,
             row$layer - 0.02, 1,
-            border = "darkgray",
+            border = "lightgray",
+            # border = "darkgray",
             col = color
           )
         }
@@ -146,23 +147,26 @@ plot_allot_one <- function(
   plot_allot_track(df, model_id, color_map, attempt3, "self_attn.o_proj")
   plot_allot_track(df, model_id, color_map, attempt4, "self_attn.o_proj")
 
-  text(0, -0.05, simplify_model_id(model_id), cex = 1.5, col = "darkblue")
+  text(0, 0, simplify_model_id(model_id), cex = 1.5, col = "darkblue")
   bpp <- unique(df_ppl$bpp)
-  descr1 <- description_for_ppl(df_ppl, attempt1)
-  descr2 <- description_for_ppl(df_ppl, attempt2)
-  descr3 <- description_for_ppl(df_ppl, attempt3)
-  descr4 <- description_for_ppl(df_ppl, attempt4)
+  # descr1 <- description_for_ppl(df_ppl, attempt1)
+  # descr2 <- description_for_ppl(df_ppl, attempt2)
+  # descr3 <- description_for_ppl(df_ppl, attempt3)
+  # descr4 <- description_for_ppl(df_ppl, attempt4)
+  descr1 <- "\n"
+  descr2 <- "\n"
+  descr3 <- "\n"
+  descr4 <- "\n"
 
   str_content <- paste0(
-    # "             \n",
-    "Bit Budget: ", bpp, "\n",
+    "Bit Budget: ", bpp, " (b4g128)\n",
     descr1,
     descr2,
     descr3,
     descr4
   )
 
-  text(0, 0.16, str_content, cex = 0.95)
+  text(0, -0.28, str_content, cex = 0.95)
 }
 
 plot_allot_circos <- function(
@@ -180,16 +184,16 @@ plot_allot_circos <- function(
   color_map <- list(
     b2g128 =  "#a6cee3",
     b2g64 =   "#1f78b4",
-    b2g32 =   "#b2df8a",
+    b2g32 =   "#ffff99",
     b3g128 =  "#33a02c",
     b3g64 =   "#fb9a99",
     b3g32 =   "#e31a1c",
-    b4g128 =  "#fdbf6f",
-    b4g64 =   "#ff7f00",
-    b4g32 =   "#cab2d6",
+    b4g128 =  "#8f78b4",
+    b4g64 =   "#fdbf6f",
+    b4g32 =   "#b15928",
     b8g128 =  "#6a3d9a",
-    b8g64 =   "#ffff99",
-    b8g32 =   "#b15928"
+    b8g64 =   "#ff7f00",
+    b8g32 =   "#b2df8a"
   )
 
   pdf(
@@ -217,7 +221,7 @@ plot_allot_circos <- function(
     ncol = 1,
     nrow = 12,
     legend_gp = gpar(fill = unlist(color_map, use.names = FALSE)),
-    labels_gp = gpar(fontsize = 15),
+    labels_gp = gpar(fontsize = 13),
     title_position = "topleft",
     title = ""
     # title = "Config"
