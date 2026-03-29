@@ -70,7 +70,8 @@ df_baseline <- df_all |>
 df_hqq <- df_wo_mxq |> filter(algo == "hqq" & !str_detect(config, "^mxq"))
 df_mxq <- df_all |>
   filter(
-    algo == "mxq" & attempt != "mxq-kurt-global" & attempt != "mxq-kurt-scaled"
+    algo == "mxq" & attempt == "mxq2"
+    # algo == "mxq" & attempt != "mxq-kurt-global" & attempt != "mxq-kurt-scaled"
   )
 df_mxq1 <- df_hqq |>
   left_join(
@@ -78,9 +79,9 @@ df_mxq1 <- df_hqq |>
     suffix = c(".x", ""),
     join_by(model, bpp)
   ) |>
-  mutate(
-    algo = paste0(algo, "-", attempt)
-  ) |>
+  # mutate(
+  #   algo = paste0(algo, "-", attempt)
+  # ) |>
   select(c("model", "algo", "config.x", "bpp", "load_mem_allot")) |>
   rename(
     config = config.x
@@ -99,12 +100,10 @@ df_disp <- bind_rows(df_wo_mxq, df_baseline, df_mxq1) |>
       algo,
       levels = (
         c(
-          the_attempt,
           "awq",
           "gptq",
           "hqq",
-          "mxq-mxq1",
-          "mxq-mxq2",
+          "mxq",
           "bnb",
           "fp16"
         )
@@ -162,6 +161,6 @@ plt1 <- ggplot(df_disp, aes(x = algo, y = load_mem_allot, fill = algo)) +
   facet_grid(config ~ model) +
   scale_color_solarized()
 plt1
-ggsave("pdfs/llama-mem-consumption.pdf", plot = plt1, width = 8, height = 6)
+ggsave("pdfs/llama-mem-consumption.pdf", plot = plt1, width = 8, height = 5)
 
 ggplotly(plt1)

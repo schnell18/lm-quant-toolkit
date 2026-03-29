@@ -97,7 +97,7 @@ ggplot(disp, aes(x = algo, y = quant_duration, fill = algo)) +
     limits = c(1, 1600),
     # breaks = seq(0, 1600, by = 125),
     expand = c(0, 0),
-    trans = "log10",
+    # trans = "log10",
     position = "bottom"
   ) +
   scale_y_discrete(expand = expansion(add = c(0, 0.5))) +
