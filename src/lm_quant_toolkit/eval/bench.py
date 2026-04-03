@@ -1,9 +1,6 @@
 import copy
 import logging
 import os
-
-# from adapter.awq import create_awq_model
-# from adapter.awq import quantize_awq_model
 from datetime import datetime
 from pathlib import Path
 
@@ -13,16 +10,16 @@ from gptqmodel import QuantizeConfig as GPTQQuantConfig
 from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
 from transformers import BitsAndBytesConfig
 
-from lm_quant_toolkit.adapter.autoawq import (
+from lm_quant_toolkit.adapter.awq import (
     create_autoawq_model,
     quantize_autoawq_model,
 )
-from lm_quant_toolkit.adapter.gm import (
+from lm_quant_toolkit.adapter.bnb import create_bnb_model, quantize_bnb_model
+from lm_quant_toolkit.adapter.fp16 import create_fp16_model
+from lm_quant_toolkit.adapter.gptq import (
     create_gptq_model,
     quantize_gptq_model,
 )
-from lm_quant_toolkit.adapter.bnb import create_bnb_model, quantize_bnb_model
-from lm_quant_toolkit.adapter.fp16 import create_fp16_model
 from lm_quant_toolkit.adapter.hqq import create_hqq_model, quantize_hqq_model
 from lm_quant_toolkit.adapter.mxq import create_mxq_model, quantize_mxq_model
 from lm_quant_toolkit.eval.common import (
@@ -36,7 +33,6 @@ from lm_quant_toolkit.eval.common import (
     persist_progress,
     save_partial_metric,
 )
-from lm_quant_toolkit.eval.leaderboard import eval_llm_leaderboard
 from lm_quant_toolkit.eval.perplexity import eval_ppls
 
 ALL_MODELS = [
@@ -280,21 +276,22 @@ def do_expermient(
                 _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
             cleanup(model)
         else:
-            metric = eval_llm_leaderboard(
-                experiment_name,
-                model_id,
-                algo,
-                cfg,
-                quant_fn is not None,
-                metric,
-                quant_dir,
-                result_dir,
-            )
-            metric["leaderboard_mem_allot"], metric["leaderboard_mem_reserved"] = (
-                get_memory_metrics()
-            )
-            if track_cuda_memory:
-                _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
+            pass
+            # metric = eval_llm_leaderboard(
+            #     experiment_name,
+            #     model_id,
+            #     algo,
+            #     cfg,
+            #     quant_fn is not None,
+            #     metric,
+            #     quant_dir,
+            #     result_dir,
+            # )
+            # metric["leaderboard_mem_allot"], metric["leaderboard_mem_reserved"] = (
+            #     get_memory_metrics()
+            # )
+            # if track_cuda_memory:
+            #     _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
         save_partial_metric(experiment_name, algo, model_id, cfg, metric, result_dir)
         df_all.loc[
             (df_all["model"] == model_id)
@@ -322,7 +319,6 @@ def _init_metrics(model_id, algo, config):
         "ppl_mem_reserved": 0,
         "leaderboard_mem_allot": 0,
         "leaderboard_mem_reserved": 0,
-        "quant_duration": 0,
         "ppl_wikitext": 0,
         "ppl_c4": 0,
         "duration_wikitext": 0,

@@ -1,3 +1,4 @@
 logs/
 results/
 snapshots/
+__pycache__/

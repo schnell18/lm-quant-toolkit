@@ -39,5 +39,6 @@ cd $OLD_DIR
 
 # perform an editable install of the lm-quant-toolkit project
 # to install all dependencies that are published on PyPI
+uv pip install -v gptqmodel --no-build-isolation
 uv pip install -e .
 

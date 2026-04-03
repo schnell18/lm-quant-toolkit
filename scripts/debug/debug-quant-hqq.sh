@@ -10,11 +10,11 @@ fi
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
     # --model 0 1 2 \
-python ../src/cli.py llm \
+python -m pdb ../../src/cli.py llm \
     --task quant \
-    --model 0 1 \
+    --model 0  \
     --algo hqq \
-    --experiment-name quant_llm-hqq \
+    --experiment-name debug-quant_llm-hqq \
     --quant-snapshot-dir="/fdata/llm/ieee-tai/snapshots" \
     --result-dir="/fdata/llm/ieee-tai/results" \
     2>&1 \

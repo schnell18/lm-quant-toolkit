@@ -9,8 +9,8 @@ python ../src/cli.py vit \
     --model 0 1 2 \
     --algo fp16 \
     --experiment-name eval_zs_BLH_fp16_2 \
-    --quant-snapshot-dir="/fdata/llm/mxq/snapshots" \
-    --result-dir="/fdata/llm/mxq/results" \
+    --quant-snapshot-dir="/fdata/llm/ieee-tai/snapshots" \
+    --result-dir="/fdata/llm/ieee-tai/results" \
     2>&1 \
     | tee logs/bench-vit-$(date +%Y%m%d%H%M%S).log
 

@@ -25,3 +25,4 @@ htmlcov
 .Rhistory
 Rplots.pdf
 .deps/
+gptqmodel_offload/

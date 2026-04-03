@@ -1,91 +1,66 @@
 import os
 import time
 
-import torch
-from accelerate import (
-    infer_auto_device_map,
-    init_empty_weights,
-    load_checkpoint_in_model,
+import transformers
+from gptqmodel import GPTQModel, QuantizeConfig
+from gptqmodel.quantization import FORMAT, METHOD
+
+from lm_quant_toolkit.adapter.common import (
+    get_model_storage_size,
+    prepare_calibration_dataset,
 )
-from awq.quantize.pre_quant import apply_awq, run_awq
-from awq.quantize.quantizer import real_quantize_model_weight
-from awq.utils.utils import simple_dispatch_model
-from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+
+_VERSION_TO_FORMAT = {
+    "GEMM": FORMAT.GEMM,
+    "GEMV": FORMAT.GEMV,
+    "GEMV_FAST": FORMAT.GEMV_FAST,
+    "LLM_AWQ": FORMAT.LLM_AWQ,
+}
 
 
-def create_awq_model(model_id, quant_config, config_id, load_quantized, save_dir):
+def _awq_config_to_gm(awq_config):
+    """Convert AutoAWQ-style config dict to a GPTQModel QuantizeConfig for AWQ."""
+    version = awq_config.get("version", "GEMM").upper()
+    fmt = _VERSION_TO_FORMAT.get(version, FORMAT.GEMM)
+    return QuantizeConfig(
+        bits=awq_config["w_bit"],
+        group_size=awq_config["q_group_size"],
+        sym=not awq_config.get("zero_point", True),
+        quant_method=METHOD.AWQ,
+        format=fmt,
+    )
+
+
+def create_autoawq_model(model_id, quant_config, config_id, load_quantized, save_dir):
+    model_file_size = 0
     quantized = False
     quant_path = f"{save_dir}/{model_id}-{config_id}-awq"
-
-    tokenizer = AutoTokenizer.from_pretrained(
+    tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_id, use_fast=False, trust_remote_code=True
     )
-    config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
-    # Note (Haotian): To avoid OOM after huggingface transformers 4.36.2
-    config.use_cache = False
-    if load_quantized and os.path.exists(f"{quant_path}/qmodel.pth"):
-        with init_empty_weights():
-            model = AutoModelForCausalLM.from_config(
-                config=config, torch_dtype=torch.float16, trust_remote_code=True
-            )
-        max_memory = {0: "20GiB", "cpu": "60GiB"}
-        # Infer device map
-        kwargs = {"max_memory": max_memory} if len(max_memory) else {}
-        device_map = infer_auto_device_map(
-            model,
-            no_split_module_classes=[
-                "OPTDecoderLayer",
-                "LlamaDecoderLayer",
-                "BloomBlock",
-                "MPTBlock",
-                "DecoderLayer",
-            ],
-            **kwargs,
-        )
-        # Load checkpoint in the model
-        load_checkpoint_in_model(
-            model,
-            checkpoint=quant_path,
-            device_map=device_map,
-            offload_state_dict=False,
-        )
-        # Dispatch model
-        model = simple_dispatch_model(model, device_map=device_map)
+    if load_quantized and os.path.exists(quant_path):
+        model = GPTQModel.load(quant_path, device="cuda:0")
         quantized = True
-        model.eval()
+        model_file_size = get_model_storage_size(quant_path)
     else:
-        kwargs = {"torch_dtype": torch.float16, "low_cpu_mem_usage": True}
-        model = AutoModelForCausalLM.from_pretrained(
-            model_id, config=config, trust_remote_code=True, **kwargs
-        )
-    return model, tokenizer, quantized, 0
+        gm_config = _awq_config_to_gm(quant_config)
+        model = GPTQModel.load(model_id, gm_config)
+    return model, tokenizer, quantized, model_file_size
 
 
-def quantize_awq_model(model, tokenizer, quant_config, model_id, config_id, save_dir):
+def quantize_autoawq_model(
+    model, tokenizer, quant_config, model_id, config_id, save_dir
+):
     t1 = time.time()
-    nbits = quant_config.pop("w_bit")
-    awq_results = run_awq(
-        model,
-        tokenizer,
-        w_bit=nbits,
-        q_config=quant_config,
-        n_samples=128,
-        seqlen=512,
-    )
-    intermediate_fp = f"{save_dir}/{model_id}-{config_id}-awq/intermediate.pth"
-    dirpath = os.path.dirname(intermediate_fp)
-    os.makedirs(dirpath, exist_ok=True)
-    torch.save(awq_results, intermediate_fp)
-    awq_results = torch.load(intermediate_fp, map_location="cpu")
-    apply_awq(model, awq_results)
-    real_quantize_model_weight(model, w_bit=nbits, q_config=quant_config)
-
+    calibration_dataset = prepare_calibration_dataset(tokenizer)
+    # model.quantize(calibration_dataset, batch_size=1, calibration_concat_size=0)
+    model.quantize(calibration_dataset, batch_size=1)
     t2 = time.time()
-    print("Took " + str(t2 - t1) + " seconds to quantize the model with AWQ")
+    print(
+        "Took " + str(t2 - t1) + " seconds to quantize the model with GPTQModel (AWQ)"
+    )
     quant_path = f"{save_dir}/{model_id}-{config_id}-awq"
-    quant_fp = os.path.join(quant_path, "qmodel.pth")
-    torch.save(model.cpu().state_dict(), quant_fp)
+    model.save(quant_path)
     tokenizer.save_pretrained(quant_path)
-
-    model_file_size = os.path.getsize(quant_fp)
-    return model, t2 - t1, model_file_size
+    os.sync()
+    return model, t2 - t1, get_model_storage_size(quant_path)
