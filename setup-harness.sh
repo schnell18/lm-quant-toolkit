@@ -10,12 +10,6 @@ fi
 OLD_DIR=$(pwd)
 
 # install the patched dependencies from source
-# clone patched AutoGPTQ from https://github.com/schnell18/AutoGPTQ.git
-# git clone https://github.com/schnell18/AutoGPTQ.git .deps/AutoGPTQ
-# cd .deps/AutoGPTQ
-# uv pip install -e .
-# cd $OLD_DIR
-
 
 # clone patched hqq from https://github.com/schnell18/hqq.git
 if [ ! -d .deps/hqq ]; then

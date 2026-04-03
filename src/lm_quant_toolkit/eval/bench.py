@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 import torch
-from auto_gptq import BaseQuantizeConfig as GPTQQuantConfig
+from gptqmodel import QuantizeConfig as GPTQQuantConfig
 from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
 from transformers import BitsAndBytesConfig
 
@@ -17,9 +17,9 @@ from lm_quant_toolkit.adapter.autoawq import (
     create_autoawq_model,
     quantize_autoawq_model,
 )
-from lm_quant_toolkit.adapter.autogptq import (
-    create_autogptq_model,
-    quantize_autogptq_model,
+from lm_quant_toolkit.adapter.gm import (
+    create_gptq_model,
+    quantize_gptq_model,
 )
 from lm_quant_toolkit.adapter.bnb import create_bnb_model, quantize_bnb_model
 from lm_quant_toolkit.adapter.fp16 import create_fp16_model
@@ -152,8 +152,8 @@ def _setup_fn(algo, spec):
             spec["create_fn"] = create_autoawq_model
             spec["quantize_fn"] = quantize_autoawq_model
         case "gptq":
-            spec["create_fn"] = create_autogptq_model
-            spec["quantize_fn"] = quantize_autogptq_model
+            spec["create_fn"] = create_gptq_model
+            spec["quantize_fn"] = quantize_gptq_model
         case "hqq":
             spec["create_fn"] = create_hqq_model
             spec["quantize_fn"] = quantize_hqq_model
