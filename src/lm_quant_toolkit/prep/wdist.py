@@ -254,7 +254,13 @@ def summarize_qwen35_quantable_params(
       - Quantizable: attn.qkv, attn.proj, mlp.linear_fc1/fc2, merger.linear_fc1/fc2
     """
     FULL_ATTN_INTERVAL = 4
-    full_attn_layers = set(range(FULL_ATTN_INTERVAL - 1, layers, FULL_ATTN_INTERVAL))
+    full_attn_layers = set(
+        range(
+            FULL_ATTN_INTERVAL - 1,
+            layers,
+            FULL_ATTN_INTERVAL,
+        )
+    )
 
     dikts = []
 
@@ -272,13 +278,13 @@ def summarize_qwen35_quantable_params(
     def _t(name):
         return get_tensor(name, base_dir)
 
-    # ── top-level text (non-layerwise) ────────────────────────────────────────
+    # ── top-level text (non-layerwise)
     _record("embed_tokens", 0, _t("model.language_model.embed_tokens.weight"), False)
     _record("norm", 0, _t("model.language_model.norm.weight"), False)
     if not lm_head_tied:
         _record("lm_head", 0, _t("lm_head.weight"), False)
 
-    # ── layerwise text ────────────────────────────────────────────────────────
+    # ── layerwise text
     for i in range(layers):
         pfx = f"model.language_model.layers.{i}"
         _record("input_layernorm", i, _t(f"{pfx}.input_layernorm.weight"), False)
@@ -295,21 +301,17 @@ def summarize_qwen35_quantable_params(
                 _record(f"self_attn.{m}", i, _t(f"{pfx}.self_attn.{m}.weight"), True)
             # RMS norms inside attention (not quantizable)
             for m in ("q_norm", "k_norm"):
-                _record(
-                    f"self_attn.{m}", i, _t(f"{pfx}.self_attn.{m}.weight"), False
-                )
+                _record(f"self_attn.{m}", i, _t(f"{pfx}.self_attn.{m}.weight"), False)
         else:
             # GatedDeltaNet linear attention — not quantized
             for m in ("in_proj_qkv", "in_proj_z", "out_proj", "in_proj_a", "in_proj_b"):
                 _record(
-                    f"linear_attn.{m}", i, _t(f"{pfx}.linear_attn.{m}.weight"), False
+                    f"linear_attn.{m}", i, _t(f"{pfx}.linear_attn.{m}.weight"), True
                 )
             _record(
                 "linear_attn.conv1d", i, _t(f"{pfx}.linear_attn.conv1d.weight"), False
             )
-            _record(
-                "linear_attn.norm", i, _t(f"{pfx}.linear_attn.norm.weight"), False
-            )
+            _record("linear_attn.norm", i, _t(f"{pfx}.linear_attn.norm.weight"), False)
             # Learnable scalars stored without .weight suffix
             for m in ("A_log", "dt_bias"):
                 _record(f"linear_attn.{m}", i, _t(f"{pfx}.linear_attn.{m}"), False)
@@ -337,7 +339,7 @@ def summarize_qwen35_quantable_params(
             for m in ("gate_proj", "up_proj", "down_proj"):
                 _record(f"mlp.{m}", i, _t(f"{pfx}.mlp.{m}.weight"), True)
 
-    # ── vision encoder ────────────────────────────────────────────────────────
+    # ── vision encoder
     # Patch embedding (Conv2d — not quantized)
     _record(
         "visual.patch_embed.proj",
@@ -360,24 +362,20 @@ def summarize_qwen35_quantable_params(
     for i in range(vision_layers):
         vpfx = f"model.visual.blocks.{i}"
         # Quantizable: fused QKV, output proj, MLP fc1/fc2
-        _record(
-            "visual.attn.qkv", i, _t(f"{vpfx}.attn.qkv.weight"), True, "vision"
-        )
-        _record(
-            "visual.attn.proj", i, _t(f"{vpfx}.attn.proj.weight"), True, "vision"
-        )
+        _record("visual.attn.qkv", i, _t(f"{vpfx}.attn.qkv.weight"), False, "vision")
+        _record("visual.attn.proj", i, _t(f"{vpfx}.attn.proj.weight"), False, "vision")
         _record(
             "visual.mlp.linear_fc1",
             i,
             _t(f"{vpfx}.mlp.linear_fc1.weight"),
-            True,
+            False,
             "vision",
         )
         _record(
             "visual.mlp.linear_fc2",
             i,
             _t(f"{vpfx}.mlp.linear_fc2.weight"),
-            True,
+            False,
             "vision",
         )
         # Layer norms (not quantizable)
@@ -390,7 +388,7 @@ def summarize_qwen35_quantable_params(
             f"visual.merger.{m}",
             0,
             _t(f"model.visual.merger.{m}.weight"),
-            True,
+            False,
             "vision",
         )
     _record(

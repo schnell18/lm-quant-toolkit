@@ -171,11 +171,7 @@ def _extract_quant_config_pt(pt_path):
                 param_quant_total += param_count
                 param_all_total += param_count
                 memmb = (
-                    (b1 + 2 * b2 / g1 + 32 / (g1 * g2))
-                    * param_count
-                    / 8
-                    / 1024
-                    / 1024
+                    (b1 + 2 * b2 / g1 + 32 / (g1 * g2)) * param_count / 8 / 1024 / 1024
                 )
                 mem_fp16_all_total += param_count * 2 / 1024 / 1024
                 mem_quant_total += memmb
@@ -211,17 +207,10 @@ def _load_st_weight_map(quant_dir):
     map values are the absolute path to that file.
     """
     index_path = os.path.join(quant_dir, "model.safetensors.index.json")
-    single_path = os.path.join(quant_dir, "model.safetensors")
     if os.path.exists(index_path):
         with open(index_path) as fh:
             return json.load(fh)["weight_map"]
-    if os.path.exists(single_path):
-        with safe_open(single_path, framework="pt", device="cpu") as fh:
-            keys = list(fh.keys())
-        return {k: single_path for k in keys}
-    raise FileNotFoundError(
-        f"No safetensors model found in {quant_dir}"
-    )
+    raise FileNotFoundError(f"No safetensors model found in {quant_dir}")
 
 
 def _st_get_tensor(key, weight_map, quant_dir):
@@ -235,12 +224,7 @@ def _st_get_tensor(key, weight_map, quant_dir):
 
 
 def _extract_quant_config_safetensors(quant_dir):
-    """Extract quant config from a GPTQModel safetensors checkpoint.
-
-    GPTQModel saves quantized layers with a ``.qweight`` tensor (int32,
-    packed weights) alongside ``.scales`` and ``.qzeros``.  The per-model
-    quantization hyper-parameters (bits, group_size) live in
-    ``quantize_config.json`` next to the safetensors files.
+    """Extract quant config from a safetensors checkpoint.
 
     The memory formula mirrors the HQQ convention so results are comparable:
       mem = (b1 + 2*b2/g1 + 32/(g1*g2)) * param_count / 8 / 1024 / 1024
@@ -250,36 +234,13 @@ def _extract_quant_config_safetensors(quant_dir):
       in_features  = qweight.shape[0] * 32 // bits
       out_features = qweight.shape[1]
     """
-    # ── quantization hyper-parameters ────────────────────────────────────────
-    qcfg_path = os.path.join(quant_dir, "quantize_config.json")
-    if os.path.exists(qcfg_path):
-        with open(qcfg_path) as fh:
-            qcfg = json.load(fh)
-    else:
-        # Fallback: config.json may embed quantization_config (HF format)
-        cfg_path = os.path.join(quant_dir, "config.json")
-        with open(cfg_path) as fh:
-            qcfg = json.load(fh).get("quantization_config", {})
-    b1 = int(qcfg["bits"])
-    g1 = int(qcfg["group_size"])
-    b2 = 16   # scales stored as fp16
-    g2 = 128  # no second-level scale quantization
 
-    # ── weight map ───────────────────────────────────────────────────────────
     weight_map = _load_st_weight_map(quant_dir)
 
     # Identify quantized modules (those that have a .qweight tensor)
-    quant_modules = {
-        k[: -len(".qweight")]
-        for k in weight_map
-        if k.endswith(".qweight")
-    }
+    quant_modules = {k[: -len(".W_q")] for k in weight_map if k.endswith(".W_q")}
     # Plain .weight tensors that are NOT paired with .qweight are unquantized
-    weight_modules = {
-        k[: -len(".weight")]
-        for k in weight_map
-        if k.endswith(".weight")
-    }
+    weight_modules = {k[: -len(".weight")] for k in weight_map if k.endswith(".weight")}
     non_quant_modules = weight_modules - quant_modules
 
     quant_configs = {}
@@ -289,16 +250,18 @@ def _extract_quant_config_safetensors(quant_dir):
     param_quant_total = 0
     param_all_total = 0
 
-    # ── quantized layers ─────────────────────────────────────────────────────
+    # ── quantized layers
     for module in quant_modules:
-        qw = _st_get_tensor(f"{module}.qweight", weight_map, quant_dir)
+        qw = get_tensor(f"{module}.W_q", quant_dir)
         # qweight is int32-packed: each int32 holds (32 // b1) weight values
+        b1 = get_tensor(f"{module}.nbits", quant_dir).item()
+        g1 = get_tensor(f"{module}.group_size", quant_dir).item()
+        b2 = 8
+        g2 = 128
         in_features = qw.shape[0] * 32 // b1
         out_features = qw.shape[1]
         param_count = in_features * out_features
-        memmb = (
-            (b1 + 2 * b2 / g1 + 32 / (g1 * g2)) * param_count / 8 / 1024 / 1024
-        )
+        memmb = (b1 + 2 * b2 / g1 + 32 / (g1 * g2)) * param_count / 8 / 1024 / 1024
         param_quant_total += param_count
         param_all_total += param_count
         mem_fp16_all_total += param_count * 2 / 1024 / 1024
@@ -313,7 +276,7 @@ def _extract_quant_config_safetensors(quant_dir):
             "param_cnt": param_count,
         }
 
-    # ── unquantized layers ───────────────────────────────────────────────────
+    # ── unquantized layers
     for module in non_quant_modules:
         w = _st_get_tensor(f"{module}.weight", weight_map, quant_dir)
         mem_all_total += w.numel() * 2 / 1024 / 1024
