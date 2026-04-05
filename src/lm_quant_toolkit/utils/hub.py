@@ -48,6 +48,23 @@ VIT_OPENCLIP_MODELS = {
     "laion/CLIP-ViT-L-14-laion2B-s32B-b82K": {"vlayers": 24, "tlayers": 12},
 }
 
+QWEN35_MODELS = {
+    # Dense VLMs (text decoder + vision encoder)
+    # vision_layers: number of ViT blocks in model.visual.blocks
+    # lm_head_tied: True when lm_head shares weights with embed_tokens (no separate lm_head.weight)
+    "Qwen/Qwen3.5-0.8B": {"layers": 24, "vision_layers": 12, "lm_head_tied": True},
+    "Qwen/Qwen3.5-2B":   {"layers": 24, "vision_layers": 24, "lm_head_tied": True},
+    "Qwen/Qwen3.5-4B":   {"layers": 32, "vision_layers": 24, "lm_head_tied": True},
+    "Qwen/Qwen3.5-9B":   {"layers": 32, "vision_layers": 27},
+    "Qwen/Qwen3.5-27B":  {"layers": 64, "vision_layers": 27},
+    # MoE VLMs — expert weights are packed tensors:
+    #   mlp.experts.gate_up_proj / mlp.experts.down_proj  (no .weight suffix)
+    #   mlp.shared_expert.{gate,up,down}_proj.weight
+    "Qwen/Qwen3.5-35B-A3B":   {"layers": 40, "vision_layers": 27, "moe": True},
+    "Qwen/Qwen3.5-122B-A10B": {"layers": 48, "vision_layers": 27, "moe": True},
+    "Qwen/Qwen3.5-397B-A17B": {"layers": 60, "vision_layers": 27, "moe": True},
+}
+
 SENSITIVITY_MODELS = [
     "meta-llama/Llama-2-7b-hf",
     "meta-llama/Llama-2-7b-chat-hf",

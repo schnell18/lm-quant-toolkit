@@ -6,6 +6,7 @@ from scipy.stats import kurtosis
 
 from lm_quant_toolkit.utils.hub import (
     LLAMA_MODELS,
+    QWEN35_MODELS,
     VIT_OPENCLIP_MODELS,
     get_hf_model_storge_base_dir,
 )
@@ -236,6 +237,191 @@ def summarize_vit_quantable_params(
         dikts.append(dikt)
     df = pd.DataFrame(dikts)
     df.to_csv(csv_fp, index=False)
+
+
+def summarize_qwen35_quantable_params(
+    base_dir, layers, vision_layers, fp, moe=False, lm_head_tied=False
+):
+    """Write a CSV of all parameters in a Qwen3.5 VLM annotated with quantability.
+
+    Qwen3.5 is a hybrid VLM:
+    - Text decoder: ``model.language_model.layers.{i}``
+      - Full-attention layers every 4th (indices 3,7,11,…): quantizable q/k/v/o_proj
+      - GatedDeltaNet linear-attention layers (all others): not quantized
+      - MLP layers (all): quantizable gate/up/down_proj
+      - MoE variants use packed ``mlp.experts.gate_up_proj`` / ``mlp.experts.down_proj``
+    - Vision encoder: ``model.visual.blocks.{i}``
+      - Quantizable: attn.qkv, attn.proj, mlp.linear_fc1/fc2, merger.linear_fc1/fc2
+    """
+    FULL_ATTN_INTERVAL = 4
+    full_attn_layers = set(range(FULL_ATTN_INTERVAL - 1, layers, FULL_ATTN_INTERVAL))
+
+    dikts = []
+
+    def _record(module, layer, w, quant, typ="text"):
+        dikts.append(
+            {
+                "type": typ,
+                "module": module,
+                "layer": layer,
+                "param_count": w.numel(),
+                "quant_count": w.numel() if quant else 0,
+            }
+        )
+
+    def _t(name):
+        return get_tensor(name, base_dir)
+
+    # ── top-level text (non-layerwise) ────────────────────────────────────────
+    _record("embed_tokens", 0, _t("model.language_model.embed_tokens.weight"), False)
+    _record("norm", 0, _t("model.language_model.norm.weight"), False)
+    if not lm_head_tied:
+        _record("lm_head", 0, _t("lm_head.weight"), False)
+
+    # ── layerwise text ────────────────────────────────────────────────────────
+    for i in range(layers):
+        pfx = f"model.language_model.layers.{i}"
+        _record("input_layernorm", i, _t(f"{pfx}.input_layernorm.weight"), False)
+        _record(
+            "post_attention_layernorm",
+            i,
+            _t(f"{pfx}.post_attention_layernorm.weight"),
+            False,
+        )
+
+        if i in full_attn_layers:
+            # Standard self-attention (quantizable projections)
+            for m in ("q_proj", "k_proj", "v_proj", "o_proj"):
+                _record(f"self_attn.{m}", i, _t(f"{pfx}.self_attn.{m}.weight"), True)
+            # RMS norms inside attention (not quantizable)
+            for m in ("q_norm", "k_norm"):
+                _record(
+                    f"self_attn.{m}", i, _t(f"{pfx}.self_attn.{m}.weight"), False
+                )
+        else:
+            # GatedDeltaNet linear attention — not quantized
+            for m in ("in_proj_qkv", "in_proj_z", "out_proj", "in_proj_a", "in_proj_b"):
+                _record(
+                    f"linear_attn.{m}", i, _t(f"{pfx}.linear_attn.{m}.weight"), False
+                )
+            _record(
+                "linear_attn.conv1d", i, _t(f"{pfx}.linear_attn.conv1d.weight"), False
+            )
+            _record(
+                "linear_attn.norm", i, _t(f"{pfx}.linear_attn.norm.weight"), False
+            )
+            # Learnable scalars stored without .weight suffix
+            for m in ("A_log", "dt_bias"):
+                _record(f"linear_attn.{m}", i, _t(f"{pfx}.linear_attn.{m}"), False)
+
+        # MLP
+        if moe:
+            # Packed expert tensors (gate and up fused, no .weight suffix)
+            _record(
+                "mlp.experts.gate_up_proj",
+                i,
+                _t(f"{pfx}.mlp.experts.gate_up_proj"),
+                True,
+            )
+            _record(
+                "mlp.experts.down_proj", i, _t(f"{pfx}.mlp.experts.down_proj"), True
+            )
+            for m in ("gate_proj", "up_proj", "down_proj"):
+                _record(
+                    f"mlp.shared_expert.{m}",
+                    i,
+                    _t(f"{pfx}.mlp.shared_expert.{m}.weight"),
+                    True,
+                )
+        else:
+            for m in ("gate_proj", "up_proj", "down_proj"):
+                _record(f"mlp.{m}", i, _t(f"{pfx}.mlp.{m}.weight"), True)
+
+    # ── vision encoder ────────────────────────────────────────────────────────
+    # Patch embedding (Conv2d — not quantized)
+    _record(
+        "visual.patch_embed.proj",
+        0,
+        _t("model.visual.patch_embed.proj.weight"),
+        False,
+        "vision",
+    )
+    try:
+        _record(
+            "visual.pos_embed",
+            0,
+            _t("model.visual.pos_embed.weight"),
+            False,
+            "vision",
+        )
+    except ValueError:
+        pass  # some models use learned positional embeddings stored differently
+
+    for i in range(vision_layers):
+        vpfx = f"model.visual.blocks.{i}"
+        # Quantizable: fused QKV, output proj, MLP fc1/fc2
+        _record(
+            "visual.attn.qkv", i, _t(f"{vpfx}.attn.qkv.weight"), True, "vision"
+        )
+        _record(
+            "visual.attn.proj", i, _t(f"{vpfx}.attn.proj.weight"), True, "vision"
+        )
+        _record(
+            "visual.mlp.linear_fc1",
+            i,
+            _t(f"{vpfx}.mlp.linear_fc1.weight"),
+            True,
+            "vision",
+        )
+        _record(
+            "visual.mlp.linear_fc2",
+            i,
+            _t(f"{vpfx}.mlp.linear_fc2.weight"),
+            True,
+            "vision",
+        )
+        # Layer norms (not quantizable)
+        for m in ("norm1", "norm2"):
+            _record(f"visual.{m}", i, _t(f"{vpfx}.{m}.weight"), False, "vision")
+
+    # Vision-language merger MLP
+    for m in ("linear_fc1", "linear_fc2"):
+        _record(
+            f"visual.merger.{m}",
+            0,
+            _t(f"model.visual.merger.{m}.weight"),
+            True,
+            "vision",
+        )
+    _record(
+        "visual.merger.norm",
+        0,
+        _t("model.visual.merger.norm.weight"),
+        False,
+        "vision",
+    )
+
+    df = pd.DataFrame(dikts)
+    df.to_csv(fp, index=False)
+
+
+def summarize_known_qwen35_quantable_params(base_dir="data", skip_models=None):
+    for model_id, cfg in QWEN35_MODELS.items():
+        if skip_models is not None and len(skip_models) > 0:
+            if any(skip_model in model_id for skip_model in skip_models):
+                continue
+        model_base_dir = get_hf_model_storge_base_dir(
+            model_id, cfg.get("base_dir", None)
+        )
+        csv_file = f"{base_dir}/quantable-{model_id.split('/')[1]}.csv"
+        summarize_qwen35_quantable_params(
+            model_base_dir,
+            cfg["layers"],
+            cfg["vision_layers"],
+            csv_file,
+            moe=cfg.get("moe", False),
+            lm_head_tied=cfg.get("lm_head_tied", False),
+        )
 
 
 def aggregate_quantable_parameters(models, base_dir="data", unit=1_000_000_000):
