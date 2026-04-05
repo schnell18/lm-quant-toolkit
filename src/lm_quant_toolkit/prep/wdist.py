@@ -116,7 +116,8 @@ def summarize_vit_percentiles(
                 w = state_dict[full_name]
                 param_count = w.numel()
                 w = w.flatten().float().numpy()
-                percentiles = np.percentile(np.abs(w), [0, 99, 99.9, 99.99, 100])
+                percentiles = np.percentile(
+                    np.abs(w), [0, 99, 99.9, 99.99, 100])
                 kurt_pearson = kurtosis(
                     w, axis=None, fisher=False, bias=True, nan_policy="omit"
                 )
@@ -279,7 +280,8 @@ def summarize_qwen35_quantable_params(
         return get_tensor(name, base_dir)
 
     # ── top-level text (non-layerwise)
-    _record("embed_tokens", 0, _t("model.language_model.embed_tokens.weight"), False)
+    _record("embed_tokens", 0, _t(
+        "model.language_model.embed_tokens.weight"), False)
     _record("norm", 0, _t("model.language_model.norm.weight"), False)
     if not lm_head_tied:
         _record("lm_head", 0, _t("lm_head.weight"), False)
@@ -287,7 +289,8 @@ def summarize_qwen35_quantable_params(
     # ── layerwise text
     for i in range(layers):
         pfx = f"model.language_model.layers.{i}"
-        _record("input_layernorm", i, _t(f"{pfx}.input_layernorm.weight"), False)
+        _record("input_layernorm", i, _t(
+            f"{pfx}.input_layernorm.weight"), False)
         _record(
             "post_attention_layernorm",
             i,
@@ -298,23 +301,34 @@ def summarize_qwen35_quantable_params(
         if i in full_attn_layers:
             # Standard self-attention (quantizable projections)
             for m in ("q_proj", "k_proj", "v_proj", "o_proj"):
-                _record(f"self_attn.{m}", i, _t(f"{pfx}.self_attn.{m}.weight"), True)
+                _record(f"self_attn.{m}", i, _t(
+                    f"{pfx}.self_attn.{m}.weight"), True)
             # RMS norms inside attention (not quantizable)
             for m in ("q_norm", "k_norm"):
-                _record(f"self_attn.{m}", i, _t(f"{pfx}.self_attn.{m}.weight"), False)
-        else:
-            # GatedDeltaNet linear attention — not quantized
-            for m in ("in_proj_qkv", "in_proj_z", "out_proj", "in_proj_a", "in_proj_b"):
                 _record(
-                    f"linear_attn.{m}", i, _t(f"{pfx}.linear_attn.{m}.weight"), True
+                    f"self_attn.{m}", i, _t(
+                        f"{pfx}.self_attn.{m}.weight"), False
+                )
+        else:
+            # GatedDeltaNet linear attention — quantized
+            for m in ("in_proj_qkv", "in_proj_z", "out_proj", "in_proj_a",
+                      "in_proj_b",):
+                _record(
+                    f"linear_attn.{m}", i, _t(
+                        f"{pfx}.linear_attn.{m}.weight"), True
                 )
             _record(
-                "linear_attn.conv1d", i, _t(f"{pfx}.linear_attn.conv1d.weight"), False
+                "linear_attn.conv1d", i, _t(
+                    f"{pfx}.linear_attn.conv1d.weight"), False
             )
-            _record("linear_attn.norm", i, _t(f"{pfx}.linear_attn.norm.weight"), False)
+            _record(
+                "linear_attn.norm", i, _t(
+                    f"{pfx}.linear_attn.norm.weight"), False
+            )
             # Learnable scalars stored without .weight suffix
             for m in ("A_log", "dt_bias"):
-                _record(f"linear_attn.{m}", i, _t(f"{pfx}.linear_attn.{m}"), False)
+                _record(f"linear_attn.{m}", i, _t(
+                    f"{pfx}.linear_attn.{m}"), False)
 
         # MLP
         if moe:
@@ -326,7 +340,8 @@ def summarize_qwen35_quantable_params(
                 True,
             )
             _record(
-                "mlp.experts.down_proj", i, _t(f"{pfx}.mlp.experts.down_proj"), True
+                "mlp.experts.down_proj", i, _t(
+                    f"{pfx}.mlp.experts.down_proj"), True
             )
             for m in ("gate_proj", "up_proj", "down_proj"):
                 _record(
@@ -362,8 +377,14 @@ def summarize_qwen35_quantable_params(
     for i in range(vision_layers):
         vpfx = f"model.visual.blocks.{i}"
         # Quantizable: fused QKV, output proj, MLP fc1/fc2
-        _record("visual.attn.qkv", i, _t(f"{vpfx}.attn.qkv.weight"), False, "vision")
-        _record("visual.attn.proj", i, _t(f"{vpfx}.attn.proj.weight"), False, "vision")
+        _record(
+            "visual.attn.qkv", i, _t(
+                f"{vpfx}.attn.qkv.weight"), False, "vision"
+        )
+        _record(
+            "visual.attn.proj", i, _t(
+                f"{vpfx}.attn.proj.weight"), False, "vision"
+        )
         _record(
             "visual.mlp.linear_fc1",
             i,
@@ -380,7 +401,8 @@ def summarize_qwen35_quantable_params(
         )
         # Layer norms (not quantizable)
         for m in ("norm1", "norm2"):
-            _record(f"visual.{m}", i, _t(f"{vpfx}.{m}.weight"), False, "vision")
+            _record(f"visual.{m}", i, _t(
+                f"{vpfx}.{m}.weight"), False, "vision")
 
     # Vision-language merger MLP
     for m in ("linear_fc1", "linear_fc2"):
