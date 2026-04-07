@@ -14,7 +14,7 @@ python ../../src/cli.py llm \
     --task eval_ppl \
     --model Qwen/Qwen3.5-2B Qwen/Qwen3.5-4B Qwen/Qwen3.5-9B \
     --algo fp16 \
-    --experiment-name eval_ppl-fp16 \
+    --experiment-name eval_ppl-qwen35-fp16 \
     --quant-snapshot-dir="$EXP_RESULT_BASE_DIR/snapshots" \
     --result-dir="$EXP_RESULT_BASE_DIR/results" \
     2>&1 \

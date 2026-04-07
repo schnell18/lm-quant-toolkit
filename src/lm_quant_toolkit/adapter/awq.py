@@ -1,6 +1,7 @@
 import os
 import time
 
+import torch
 import transformers
 from gptqmodel import GPTQModel, QuantizeConfig
 from gptqmodel.quantization import FORMAT, METHOD
@@ -45,6 +46,8 @@ def create_autoawq_model(model_id, quant_config, config_id, load_quantized, save
     else:
         gm_config = _awq_config_to_gm(quant_config)
         model = GPTQModel.load(model_id, gm_config)
+    # ensure bfloat16 is converted to float16 for AWQ GEMM kernel
+    model = model.to(torch.float16)
     return model, tokenizer, quantized, model_file_size
 
 
