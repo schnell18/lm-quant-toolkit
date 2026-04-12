@@ -17,8 +17,8 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 python ../../src/cli.py llm \
     --task quant \
     --model Qwen/Qwen3.5-2B Qwen/Qwen3.5-4B Qwen/Qwen3.5-9B \
-    --algo awq \
-    --experiment-name quant-qwen35-awq2 \
+    --algo bnb \
+    --experiment-name quant-qwen35-bnb \
     --quant-snapshot-dir="$EXP_RESULT_BASE_DIR/snapshots2" \
     --result-dir="$EXP_RESULT_BASE_DIR/results" \
     2>&1 \

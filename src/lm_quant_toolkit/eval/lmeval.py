@@ -103,7 +103,6 @@ def eval_llm_perf(
     result_dir,
     verbosity="INFO",
 ):
-
     t1 = time.time()
     results = evaluator.simple_evaluate(
         model=model,
@@ -148,7 +147,10 @@ def eval_llm_perf(
             )
         print(make_table(results))
 
-    metric, score, = _cal_eval_score(task, results)
+    (
+        metric,
+        score,
+    ) = _cal_eval_score(task, results)
     metric[metric] = score
     metric[f"duration_{task}"] = t2 - t1
     return metric

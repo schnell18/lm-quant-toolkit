@@ -8,8 +8,8 @@ import pandas as pd
 import torch
 from gptqmodel import QuantizeConfig as GPTQQuantConfig
 from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
-from transformers import BitsAndBytesConfig
 from lm_eval.models.huggingface import HFLM
+from transformers import BitsAndBytesConfig
 
 from lm_quant_toolkit.adapter.awq import (
     create_autoawq_model,
@@ -21,11 +21,9 @@ from lm_quant_toolkit.adapter.gptq import (
     create_gptq_model,
     quantize_gptq_model,
 )
-from lm_quant_toolkit.adapter.leaderboard import eval_llm_perf
 from lm_quant_toolkit.adapter.hqq import create_hqq_model, quantize_hqq_model
 from lm_quant_toolkit.adapter.mxq import create_mxq_model, quantize_mxq_model
 from lm_quant_toolkit.eval.common import (
-    HQQ_CONFIGS,
     _dump_cuda_mem_snapshot,
     _reset_peak_memory_stats,
     cleanup,
@@ -35,6 +33,7 @@ from lm_quant_toolkit.eval.common import (
     persist_progress,
     save_partial_metric,
 )
+from lm_quant_toolkit.eval.lmeval import eval_llm_perf
 from lm_quant_toolkit.eval.perplexity import eval_ppls
 
 ALL_MODELS = [
@@ -73,10 +72,8 @@ BNB_CONFIGS = [
 
 
 AUTOAWQ_CONFIGS = [
-    ("b4g32", {"w_bit": 4, "q_group_size": 32,
-     "zero_point": True, "version": "GEMM"}),
-    ("b4g64", {"w_bit": 4, "q_group_size": 64,
-     "zero_point": True, "version": "GEMM"}),
+    ("b4g32", {"w_bit": 4, "q_group_size": 32, "zero_point": True, "version": "GEMM"}),
+    ("b4g64", {"w_bit": 4, "q_group_size": 64, "zero_point": True, "version": "GEMM"}),
     (
         "b4g128",
         {"w_bit": 4, "q_group_size": 128, "zero_point": True, "version": "GEMM"},
@@ -89,48 +86,39 @@ AUTOAWQ_CONFIGS = [
 GPTQ_CONFIGS = [
     (
         "b8g32",
-        GPTQQuantConfig(bits=8, group_size=32,
-                        damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=8, group_size=32, damp_percent=0.01, desc_act=False),
     ),
     (
         "b8g64",
-        GPTQQuantConfig(bits=8, group_size=64,
-                        damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=8, group_size=64, damp_percent=0.01, desc_act=False),
     ),
     (
         "b8g128",
-        GPTQQuantConfig(bits=8, group_size=128,
-                        damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=8, group_size=128, damp_percent=0.01, desc_act=False),
     ),
     (
         "b4g32",
-        GPTQQuantConfig(bits=4, group_size=32,
-                        damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=4, group_size=32, damp_percent=0.01, desc_act=False),
     ),
     (
         "b4g64",
-        GPTQQuantConfig(bits=4, group_size=64,
-                        damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=4, group_size=64, damp_percent=0.01, desc_act=False),
     ),
     (
         "b4g128",
-        GPTQQuantConfig(bits=4, group_size=128,
-                        damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=4, group_size=128, damp_percent=0.01, desc_act=False),
     ),
     (
         "b3g32",
-        GPTQQuantConfig(bits=3, group_size=32,
-                        damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=3, group_size=32, damp_percent=0.01, desc_act=False),
     ),
     (
         "b3g64",
-        GPTQQuantConfig(bits=3, group_size=64,
-                        damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=3, group_size=64, damp_percent=0.01, desc_act=False),
     ),
     (
         "b3g128",
-        GPTQQuantConfig(bits=3, group_size=128,
-                        damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=3, group_size=128, damp_percent=0.01, desc_act=False),
     ),
 ]
 
@@ -202,37 +190,24 @@ def _load_todo_tasks(result_dir, experiment_name, models, tasks):
 
 
 def _quant_model(
-        model,
-        tokenizer,
-        cfg,
-        quant_dir,
-        config,
-        algo,
-        model_id,
-        quant_fn,
-        kwargs):
+    model, tokenizer, cfg, quant_dir, config, algo, model_id, quant_fn, kwargs
+):
     # avoid interventions between models
     quant_config = copy.deepcopy(config[1])
     if algo == "mxq":
         ok, metric_fp = get_mxq_quant_meta_data_file(model_id)
         if not ok:
             raise ValueError(
-                f"Quantization meta data file: {
-                    metric_fp} doesn't exists!"
+                f"Quantization meta data file: {metric_fp} doesn't exists!"
             )
         quant_config["quant_metrics_file"] = metric_fp
-        quant_config["weight_algo"] = kwargs.get(
-            "weight_algo", None)
-        quant_config["boost_layers"] = kwargs.get(
-            "boost_layers", None)
-        quant_config["decline_layers"] = kwargs.get(
-            "decline_layers", None)
+        quant_config["weight_algo"] = kwargs.get("weight_algo", None)
+        quant_config["boost_layers"] = kwargs.get("boost_layers", None)
+        quant_config["decline_layers"] = kwargs.get("decline_layers", None)
         quant_config["boost_stop"] = kwargs.get("boost_stop", None)
-        quant_config["decline_stop"] = kwargs.get(
-            "decline_stop", None)
+        quant_config["decline_stop"] = kwargs.get("decline_stop", None)
         quant_config["ablation"] = kwargs.get("ablation", None)
-        quant_config["top_m_layer"] = kwargs.get(
-            "top_m_layer", None)
+        quant_config["top_m_layer"] = kwargs.get("top_m_layer", None)
         quant_config["factor"] = kwargs.get("factor", None)
     return quant_fn(
         model,
@@ -254,9 +229,9 @@ def do_expermient(
     track_cuda_memory=False,
     **kwargs,
 ):
-
     df_all, df_todo, progress_path = _load_todo_tasks(
-        result_dir, experiment_name, models, tasks)
+        result_dir, experiment_name, models, tasks
+    )
     if len(df_todo) == 0:
         return
 
@@ -276,14 +251,12 @@ def do_expermient(
         elif task_type == "eval_ppl":
             print(f"Evaluating {algo} PPL on {model_id} w/ config: {cfg}...")
         elif task_type in LLM_PERF_TASKS:
-            print(
-                f"Evaluating {algo} benchmarks on {
-                    model_id} w/ config: {cfg}..."
-            )
+            print(f"Evaluating {algo} benchmarks on {model_id} w/ config: {cfg}...")
         else:
             print(
-                f"Evaluating {algo} model storage metrics on {
-                    model_id} w/ config: {cfg}..."
+                f"Evaluating {algo} model storage metrics on {model_id} w/ config: {
+                    cfg
+                }..."
             )
         print("*" * 72)
 
@@ -296,34 +269,29 @@ def do_expermient(
         model, tokenizer, quantized, model_file_size = create_fn(
             model_id, config[1], cfg, quant_fn is not None, quant_dir
         )
-        if task_type == "quant" and not quantized and quant_fn:
-            model, duration, model_file_size = _quant_model(
-                model,
-                tokenizer,
-                cfg,
-                quant_dir,
-                config,
-                algo,
-                model_id,
-                quant_fn,
-                kwargs
-            )
-            metric["quant_duration"] = duration
-        if task_type == "eval_model_storage":
+        if task_type == "quant":
+            if not quantized and quant_fn:
+                model, duration, model_file_size = _quant_model(
+                    model,
+                    tokenizer,
+                    cfg,
+                    quant_dir,
+                    config,
+                    algo,
+                    model_id,
+                    quant_fn,
+                    kwargs,
+                )
+                metric["quant_duration"] = duration
+        elif task_type == "eval_model_storage":
             allot, reserved = get_memory_metrics()
             metric["load_mem_allot"] = allot
             metric["load_mem_reserved"] = reserved
             metric["model_storage_size"] = model_file_size
-
         elif task_type == "eval_ppl":
             # Evaluate the quantized model
             metric = eval_ppls(model, tokenizer, metric)
-            metric["ppl_mem_allot"], metric["ppl_mem_reserved"] = (
-                get_memory_metrics()
-            )
-        if track_cuda_memory:
-            _dump_cuda_mem_snapshot(
-                experiment_name, model_id, algo, result_dir)
+            metric["ppl_mem_allot"], metric["ppl_mem_reserved"] = get_memory_metrics()
         elif task_type in LLM_PERF_TASKS:
             # Wrap the model into HFLM
             model = HFLM(pretrained=model)
@@ -338,15 +306,12 @@ def do_expermient(
             metric[f"{task_type}_mem_allot"], metric[f"{task_type}_mem_reserved"] = (
                 get_memory_metrics()
             )
-            if track_cuda_memory:
-                _dump_cuda_mem_snapshot(
-                    experiment_name, model_id, algo, result_dir)
         else:
-            print(f"Invalid task_type: {task_type}")
-            return
+            raise ValueError(f"Invalid task_type: {task_type}")
         cleanup(model)
-        save_partial_metric(experiment_name, algo,
-                            model_id, cfg, metric, result_dir)
+        if track_cuda_memory:
+            _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
+        save_partial_metric(experiment_name, algo, model_id, cfg, metric, result_dir)
         df_all.loc[
             (df_all["model"] == model_id)
             & (df_all["cfg"] == cfg)
@@ -403,25 +368,6 @@ def main():
         level=logging.INFO,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-
-    # experiment_llm_leaderboard_autogptq()
-    # experiment_llm_leaderboard_fp16()
-    # experiment_llm_leaderboard_hqq()
-    # experiment_llm_leaderboard_autoawq()
-    # experiment_quant_hqq()
-    # experiment_quant_mxq()
-    # experiment_quant_awq()
-    # experiment_quant_gptq()
-    # experiment_ppl_eval_fp16()
-    # experiment_ppl_eval_hqq()
-    # experiment_ppl_eval_gptq()
-    # experiment_ppl_eval_awq()
-    # experiment_fp16_llama3_8B_OOM()
-    # experiment_fp16_vs_hqq_eval_gpu_mem()
-    # experiment_debug_quant_hqq()
-    # experiment_eval_model_storage()
-    # experiment_eval_ppl_all()
-    experiment_debug_quant_hqq()
 
 
 if __name__ == "__main__":
