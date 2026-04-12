@@ -1,0 +1,146 @@
+{
+  "results": {
+    "gpqa_diamond_zeroshot": {
+      "alias": "gpqa_diamond_zeroshot",
+      "acc,none": 0.51,
+      "acc_stderr,none": 0.05024183937956913,
+      "acc_norm,none": 0.51,
+      "acc_norm_stderr,none": 0.05024183937956913
+    }
+  },
+  "group_subtasks": {
+    "gpqa_diamond_zeroshot": []
+  },
+  "configs": {
+    "gpqa_diamond_zeroshot": {
+      "task": "gpqa_diamond_zeroshot",
+      "tag": "gpqa",
+      "dataset_path": "Idavidrein/gpqa",
+      "dataset_name": "gpqa_diamond",
+      "training_split": "train",
+      "validation_split": "train",
+      "process_docs": "def process_docs(dataset: datasets.Dataset) -> datasets.Dataset:\n    def _process_doc(doc):\n        choices = [\n            preprocess(doc[\"Incorrect Answer 1\"]),\n            preprocess(doc[\"Incorrect Answer 2\"]),\n            preprocess(doc[\"Incorrect Answer 3\"]),\n            preprocess(doc[\"Correct Answer\"]),\n        ]\n\n        random.shuffle(choices)\n        correct_answer_index = choices.index(preprocess(doc[\"Correct Answer\"]))\n\n        out_doc = {\n            \"choice1\": choices[0],\n            \"choice2\": choices[1],\n            \"choice3\": choices[2],\n            \"choice4\": choices[3],\n            \"answer\": f\"({chr(65 + correct_answer_index)})\",\n        }\n        return out_doc\n\n    return dataset.map(_process_doc)\n",
+      "doc_to_text": "What is the correct answer to this question:{{Question}}\nChoices:\n(A) {{choice1}}\n(B) {{choice2}}\n(C) {{choice3}}\n(D) {{choice4}}\nAnswer:",
+      "doc_to_target": "answer",
+      "unsafe_code": false,
+      "doc_to_choice": [
+        "(A)",
+        "(B)",
+        "(C)",
+        "(D)"
+      ],
+      "description": "",
+      "target_delimiter": " ",
+      "fewshot_delimiter": "\n\n",
+      "fewshot_config": {
+        "sampler": "default",
+        "split": null,
+        "process_docs": "<function process_docs at 0x75a44c1fb060>",
+        "fewshot_indices": null,
+        "samples": null,
+        "doc_to_text": "What is the correct answer to this question:{{Question}}\nChoices:\n(A) {{choice1}}\n(B) {{choice2}}\n(C) {{choice3}}\n(D) {{choice4}}\nAnswer:",
+        "doc_to_choice": [
+          "(A)",
+          "(B)",
+          "(C)",
+          "(D)"
+        ],
+        "doc_to_target": "answer",
+        "gen_prefix": null,
+        "fewshot_delimiter": "\n\n",
+        "target_delimiter": " "
+      },
+      "num_fewshot": 0,
+      "metric_list": [
+        {
+          "metric": "acc",
+          "aggregation": "mean",
+          "higher_is_better": true
+        },
+        {
+          "metric": "acc_norm",
+          "aggregation": "mean",
+          "higher_is_better": true
+        }
+      ],
+      "output_type": "multiple_choice",
+      "repeats": 1,
+      "should_decontaminate": false,
+      "metadata": {
+        "version": 1.0,
+        "pretrained": "Qwen/Qwen3.5-9B"
+      }
+    }
+  },
+  "versions": {
+    "gpqa_diamond_zeroshot": 1.0
+  },
+  "n-shot": {
+    "gpqa_diamond_zeroshot": 0
+  },
+  "higher_is_better": {
+    "gpqa_diamond_zeroshot": {
+      "acc": true,
+      "acc_norm": true
+    }
+  },
+  "n-samples": {
+    "gpqa_diamond_zeroshot": {
+      "original": 198,
+      "effective": 100
+    }
+  },
+  "config": {
+    "model": "hf",
+    "model_args": {
+      "pretrained": "Qwen/Qwen3.5-9B"
+    },
+    "model_num_parameters": 8953803264,
+    "model_dtype": "torch.bfloat16",
+    "model_revision": "main",
+    "model_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+    "batch_size": 1,
+    "batch_sizes": [],
+    "device": "cuda:0",
+    "use_cache": null,
+    "limit": 100.0,
+    "bootstrap_iters": 100000,
+    "gen_kwargs": {},
+    "random_seed": 42,
+    "numpy_seed": 42,
+    "torch_seed": 42,
+    "fewshot_seed": 42
+  },
+  "git_hash": "v0.1.0-9-gbb657bb",
+  "date": 1775949350.766332,
+  "pretty_env_info": "PyTorch version: 2.11.0+cu130\nIs debug build: False\nCUDA used to build PyTorch: 13.0\nROCM used to build PyTorch: N/A\n\nOS: Ubuntu 24.04.4 LTS (x86_64)\nGCC version: (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0\nClang version: Could not collect\nCMake version: version 3.28.3\nLibc version: glibc-2.39\n\nPython version: 3.13.7 (main, Aug 18 2025, 19:20:03) [Clang 20.1.4 ] (64-bit runtime)\nPython platform: Linux-6.17.0-20-generic-x86_64-with-glibc2.39\nIs CUDA available: True\nCUDA runtime version: Could not collect\nCUDA_MODULE_LOADING set to: \nGPU models and configuration: GPU 0: NVIDIA GeForce RTX 4090\nNvidia driver version: 595.58.03\ncuDNN version: Could not collect\nIs XPU available: False\nHIP runtime version: N/A\nMIOpen runtime version: N/A\nIs XNNPACK available: True\nCaching allocator config: N/A\n\nCPU:\nArchitecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           39 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  32\nOn-line CPU(s) list:                     0-31\nVendor ID:                               GenuineIntel\nModel name:                              Intel(R) Core(TM) i9-14900KF\nCPU family:                              6\nModel:                                   183\nThread(s) per core:                      2\nCore(s) per socket:                      24\nSocket(s):                               1\nStepping:                                1\nCPU(s) scaling MHz:                      33%\nCPU max MHz:                             6000.0000\nCPU min MHz:                             800.0000\nBogoMIPS:                                6374.40\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke waitpkg gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize arch_lbr ibt flush_l1d arch_capabilities\nVirtualization:                          VT-x\nL1d cache:                               896 KiB (24 instances)\nL1i cache:                               1.3 MiB (24 instances)\nL2 cache:                                32 MiB (12 instances)\nL3 cache:                                36 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-31\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Mitigation; Clear Register File\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Mitigation; IBPB before exit to userspace\n\nVersions of relevant libraries:\n[pip3] Could not collect\n[conda] Could not collect",
+  "transformers_version": "5.5.0",
+  "lm_eval_version": "0.4.11",
+  "upper_git_hash": "bb657bb5ba5ff5d868b6251a6f1c40373eeae62e",
+  "tokenizer_pad_token": [
+    "<|endoftext|>",
+    "248044"
+  ],
+  "tokenizer_eos_token": [
+    "<|im_end|>",
+    "248046"
+  ],
+  "tokenizer_bos_token": [
+    null,
+    "None"
+  ],
+  "eot_token_id": 248046,
+  "max_length": 262144,
+  "task_hashes": {
+    "gpqa_diamond_zeroshot": "c08562ba1f1ad839493233138261519745e170ad58d0c865d56a0bc0e6751c22"
+  },
+  "model_source": "hf",
+  "model_name": "Qwen/Qwen3.5-9B",
+  "model_name_sanitized": "Qwen__Qwen3.5-9B",
+  "system_instruction": null,
+  "system_instruction_sha": null,
+  "fewshot_as_multiturn": null,
+  "chat_template": null,
+  "chat_template_sha": null,
+  "total_evaluation_time_seconds": "28.378363534997334"
+}
