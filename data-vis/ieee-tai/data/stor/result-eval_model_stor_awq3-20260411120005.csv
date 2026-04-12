@@ -1,0 +1,7 @@
+model,algo,config,config_detail,quant_duration,model_storage_size,load_mem_allot,load_mem_reserved,ppl_mem_allot,ppl_mem_reserved,leaderboard_mem_allot,leaderboard_mem_reserved,ppl_wikitext,ppl_c4,duration_wikitext,duration_c4,duration_leaderboard,ifeval,bbh,mathlevel5,gpqa,musr,mmlupro
+Qwen3.5-4B,awq,b4g32,"{'w_bit': 4, 'q_group_size': 32, 'zero_point': True, 'version': 'GEMM'}",0,4009461576,5280759808,5291114496,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Qwen3.5-4B,awq,b4g128,"{'w_bit': 4, 'q_group_size': 128, 'zero_point': True, 'version': 'GEMM'}",0,3800565448,5071863808,5093982208,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Qwen3.5-4B,awq,b4g64,"{'w_bit': 4, 'q_group_size': 64, 'zero_point': True, 'version': 'GEMM'}",0,3870197512,5141495808,5165285376,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Qwen3.5-2B,awq,b4g128,"{'w_bit': 4, 'q_group_size': 128, 'zero_point': True, 'version': 'GEMM'}",0,2396078024,3413114880,3418357760,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Qwen3.5-2B,awq,b4g64,"{'w_bit': 4, 'q_group_size': 64, 'zero_point': True, 'version': 'GEMM'}",0,2422865864,3439902720,3445620736,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Qwen3.5-2B,awq,b4g32,"{'w_bit': 4, 'q_group_size': 32, 'zero_point': True, 'version': 'GEMM'}",0,2476441592,3493478400,3498049536,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0

@@ -9,6 +9,7 @@ import torch
 from gptqmodel import QuantizeConfig as GPTQQuantConfig
 from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
 from transformers import BitsAndBytesConfig
+from lm_eval.models.huggingface import HFLM
 
 from lm_quant_toolkit.adapter.awq import (
     create_autoawq_model,
@@ -20,6 +21,7 @@ from lm_quant_toolkit.adapter.gptq import (
     create_gptq_model,
     quantize_gptq_model,
 )
+from lm_quant_toolkit.adapter.leaderboard import eval_llm_perf
 from lm_quant_toolkit.adapter.hqq import create_hqq_model, quantize_hqq_model
 from lm_quant_toolkit.adapter.mxq import create_mxq_model, quantize_mxq_model
 from lm_quant_toolkit.eval.common import (
@@ -71,8 +73,10 @@ BNB_CONFIGS = [
 
 
 AUTOAWQ_CONFIGS = [
-    ("b4g32", {"w_bit": 4, "q_group_size": 32, "zero_point": True, "version": "GEMM"}),
-    ("b4g64", {"w_bit": 4, "q_group_size": 64, "zero_point": True, "version": "GEMM"}),
+    ("b4g32", {"w_bit": 4, "q_group_size": 32,
+     "zero_point": True, "version": "GEMM"}),
+    ("b4g64", {"w_bit": 4, "q_group_size": 64,
+     "zero_point": True, "version": "GEMM"}),
     (
         "b4g128",
         {"w_bit": 4, "q_group_size": 128, "zero_point": True, "version": "GEMM"},
@@ -85,39 +89,48 @@ AUTOAWQ_CONFIGS = [
 GPTQ_CONFIGS = [
     (
         "b8g32",
-        GPTQQuantConfig(bits=8, group_size=32, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=8, group_size=32,
+                        damp_percent=0.01, desc_act=False),
     ),
     (
         "b8g64",
-        GPTQQuantConfig(bits=8, group_size=64, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=8, group_size=64,
+                        damp_percent=0.01, desc_act=False),
     ),
     (
         "b8g128",
-        GPTQQuantConfig(bits=8, group_size=128, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=8, group_size=128,
+                        damp_percent=0.01, desc_act=False),
     ),
     (
         "b4g32",
-        GPTQQuantConfig(bits=4, group_size=32, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=4, group_size=32,
+                        damp_percent=0.01, desc_act=False),
     ),
     (
         "b4g64",
-        GPTQQuantConfig(bits=4, group_size=64, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=4, group_size=64,
+                        damp_percent=0.01, desc_act=False),
     ),
     (
         "b4g128",
-        GPTQQuantConfig(bits=4, group_size=128, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=4, group_size=128,
+                        damp_percent=0.01, desc_act=False),
     ),
     (
         "b3g32",
-        GPTQQuantConfig(bits=3, group_size=32, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=3, group_size=32,
+                        damp_percent=0.01, desc_act=False),
     ),
     (
         "b3g64",
-        GPTQQuantConfig(bits=3, group_size=64, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=3, group_size=64,
+                        damp_percent=0.01, desc_act=False),
     ),
     (
         "b3g128",
-        GPTQQuantConfig(bits=3, group_size=128, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(bits=3, group_size=128,
+                        damp_percent=0.01, desc_act=False),
     ),
 ]
 
@@ -163,16 +176,7 @@ def _setup_fn(algo, spec):
             raise ValueError(f"Invalid algo: {algo}")
 
 
-def do_expermient(
-    experiment_name,
-    models,
-    tasks,
-    quant_dir="snapshots",
-    result_dir="results",
-    log_dir="logs",
-    track_cuda_memory=False,
-    **kwargs,
-):
+def _load_todo_tasks(result_dir, experiment_name, models, tasks):
     df_all = gen_experiment_items(models, tasks)
     progress_path = os.path.join(result_dir, experiment_name, "progress.csv")
     if Path(progress_path).exists():
@@ -194,15 +198,73 @@ def do_expermient(
     if cnt_todo == 0:
         print("Tasks completed!")
     print("*" * 72)
-    if cnt_todo == 0:
+    return df_all, df_todo, progress_path
+
+
+def _quant_model(
+        model,
+        tokenizer,
+        cfg,
+        quant_dir,
+        config,
+        algo,
+        model_id,
+        quant_fn,
+        kwargs):
+    # avoid interventions between models
+    quant_config = copy.deepcopy(config[1])
+    if algo == "mxq":
+        ok, metric_fp = get_mxq_quant_meta_data_file(model_id)
+        if not ok:
+            raise ValueError(
+                f"Quantization meta data file: {
+                    metric_fp} doesn't exists!"
+            )
+        quant_config["quant_metrics_file"] = metric_fp
+        quant_config["weight_algo"] = kwargs.get(
+            "weight_algo", None)
+        quant_config["boost_layers"] = kwargs.get(
+            "boost_layers", None)
+        quant_config["decline_layers"] = kwargs.get(
+            "decline_layers", None)
+        quant_config["boost_stop"] = kwargs.get("boost_stop", None)
+        quant_config["decline_stop"] = kwargs.get(
+            "decline_stop", None)
+        quant_config["ablation"] = kwargs.get("ablation", None)
+        quant_config["top_m_layer"] = kwargs.get(
+            "top_m_layer", None)
+        quant_config["factor"] = kwargs.get("factor", None)
+    return quant_fn(
+        model,
+        tokenizer,
+        quant_config,
+        model_id,
+        cfg,
+        quant_dir,
+    )
+
+
+def do_expermient(
+    experiment_name,
+    models,
+    tasks,
+    quant_dir="snapshots",
+    result_dir="results",
+    log_dir="logs",
+    track_cuda_memory=False,
+    **kwargs,
+):
+
+    df_all, df_todo, progress_path = _load_todo_tasks(
+        result_dir, experiment_name, models, tasks)
+    if len(df_todo) == 0:
         return
 
+    LLM_PERF_TASKS = ["eval_gpga_diamond_zeroshot", "eval_gsm8k"]
     df_todo = df_todo.sort_values(by=["model", "cfg"], ascending=False)
     for idx, row in df_todo.iterrows():
-        model_id = row["model"]
-        algo = row["algo"]
-        task_type = row["task_type"]
-        cfg = row["cfg"]
+        model_id, task_type = row["model"], row["task_type"]
+        algo, cfg = row["algo"], row["cfg"]
         spec = tasks[algo]
         _setup_fn(algo, spec)
         config = [c for c in spec["configs"] if c[0] == cfg][0]
@@ -213,86 +275,78 @@ def do_expermient(
             print(f"Quantizing {algo} on {model_id} w/ config: {cfg}...")
         elif task_type == "eval_ppl":
             print(f"Evaluating {algo} PPL on {model_id} w/ config: {cfg}...")
-        elif task_type == "eval_leaderboard":
+        elif task_type in LLM_PERF_TASKS:
             print(
-                f"Evaluating {algo} LLM Leaderboard benchmarks on {model_id} w/ config: {cfg}..."
+                f"Evaluating {algo} benchmarks on {
+                    model_id} w/ config: {cfg}..."
             )
         else:
             print(
-                f"Evaluating {algo} model storage metrics on {model_id} w/ config: {cfg}..."
+                f"Evaluating {algo} model storage metrics on {
+                    model_id} w/ config: {cfg}..."
             )
         print("*" * 72)
 
         if track_cuda_memory:
             torch.cuda.memory._record_memory_history()
         _reset_peak_memory_stats()
-        if task_type != "eval_leaderboard":
-            create_fn = spec["create_fn"]
-            model, tokenizer, quantized, model_file_size = create_fn(
-                model_id, config[1], cfg, quant_fn is not None, quant_dir
+
+        # create model for perplexity or downstream task eval
+        create_fn = spec["create_fn"]
+        model, tokenizer, quantized, model_file_size = create_fn(
+            model_id, config[1], cfg, quant_fn is not None, quant_dir
+        )
+        if task_type == "quant" and not quantized and quant_fn:
+            model, duration, model_file_size = _quant_model(
+                model,
+                tokenizer,
+                cfg,
+                quant_dir,
+                config,
+                algo,
+                model_id,
+                quant_fn,
+                kwargs
             )
+            metric["quant_duration"] = duration
+        if task_type == "eval_model_storage":
+            allot, reserved = get_memory_metrics()
+            metric["load_mem_allot"] = allot
+            metric["load_mem_reserved"] = reserved
+            metric["model_storage_size"] = model_file_size
 
-            if not quantized and quant_fn:
-                # avoid interventions between models
-                quant_config = copy.deepcopy(config[1])
-                if algo == "mxq":
-                    ok, metric_fp = get_mxq_quant_meta_data_file(model_id)
-                    if not ok:
-                        print(
-                            f"Quantization meta data file: {metric_fp} doesn't exists!"
-                        )
-                        return
-                    quant_config["quant_metrics_file"] = metric_fp
-                    quant_config["weight_algo"] = kwargs.get("weight_algo", None)
-                    quant_config["boost_layers"] = kwargs.get("boost_layers", None)
-                    quant_config["decline_layers"] = kwargs.get("decline_layers", None)
-                    quant_config["boost_stop"] = kwargs.get("boost_stop", None)
-                    quant_config["decline_stop"] = kwargs.get("decline_stop", None)
-                    quant_config["ablation"] = kwargs.get("ablation", None)
-                    quant_config["top_m_layer"] = kwargs.get("top_m_layer", None)
-                    quant_config["factor"] = kwargs.get("factor", None)
-                model, duration, model_file_size = quant_fn(
-                    model,
-                    tokenizer,
-                    quant_config,
-                    model_id,
-                    cfg,
-                    quant_dir,
-                )
-                metric["quant_duration"] = duration
-            if task_type == "eval_model_storage":
-                allot, reserved = get_memory_metrics()
-                metric["load_mem_allot"] = allot
-                metric["load_mem_reserved"] = reserved
-                metric["model_storage_size"] = model_file_size
-
-            elif task_type == "eval_ppl":
-                # Evaluate the quantized model
-                metric = eval_ppls(model, tokenizer, metric)
-                metric["ppl_mem_allot"], metric["ppl_mem_reserved"] = (
-                    get_memory_metrics()
-                )
+        elif task_type == "eval_ppl":
+            # Evaluate the quantized model
+            metric = eval_ppls(model, tokenizer, metric)
+            metric["ppl_mem_allot"], metric["ppl_mem_reserved"] = (
+                get_memory_metrics()
+            )
+        if track_cuda_memory:
+            _dump_cuda_mem_snapshot(
+                experiment_name, model_id, algo, result_dir)
+        elif task_type in LLM_PERF_TASKS:
+            # Wrap the model into HFLM
+            model = HFLM(pretrained=model)
+            task = task_type.split("_", 1)[1]
+            metric = eval_llm_perf(
+                experiment_name,
+                task,
+                model,
+                metric,
+                result_dir,
+            )
+            metric[f"{task_type}_mem_allot"], metric[f"{task_type}_mem_reserved"] = (
+                get_memory_metrics()
+            )
             if track_cuda_memory:
-                _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
-            cleanup(model)
+                _dump_cuda_mem_snapshot(
+                    experiment_name, model_id, algo, result_dir)
         else:
-            pass
-            # metric = eval_llm_leaderboard(
-            #     experiment_name,
-            #     model_id,
-            #     algo,
-            #     cfg,
-            #     quant_fn is not None,
-            #     metric,
-            #     quant_dir,
-            #     result_dir,
-            # )
-            # metric["leaderboard_mem_allot"], metric["leaderboard_mem_reserved"] = (
-            #     get_memory_metrics()
-            # )
-            # if track_cuda_memory:
-            #     _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
-        save_partial_metric(experiment_name, algo, model_id, cfg, metric, result_dir)
+            print(f"Invalid task_type: {task_type}")
+            return
+        cleanup(model)
+        save_partial_metric(experiment_name, algo,
+                            model_id, cfg, metric, result_dir)
         df_all.loc[
             (df_all["model"] == model_id)
             & (df_all["cfg"] == cfg)
@@ -323,13 +377,6 @@ def _init_metrics(model_id, algo, config):
         "ppl_c4": 0,
         "duration_wikitext": 0,
         "duration_c4": 0,
-        "duration_leaderboard": 0,
-        "ifeval": 0,
-        "bbh": 0,
-        "mathlevel5": 0,
-        "gpqa": 0,
-        "musr": 0,
-        "mmlupro": 0,
     }
 
 
@@ -347,369 +394,6 @@ def do_expermient_fdata(
         result_dir="/fdata/llm/mxq/results",
         log_dir="/fdata/llm/mxq/logs",
         track_cuda_memory=track_cuda_memory,
-    )
-
-
-########################################################################
-#  Quantization experiments
-########################################################################
-
-
-def experiment_quant_hqq():
-    models = ALL_MODELS
-    tasks = {
-        "hqq": {
-            "type": "quant",
-            "configs": HQQ_CONFIGS,
-        },
-    }
-    do_expermient_fdata(
-        "quant_hqq",
-        models,
-        tasks,
-    )
-
-
-def experiment_quant_mxq():
-    models = ALL_MODELS
-    type = "quant"
-    algo = "mxq"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": MXQ_CONFIGS,
-        },
-    }
-    do_expermient_fdata(f"{type}_{algo}_mxq", models, tasks)
-
-
-def experiment_quant_awq():
-    # models = [ALL_MODELS[0], ALL_MODELS[2]]
-    models = [ALL_MODELS[1]]
-    type = "quant"
-    algo = "awq"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": AUTOAWQ_CONFIGS,
-        },
-    }
-    do_expermient_fdata(f"{type}_{algo}", models, tasks)
-
-
-def experiment_quant_gptq():
-    models = ALL_MODELS
-    type = "quant"
-    algo = "gptq"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": GPTQ_CONFIGS,
-        },
-    }
-    do_expermient_fdata(f"{type}_{algo}", models, tasks)
-
-
-def experiment_quantize_405B():
-    models = [
-        "meta-llama/Meta-Llama-3.1-405B-Instruct",
-    ]
-
-    tasks = {
-        "hqq": {
-            "type": "quant",
-            "configs": HQQ_CONFIGS[1:2],
-        },
-    }
-    do_expermient(
-        "quant_hqq_405B",
-        models,
-        tasks,
-        quant_dir="/data/gqq-eval/snapshots/",
-    )
-
-
-########################################################################
-#  Perplexity evaluation experiments
-########################################################################
-
-
-def experiment_ppl_eval_fp16():
-    models = ALL_MODELS
-    type = "eval_ppl"
-    algo = "fp16"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": [
-                ("base", {}),
-            ],
-        },
-    }
-    do_expermient_fdata(f"{type}_{algo}", models, tasks)
-
-
-def experiment_ppl_eval_awq():
-    models = [ALL_MODELS[0], ALL_MODELS[2]]
-    type = "eval_ppl"
-    algo = "awq"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": AUTOAWQ_CONFIGS[1:2],
-        },
-    }
-    do_expermient_fdata(f"{type}_{algo}", models, tasks)
-
-
-def experiment_ppl_eval_gptq():
-    models = ALL_MODELS
-    type = "eval_ppl"
-    algo = "gptq"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": GPTQ_CONFIGS,
-        },
-    }
-    do_expermient_fdata(f"{type}_{algo}", models, tasks)
-
-
-def experiment_ppl_eval_hqq():
-    models = ALL_MODELS
-    type = "eval_ppl"
-    algo = "hqq"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": HQQ_CONFIGS,
-        },
-    }
-    do_expermient_fdata(f"{type}_{algo}", models, tasks)
-
-
-########################################################################
-#  Open LLM Leaderboard evaluation experiments
-########################################################################
-
-
-def experiment_llm_leaderboard_fp16():
-    models = [ALL_MODELS[0], ALL_MODELS[2]]
-    type = "eval_leaderboard"
-    algo = "fp16"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": [
-                ("base", {}),
-            ],
-        },
-    }
-    do_expermient_fdata(f"{type}_{algo}", models, tasks)
-
-
-def experiment_llm_leaderboard_autogptq():
-    models = ALL_MODELS
-    type = "eval_leaderboard"
-    algo = "gptq"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": GPTQ_CONFIGS,
-        },
-    }
-    do_expermient_fdata(f"{type}_{algo}", models, tasks)
-
-
-def experiment_llm_leaderboard_hqq():
-    models = ALL_MODELS
-    type = "eval_leaderboard"
-    algo = "hqq"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": HQQ_CONFIGS,
-        },
-    }
-    do_expermient_fdata(f"{type}_{algo}", models, tasks)
-
-
-def experiment_llm_leaderboard_mxq():
-    models = ALL_MODELS
-    type = "eval_leaderboard"
-    algo = "mxq"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": MXQ_CONFIGS,
-        },
-    }
-    do_expermient_fdata(f"{type}_{algo}", models, tasks)
-
-
-def experiment_llm_leaderboard_autoawq():
-    models = ALL_MODELS[0:1]
-    type = "eval_leaderboard"
-    algo = "awq"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": AUTOAWQ_CONFIGS[0:2],
-        },
-    }
-    do_expermient_fdata(f"{type}_{algo}", models, tasks)
-
-
-########################################################################
-#  Mixed Quant Eval experiments
-########################################################################
-
-
-def experiment_quant_ppl_eval_mxq_comprise():
-    models = ALL_MODELS
-    equiv_mxq_configs = []
-    nbits = [4.06, 4.10, 4.15, 4.19, 4.24, 4.28, 4.33]
-    for bits in nbits:
-        cfg_name = f"mxq-{str(bits).replace('.', '_')}"
-        equiv_mxq_configs.append(
-            (cfg_name, HQQQuantConfig(mixed=True, budget=bits, quant_scale=True))
-        )
-    quant_tasks = {
-        "hqq": {
-            "type": "quant",
-            "configs": equiv_mxq_configs,
-        },
-    }
-    ppl_tasks = {
-        "hqq": {
-            "type": "eval_ppl",
-            "configs": equiv_mxq_configs,
-        },
-    }
-    do_expermient_fdata("quant_mxq_compromise", models, quant_tasks)
-    do_expermient_fdata("eval_mxq_compromise", models, ppl_tasks)
-
-
-########################################################################
-#  Misc experiments
-########################################################################
-
-
-def experiment_fp16_llama3_8B_OOM():
-    models = ALL_MODELS[-1:]
-    type = "eval_ppl"
-    algo = "fp16"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": [
-                ("base", {}),
-            ],
-        },
-    }
-    do_expermient_fdata(
-        f"{type}_llama3_8B_OOM_{algo}",
-        models,
-        tasks,
-        track_cuda_memory=True,
-    )
-
-
-def experiment_fp16_vs_hqq_eval_gpu_mem():
-    models = ALL_MODELS[-1:]
-    type = "eval_ppl"
-    algo = "fp16"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": [
-                ("base", {}),
-            ],
-        },
-    }
-    do_expermient_fdata("experiment_fp16_vs_hqq_eval_gpu_mem", models, tasks)
-    algo = "hqq"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": HQQ_CONFIGS[1:2],
-        },
-    }
-    do_expermient_fdata("experiment_fp16_vs_hqq_eval_gpu_mem", models, tasks)
-
-
-def experiment_eval_model_storage():
-    models = ALL_MODELS
-    type = "eval_model_storage"
-    tasks = {
-        "fp16": {
-            "type": type,
-            "configs": [
-                ("base", {}),
-            ],
-        },
-        "mxq": {
-            "type": type,
-            "configs": MXQ_CONFIGS,
-        },
-        "hqq": {
-            "type": type,
-            "configs": HQQ_CONFIGS,
-        },
-        "awq": {
-            "type": type,
-            "configs": AUTOAWQ_CONFIGS,
-        },
-        "gptq": {"type": type, "configs": GPTQ_CONFIGS},
-    }
-    for i in range(5):
-        do_expermient_fdata(f"eval_model_storge_{i}", models, tasks)
-
-
-def experiment_eval_ppl_all():
-    models = ALL_MODELS
-    type = "eval_ppl"
-    tasks = {
-        "fp16": {
-            "type": type,
-            "configs": [
-                ("base", {}),
-            ],
-        },
-        "mxq": {
-            "type": type,
-            "configs": MXQ_CONFIGS,
-        },
-        "hqq": {
-            "type": type,
-            "configs": HQQ_CONFIGS,
-        },
-        "awq": {
-            "type": type,
-            "configs": AUTOAWQ_CONFIGS,
-        },
-        "gptq": {"type": type, "configs": GPTQ_CONFIGS},
-    }
-    do_expermient_fdata("experiment_eval_ppl_all", models, tasks)
-
-
-def experiment_debug_quant_hqq():
-    models = [ALL_MODELS[1]]
-    type = "eval_model_storage"
-    algo = "hqq"
-    tasks = {
-        algo: {
-            "type": type,
-            "configs": HQQ_CONFIGS[1:2],
-        },
-    }
-
-    do_expermient(
-        f"debug_{type}_{algo}",
-        models,
-        tasks,
-        quant_dir="/fdata/llm/mxq/snapshots-debug",
-        result_dir="/fdata/llm/mxq/results",
     )
 
 

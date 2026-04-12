@@ -1,14 +1,11 @@
 import json
 import os
-import shutil
 import time
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 from lm_eval import evaluator
-from lm_eval.tasks import TaskManager
-
-from lm_quant_toolkit.utils.hub import get_hf_model_storge_base_dir
 
 HIGHER_IS_BETTER_SYMBOLS = {
     True: "↑",
@@ -98,37 +95,22 @@ def handle_non_serializable(o):
         return str(o)
 
 
-def eval_llm_leaderboard(
+def eval_llm_perf(
     experiment_name,
-    model_id,
-    quant_method,
-    confg_name,
-    quantized,
+    task,
+    model,
     metric,
-    quant_base_dir,
     result_dir,
     verbosity="INFO",
 ):
-    if quantized:
-        quant_dir = os.path.join(
-            quant_base_dir, f"{model_id}-{confg_name}-{quant_method.lower()}"
-        )
-        # prepare the quantized model by copying tokenizer files
-        _prepare_tokenizer_files(model_id, quant_dir)
-        model_args = f"pretrained={quant_dir},quant_method={quant_method}"
-    else:
-        model_args = f"pretrained={model_id}"
 
     t1 = time.time()
-    task_manager = TaskManager(verbosity)
     results = evaluator.simple_evaluate(
-        model="hf",
-        model_args=model_args,
-        tasks="leaderboard",
+        model=model,
+        tasks=task,
         # num_fewshot=args.num_fewshot,
         batch_size="auto:16",
         max_batch_size=16,
-        device="cuda:0",
         # use_cache=True,
         # check_integrity=True,
         write_out=False,
@@ -137,7 +119,6 @@ def eval_llm_leaderboard(
         # apply_chat_template=args.apply_chat_template,
         fewshot_as_multiturn=False,
         # gen_kwargs=args.gen_kwargs,
-        task_manager=task_manager,
         verbosity=verbosity,
         predict_only=False,
         random_seed=0,
@@ -148,10 +129,11 @@ def eval_llm_leaderboard(
     t2 = time.time()
 
     if results is not None:
+        timestamp = datetime.now().strftime("%Y-%m-%d%_H%M%S")
         lm_eval_result_fp = os.path.join(
             result_dir,
             experiment_name,
-            f"{model_id.split('/')[1]}-{confg_name}-{quant_method.lower()}-results.json",
+            f"results-{task}-{timestamp}.json",
         )
         Path(lm_eval_result_fp).parent.mkdir(parents=True, exist_ok=True)
 
@@ -166,139 +148,16 @@ def eval_llm_leaderboard(
             )
         print(make_table(results))
 
-    ifeval, bbh, mathlevel5, gpqa, musr, mmlupro = _cal_leaderboard_score(results)
-    metric["ifeval"] = ifeval
-    metric["bbh"] = bbh
-    metric["mathlevel5"] = mathlevel5
-    metric["gpqa"] = gpqa
-    metric["musr"] = musr
-    metric["mmlupro"] = mmlupro
-    metric["duration_leaderboard"] = t2 - t1
+    metric, score, = _cal_eval_score(task, results)
+    metric[metric] = score
+    metric[f"duration_{task}"] = t2 - t1
     return metric
 
 
-def _cal_leaderboard_score(results):
-    ifeval = _cal_leaderboard_ifeval_score(results)
-    bbh = _cal_leaderboard_bbh(results)
-    mathlevel5 = _cal_leaderboard_mathlevel5(results)
-    gpqa = _cal_leaderboard_gpqa(results)
-    musr = _cal_leaderboard_musr(results)
-    mmlupro = _cal_leaderboard_mmlu_pro(results)
-    return ifeval, bbh, mathlevel5, gpqa, musr, mmlupro
-
-
-def _cal_leaderboard_gpqa(results):
-    res_gpqa = results["results"]["leaderboard_gpqa"]
-    value = res_gpqa.get("acc_norm,none", None)
-    # aggregate data from sub tasks
-    if value is None:
-        subtask_names = results["group_subtasks"]["leaderboard_gpqa"]
-        metrics = {}
-        for name in subtask_names:
-            metrics[name] = len(results["configs"][name]["doc_to_choice"])
-        scores = []
-        for metric, choices in metrics.items():
-            value = results["results"][metric]["acc_norm,none"]
-            scores.append(_cal_normalized_score(value, 1 / choices, 1.0))
-        return sum(scores) / len(scores)
-
+def _cal_eval_score(task, results):
+    if task == "gsm8k":
+        return "gsm8k", results["gsm8k"]["exact_match,flexible-extract"]
+    elif task == "gpqa_diamond_zeroshot":
+        return "gpqa", results["gpqa_diamond_zeroshot"]["acc,none"]
     else:
-        return _cal_normalized_score(value, 1 / 4, 1.0)
-
-
-def _cal_leaderboard_mathlevel5(results):
-    res_math_hard = results["results"]["leaderboard_math_hard"]
-    value = res_math_hard.get("exact_match,none", None)
-    # aggregate data from sub tasks
-    if value is None:
-        subtask_names = results["group_subtasks"]["leaderboard_math_hard"]
-        scores = []
-        for metric in subtask_names:
-            value = results["results"][metric]["exact_match,none"]
-            scores.append(_cal_normalized_score(value, 0, 1.0))
-        return sum(scores) / len(scores)
-    else:
-        return _cal_normalized_score(value, 0, 1.0)
-
-
-def _cal_leaderboard_bbh(results):
-    subtask_names = results["group_subtasks"]["leaderboard_bbh"]
-    metrics = {}
-    for name in subtask_names:
-        metrics[name] = len(results["configs"][name]["doc_to_choice"])
-    scores = []
-    for metric, choices in metrics.items():
-        value = results["results"][metric]["acc_norm,none"]
-        scores.append(_cal_normalized_score(value, 1 / choices, 1.0))
-    return sum(scores) / len(scores)
-
-
-# noqa refer to: https://huggingface.co/docs/leaderboards/open_llm_leaderboard/normalization#example-normalizing-musr-scores
-def _cal_leaderboard_musr(results):
-    metrics = {
-        "leaderboard_musr_murder_mysteries": 2,
-        "leaderboard_musr_object_placements": 5,
-        "leaderboard_musr_team_allocation": 3,
-    }
-    scores = []
-    for metric, choices in metrics.items():
-        value = results["results"][metric]["acc_norm,none"]
-        scores.append(_cal_normalized_score(value, 1 / choices, 1.0))
-    return sum(scores) / len(scores)
-
-
-def _cal_leaderboard_mmlu_pro(results):
-    value = results["results"]["leaderboard_mmlu_pro"]["acc,none"]
-    return _cal_normalized_score(value, 0.1, 1.0)
-
-
-def _cal_leaderboard_ifeval_score(results):
-    scores = []
-    value1 = results["results"]["leaderboard_ifeval"]["inst_level_strict_acc,none"]
-    value2 = results["results"]["leaderboard_ifeval"]["prompt_level_strict_acc,none"]
-    scores.append(_cal_normalized_score(value1, 0, 1.0))
-    scores.append(_cal_normalized_score(value2, 0, 1.0))
-    return sum(scores) / len(scores)
-
-
-def _cal_normalized_score(value, lower_bound, higher_bound=1.0):
-    if value < lower_bound:
-        return 0
-    return 100 * (value - lower_bound) / (higher_bound - lower_bound)
-
-
-def _prepare_tokenizer_files(model_id, quant_dir):
-    files = [
-        "config.json",
-        "tokenizer.model",
-        "tokenizer.json",
-        "special_tokens_map.json",
-        "tokenizer_config.json",
-    ]
-
-    base_dir = get_hf_model_storge_base_dir(model_id)
-    for f in files:
-        src_fp = os.path.join(base_dir, f)
-        if os.path.exists(src_fp):
-            dst_fp = os.path.join(quant_dir, f)
-            shutil.copyfile(src_fp, dst_fp, follow_symlinks=True)
-
-
-def test_run(fp):
-    with open(fp) as fh:
-        results = json.load(fh)
-        ifeval, bbh, mathlevel5, gpqa, musr, mmlupro = _cal_leaderboard_score(results)
-        avg = (ifeval + bbh + mathlevel5 + gpqa + musr + mmlupro) / 6
-        print(f"avg={avg:.2f}")
-        print(f"ifeval={ifeval:.2f}")
-        print(f"bbh={bbh:.2f}")
-        print(f"mathlevel5={mathlevel5:.2f}")
-        print(f"gpqa={gpqa:.2f}")
-        print(f"musr={musr:.2f}")
-        print(f"mmlupro={mmlupro:.2f}")
-
-
-if __name__ == "__main__":
-    # noqa result3.json is a copy of https://huggingface.co/datasets/open-llm-leaderboard/meta-llama__Llama-2-7b-hf-details/raw/main/meta-llama__Llama-2-7b-hf/results_2024-06-16T18-52-55.970021.json
-    test_run("results/fp16_leaderboard/Llama-2-7b-hf-base-fp16-results.json")
-    test_run("logs/result3.json")
+        return "unknown", 0

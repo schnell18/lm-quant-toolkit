@@ -1,0 +1,3 @@
+model,algo,config,config_detail,quant_duration,model_storage_size,load_mem_allot,load_mem_reserved,ppl_mem_allot,ppl_mem_reserved,leaderboard_mem_allot,leaderboard_mem_reserved,ppl_wikitext,ppl_c4,duration_wikitext,duration_c4,duration_leaderboard,ifeval,bbh,mathlevel5,gpqa,musr,mmlupro
+Qwen3.5-2B,fp16,base,{},0,4548221488,3763681280,3779067904,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Qwen3.5-4B,fp16,base,{},0,9319828096,8411542528,8420065280,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
