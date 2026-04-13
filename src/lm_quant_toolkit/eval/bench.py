@@ -7,7 +7,6 @@ from pathlib import Path
 import pandas as pd
 import torch
 from gptqmodel import QuantizeConfig as GPTQQuantConfig
-from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
 from lm_eval.models.huggingface import HFLM
 from transformers import BitsAndBytesConfig
 
@@ -41,14 +40,6 @@ ALL_MODELS = [
     "meta-llama/Llama-2-13b-hf",
     "meta-llama/Meta-Llama-3-8B",
     "meta-llama/Llama-3.1-8B",
-]
-
-MXQ_CONFIGS = [
-    (
-        f"{bits:.2f}".replace(".", "_"),
-        HQQQuantConfig(mixed=True, budget=bits, quant_scale=True),
-    )
-    for bits in [5.00, 4.75, 4.50, 4.25, 4.01, 3.76, 3.50, 3.00, 2.75, 2.48]
 ]
 
 BNB_CONFIGS = [
