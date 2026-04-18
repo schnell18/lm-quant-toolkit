@@ -10,11 +10,11 @@ fi
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # second pass: evaluate PPL
-python ../../src/cli.py llm \
+python -m pdb ../../src/cli.py llm \
     --task eval_ppl \
-    --model Qwen/Qwen3.5-2B Qwen/Qwen3.5-4B Qwen/Qwen3.5-9B \
+    --model Qwen/Qwen3.5-2B \
     --algo hqq \
-    --experiment-name eval_ppl-qwen35-hqq \
+    --experiment-name debug-eval_ppl-qwen35-hqq \
     --quant-snapshot-dir="$EXP_RESULT_BASE_DIR/snapshots3" \
     --result-dir="$EXP_RESULT_BASE_DIR/results" \
     2>&1 \
