@@ -15,7 +15,7 @@ python -m pdb ../../src/cli.py llm \
     --model Qwen/Qwen3.5-2B \
     --algo hqq \
     --experiment-name debug-eval_ppl-qwen35-hqq \
-    --quant-snapshot-dir="$EXP_RESULT_BASE_DIR/snapshots3" \
+    --quant-snapshot-dir="$EXP_RESULT_BASE_DIR/snapshots2" \
     --result-dir="$EXP_RESULT_BASE_DIR/results" \
     2>&1 \
     | tee "$EXP_RESULT_BASE_DIR/logs/bench-$(date +%Y%m%d%H%M%S).log"
