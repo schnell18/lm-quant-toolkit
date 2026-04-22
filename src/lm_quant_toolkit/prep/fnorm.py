@@ -7,9 +7,12 @@ from hqq.core.quantize import Quantizer as hQuant
 
 from lm_quant_toolkit.utils.hub import (
     LLAMA_MODELS,
+    QWEN35_MODELS,
     VIT_OPENCLIP_MODELS,
     get_hf_model_storge_base_dir,
+    get_model_meta,
 )
+from lm_quant_toolkit.utils.modules import iter_llm_quant_keys
 from lm_quant_toolkit.utils.safetensors import get_tensor
 
 
@@ -40,7 +43,8 @@ def calc_fnorm_vit(
         for gsize1 in gsizes1:
             for nbit2 in nbits2:
                 for gsize2 in gsizes2:
-                    wq_hqq = quant_hqq(w, nbits=nbit1, group_size=gsize1, optimize=True)
+                    wq_hqq = quant_hqq(
+                        w, nbits=nbit1, group_size=gsize1, optimize=True)
                     norm_hqq = torch.norm(w - wq_hqq).item()
                     bpp = nbit1 + 2 * nbit2 / gsize1 + 32 / (gsize1 * gsize2)
                     memmb = bpp * params / 8 / (1024**2)
@@ -60,17 +64,17 @@ def calc_fnorm_vit(
 
 
 def calc_fnorm(
-    base_dir, prefix, layer, module, suffix, nbits1, gsizes1, nbits2, gsizes2
+    base_dir, layer, module, matrix_name, nbits1, gsizes1, nbits2, gsizes2
 ):
     dikts = []
-    matrix_name = f"{prefix}.{layer}.{module}.{suffix}"
     w = get_tensor(matrix_name, base_dir)
     params = w.numel()
     for nbit1 in nbits1:
         for gsize1 in gsizes1:
             for nbit2 in nbits2:
                 for gsize2 in gsizes2:
-                    wq_hqq = quant_hqq(w, nbits=nbit1, group_size=gsize1, optimize=True)
+                    wq_hqq = quant_hqq(
+                        w, nbits=nbit1, group_size=gsize1, optimize=True)
                     norm_hqq = torch.norm(w - wq_hqq).item()
                     bpp = nbit1 + 2 * nbit2 / gsize1 + 32 / (gsize1 * gsize2)
                     memmb = bpp * params / 8 / (1024**2)
@@ -162,43 +166,26 @@ def calc_fnorm_for_vit_model(model_id, base_dir, layer_cfg):
     )
 
 
-def calc_fnorm_for_model(model_id, base_dir, layers, output_dir="data"):
-    self_attns = ["q_proj", "v_proj", "k_proj", "o_proj"]
-    mlps = ["gate_proj", "up_proj", "down_proj"]
+def calc_fnorm_for_model(
+    model_id, base_dir, layers, output_dir="data", family="llama", moe=False
+):
     nbits1 = [2, 3, 4, 8]
     gsizes1 = [32, 64, 128]
     nbits2 = [8]
     gsizes2 = [128]
-    prefix = "model.layers"
-    suffix = "weight"
     dikts = []
-    for layer in range(layers):
-        for attn in self_attns:
-            ds = calc_fnorm(
-                base_dir,
-                prefix,
-                layer,
-                f"self_attn.{attn}",
-                suffix,
-                nbits1,
-                gsizes1,
-                nbits2,
-                gsizes2,
-            )
-            dikts.extend(ds)
-        for mlp in mlps:
-            ds = calc_fnorm(
-                base_dir,
-                prefix,
-                layer,
-                f"mlp.{mlp}",
-                suffix,
-                nbits1,
-                gsizes1,
-                nbits2,
-                gsizes2,
-            )
-            dikts.extend(ds)
+    for module, layer, matrix_name in iter_llm_quant_keys(family, layers, moe=moe):
+        ds = calc_fnorm(
+            base_dir,
+            layer,
+            module,
+            matrix_name,
+            nbits1,
+            gsizes1,
+            nbits2,
+            gsizes2,
+        )
+        dikts.extend(ds)
 
     df = pd.DataFrame(dikts)
     file_name = f"{output_dir}/fnorm-{model_id.split('/')[1]}.csv"
@@ -242,56 +229,70 @@ def main():
 
 
 def join_kurtosis():
-    for model_id, model in LLAMA_MODELS.items():
-        exp = model.get("experiment", False)
-        if not exp or model_id == "meta-llama/Llama-3.1-8B":
-            continue
-        t1 = timer()
-        model_short_id = model_id.split("/")[1]
-        df_fnorm = pd.read_csv(f"data/fnorm-{model_short_id}.csv")
-        df_wdist = pd.read_csv(f"data/wdist-{model_short_id}.csv")
-        # calculate scaled kurtosis
-        df_kurt_agg = df_wdist.groupby("module").agg(
-            kurt_max=pd.NamedAgg(column="kurtosis", aggfunc="max"),
-            kurt_min=pd.NamedAgg(column="kurtosis", aggfunc="min"),
-        )
-        df_wdist = df_wdist.merge(df_kurt_agg, how="left", on="module")
-        df_wdist["kurtosis_scaled"] = (df_wdist["kurtosis"] - df_wdist["kurt_min"]) / (
-            df_wdist["kurt_max"] - df_wdist["kurt_min"]
-        )
-        df_fnorm = df_fnorm[
-            [
-                "layer",
-                "module",
-                "nbit1",
-                "gsize1",
-                "nbit2",
-                "gsize2",
-                "fnorm",
-                "memmb",
-                "params",
-            ]
-        ]
-        df_fnorm = pd.merge(df_fnorm, df_wdist, how="inner", on=["module", "layer"])
-        df_fnorm = df_fnorm[
-            [
-                "layer",
-                "module",
-                "nbit1",
-                "gsize1",
-                "nbit2",
-                "gsize2",
-                "fnorm",
-                "memmb",
-                "params",
-                "kurtosis",
-                "kurtosis_scaled",
-            ]
-        ]
+    registries = (
+        ("llama", LLAMA_MODELS),
+        ("qwen35", QWEN35_MODELS),
+    )
+    for family, registry in registries:
+        for model_id, model in registry.items():
+            exp = model.get("experiment", False)
+            if not exp:
+                continue
+            if family == "llama" and model_id == "meta-llama/Llama-3.1-8B":
+                continue
+            if family == "qwen35" and model.get("moe", False):
+                continue
+            _join_kurtosis_one(model_id)
 
-        df_fnorm.to_csv(f"fnorm-{model_short_id}.csv", index=False)
-        t2 = timer()
-        print(f"Finished {model_id} Kurtosis data join in {t2 - t1} seconds")
+
+def _join_kurtosis_one(model_id):
+    t1 = timer()
+    model_short_id = model_id.split("/")[1]
+    df_fnorm = pd.read_csv(f"data/fnorm-{model_short_id}.csv")
+    df_wdist = pd.read_csv(f"data/wdist-{model_short_id}.csv")
+    # calculate scaled kurtosis
+    df_kurt_agg = df_wdist.groupby("module").agg(
+        kurt_max=pd.NamedAgg(column="kurtosis", aggfunc="max"),
+        kurt_min=pd.NamedAgg(column="kurtosis", aggfunc="min"),
+    )
+    df_wdist = df_wdist.merge(df_kurt_agg, how="left", on="module")
+    df_wdist["kurtosis_scaled"] = (df_wdist["kurtosis"] - df_wdist["kurt_min"]) / (
+        df_wdist["kurt_max"] - df_wdist["kurt_min"]
+    )
+    df_fnorm = df_fnorm[
+        [
+            "layer",
+            "module",
+            "nbit1",
+            "gsize1",
+            "nbit2",
+            "gsize2",
+            "fnorm",
+            "memmb",
+            "params",
+        ]
+    ]
+    df_fnorm = pd.merge(df_fnorm, df_wdist, how="inner",
+                        on=["module", "layer"])
+    df_fnorm = df_fnorm[
+        [
+            "layer",
+            "module",
+            "nbit1",
+            "gsize1",
+            "nbit2",
+            "gsize2",
+            "fnorm",
+            "memmb",
+            "params",
+            "kurtosis",
+            "kurtosis_scaled",
+        ]
+    ]
+
+    df_fnorm.to_csv(f"fnorm-{model_short_id}.csv", index=False)
+    t2 = timer()
+    print(f"Finished {model_id} Kurtosis data join in {t2 - t1} seconds")
 
 
 if __name__ == "__main__":

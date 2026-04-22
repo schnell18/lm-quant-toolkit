@@ -10,58 +10,16 @@ from lm_quant_toolkit.utils.hub import (
     VIT_OPENCLIP_MODELS,
     get_hf_model_storge_base_dir,
 )
+from lm_quant_toolkit.utils.modules import iter_llm_quant_keys
 from lm_quant_toolkit.utils.pickle import load_state_dict
 from lm_quant_toolkit.utils.safetensors import get_tensor
-
-
-_LLM_QUANT_MODULES = [
-    "self_attn.q_proj",
-    "self_attn.k_proj",
-    "self_attn.v_proj",
-    "self_attn.o_proj",
-    "mlp.gate_proj",
-    "mlp.down_proj",
-    "mlp.up_proj",
-]
-
-_QWEN35_FULL_ATTN_INTERVAL = 4
-
-
-def _iter_llama_quant_keys(layers):
-    for module in _LLM_QUANT_MODULES:
-        for layer in range(layers):
-            yield module, layer, f"model.layers.{layer}.{module}.weight"
-
-
-def _iter_qwen35_quant_keys(layers):
-    start = _QWEN35_FULL_ATTN_INTERVAL - 1
-    step = _QWEN35_FULL_ATTN_INTERVAL
-    full_attn_layers = set(range(start, layers, step))
-    prefix = "model.language_model.layers"
-    for module in _LLM_QUANT_MODULES:
-        is_attn = module.startswith("self_attn.")
-        for layer in range(layers):
-            if is_attn and layer not in full_attn_layers:
-                continue
-            yield module, layer, f"{prefix}.{layer}.{module}.weight"
 
 
 def calculate_kurtosis_llm(
     model_id, base_dir, layers, output_dir, family="llama", moe=False
 ):
-    if family == "llama":
-        iterator = _iter_llama_quant_keys(layers)
-    elif family == "qwen35":
-        if moe:
-            raise NotImplementedError(
-                "Kurtosis for MoE Qwen3.5 variants is not supported yet"
-            )
-        iterator = _iter_qwen35_quant_keys(layers)
-    else:
-        raise ValueError(f"Unknown model family: {family}")
-
     dikts = []
-    for module, layer, full_name in iterator:
+    for module, layer, full_name in iter_llm_quant_keys(family, layers, moe=moe):
         w = get_tensor(full_name, base_dir)
         param_count = w.numel()
         w = w.flatten().float().numpy()

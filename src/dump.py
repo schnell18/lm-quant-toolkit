@@ -133,20 +133,22 @@ def main_fnorm(args):
     if not args.model or len(args.model) < 1:
         raise ValueError("At least one model is required")
     output_dir = args.output_dir
-    models = resolve_models(args.model, list(LLAMA_MODELS.keys()))
+    known_models = list(LLAMA_MODELS.keys()) + list(QWEN35_MODELS.keys())
+    models = resolve_models(args.model, known_models)
     for model_id in models:
-        model = LLAMA_MODELS[model_id]
-        if not model:
-            raise ValueError(f"Unsupported model: {model_id}")
-
+        meta = get_model_meta(model_id)
         t1 = timer()
-        base_dir = model.get("base_dir", None)
-        model_base_dir = get_hf_model_storge_base_dir(model_id, base_dir)
+        model_base_dir = get_hf_model_storge_base_dir(
+            model_id,
+            meta["base_dir"],
+        )
         calc_fnorm_for_model(
             model_id,
             model_base_dir,
-            model["layers"],
+            meta["layers"],
             output_dir,
+            family=meta["family"],
+            moe=meta["moe"],
         )
         t2 = timer()
         print(f"Finished {model_id} Frobenius norm metrics calc in {
