@@ -51,7 +51,8 @@ VIT_OPENCLIP_MODELS = {
 QWEN35_MODELS = {
     # Dense VLMs (text decoder + vision encoder)
     # vision_layers: number of ViT blocks in model.visual.blocks
-    # lm_head_tied: True when lm_head shares weights with embed_tokens (no separate lm_head.weight)
+    # lm_head_tied: True when lm_head shares weights with embed_tokens
+    # (no separate lm_head.weight)
     "Qwen/Qwen3.5-0.8B": {"layers": 24, "vision_layers": 12, "lm_head_tied": True},
     "Qwen/Qwen3.5-2B": {"layers": 24, "vision_layers": 24, "lm_head_tied": True},
     "Qwen/Qwen3.5-4B": {"layers": 32, "vision_layers": 24, "lm_head_tied": True},
@@ -72,6 +73,30 @@ SENSITIVITY_MODELS = [
     "meta-llama/Llama-3.1-8B",
     "meta-llama/Llama-3.1-8B-Instruct",
 ]
+
+
+def get_model_meta(model_id):
+    """Return normalized metadata for a model id across known LLM families."""
+    if model_id in LLAMA_MODELS:
+        cfg = LLAMA_MODELS[model_id]
+        return {
+            "family": "llama",
+            "layers": cfg["layers"],
+            "base_dir": cfg.get("base_dir"),
+            "moe": False,
+            "lm_head_tied": False,
+        }
+    if model_id in QWEN35_MODELS:
+        cfg = QWEN35_MODELS[model_id]
+        return {
+            "family": "qwen35",
+            "layers": cfg["layers"],
+            "base_dir": cfg.get("base_dir"),
+            "vision_layers": cfg.get("vision_layers"),
+            "moe": cfg.get("moe", False),
+            "lm_head_tied": cfg.get("lm_head_tied", False),
+        }
+    raise KeyError(f"Unknown model id: {model_id}")
 
 
 def resolve_models(model_args, model_list):

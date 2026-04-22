@@ -14,33 +14,67 @@ from lm_quant_toolkit.utils.pickle import load_state_dict
 from lm_quant_toolkit.utils.safetensors import get_tensor
 
 
-def calculate_kurtosis_llm(model_id, base_dir, layers, output_dir):
-    modules = [
-        "self_attn.q_proj",
-        "self_attn.k_proj",
-        "self_attn.v_proj",
-        "self_attn.o_proj",
-        "mlp.gate_proj",
-        "mlp.down_proj",
-        "mlp.up_proj",
-    ]
-    dikts = []
-    for module in modules:
+_LLM_QUANT_MODULES = [
+    "self_attn.q_proj",
+    "self_attn.k_proj",
+    "self_attn.v_proj",
+    "self_attn.o_proj",
+    "mlp.gate_proj",
+    "mlp.down_proj",
+    "mlp.up_proj",
+]
+
+_QWEN35_FULL_ATTN_INTERVAL = 4
+
+
+def _iter_llama_quant_keys(layers):
+    for module in _LLM_QUANT_MODULES:
         for layer in range(layers):
-            full_name = f"model.layers.{layer}.{module}.weight"
-            w = get_tensor(full_name, base_dir)
-            param_count = w.numel()
-            w = w.flatten().float().numpy()
-            kurt_pearson = kurtosis(
-                w, axis=None, fisher=False, bias=True, nan_policy="omit"
+            yield module, layer, f"model.layers.{layer}.{module}.weight"
+
+
+def _iter_qwen35_quant_keys(layers):
+    start = _QWEN35_FULL_ATTN_INTERVAL - 1
+    step = _QWEN35_FULL_ATTN_INTERVAL
+    full_attn_layers = set(range(start, layers, step))
+    prefix = "model.language_model.layers"
+    for module in _LLM_QUANT_MODULES:
+        is_attn = module.startswith("self_attn.")
+        for layer in range(layers):
+            if is_attn and layer not in full_attn_layers:
+                continue
+            yield module, layer, f"{prefix}.{layer}.{module}.weight"
+
+
+def calculate_kurtosis_llm(
+    model_id, base_dir, layers, output_dir, family="llama", moe=False
+):
+    if family == "llama":
+        iterator = _iter_llama_quant_keys(layers)
+    elif family == "qwen35":
+        if moe:
+            raise NotImplementedError(
+                "Kurtosis for MoE Qwen3.5 variants is not supported yet"
             )
-            dikt = {
-                "module": module,
-                "layer": layer,
-                "param_count": param_count,
-                "kurtosis": kurt_pearson,
-            }
-            dikts.append(dikt)
+        iterator = _iter_qwen35_quant_keys(layers)
+    else:
+        raise ValueError(f"Unknown model family: {family}")
+
+    dikts = []
+    for module, layer, full_name in iterator:
+        w = get_tensor(full_name, base_dir)
+        param_count = w.numel()
+        w = w.flatten().float().numpy()
+        kurt_pearson = kurtosis(
+            w, axis=None, fisher=False, bias=True, nan_policy="omit"
+        )
+        dikt = {
+            "module": module,
+            "layer": layer,
+            "param_count": param_count,
+            "kurtosis": kurt_pearson,
+        }
+        dikts.append(dikt)
     df = pd.DataFrame(dikts)
     short_id = model_id.split("/")[1]
     csv_fp = f"{output_dir}/kurtosis-{short_id}.csv"
@@ -243,16 +277,20 @@ def summarize_vit_quantable_params(
 def summarize_qwen35_quantable_params(
     base_dir, layers, vision_layers, fp, moe=False, lm_head_tied=False
 ):
-    """Write a CSV of all parameters in a Qwen3.5 VLM annotated with quantability.
+    """Write a CSV of all parameters in a Qwen3.5 VLM annotated with
+       quantability.
 
     Qwen3.5 is a hybrid VLM:
     - Text decoder: ``model.language_model.layers.{i}``
-      - Full-attention layers every 4th (indices 3,7,11,…): quantizable q/k/v/o_proj
+      - Full-attention layers every 4th (indices 3,7,11,…):
+        quantizable q/k/v/o_proj
       - GatedDeltaNet linear-attention layers (all others): not quantized
       - MLP layers (all): quantizable gate/up/down_proj
-      - MoE variants use packed ``mlp.experts.gate_up_proj`` / ``mlp.experts.down_proj``
+      - MoE variants use packed:
+        ``mlp.experts.gate_up_proj`` / ``mlp.experts.down_proj``
     - Vision encoder: ``model.visual.blocks.{i}``
-      - Quantizable: attn.qkv, attn.proj, mlp.linear_fc1/fc2, merger.linear_fc1/fc2
+      - Quantizable: attn.qkv, attn.proj, mlp.linear_fc1/fc2,
+        merger.linear_fc1/fc2
     """
     FULL_ATTN_INTERVAL = 4
     full_attn_layers = set(
@@ -372,7 +410,8 @@ def summarize_qwen35_quantable_params(
             "vision",
         )
     except ValueError:
-        pass  # some models use learned positional embeddings stored differently
+        # some models use learned positional embeddings stored differently
+        pass
 
     for i in range(vision_layers):
         vpfx = f"model.visual.blocks.{i}"
@@ -444,7 +483,11 @@ def summarize_known_qwen35_quantable_params(base_dir="data", skip_models=None):
         )
 
 
-def aggregate_quantable_parameters(models, base_dir="data", unit=1_000_000_000):
+def aggregate_quantable_parameters(
+    models,
+    base_dir="data",
+    unit=1_000_000_000,
+):
     ret = {}
     for model in models:
         csv_file = f"{base_dir}/quantable-{model}.csv"
