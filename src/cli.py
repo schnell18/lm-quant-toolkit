@@ -19,6 +19,7 @@ from lm_quant_toolkit.eval.bench_vit import do_expermient as do_expermient_vit
 from lm_quant_toolkit.eval.common import HQQ_CONFIGS
 from lm_quant_toolkit.misc.quant_sim import dump_mxq_configs, dump_mxq_objectives
 from lm_quant_toolkit.misc.qweight import dump_quant_allocation
+from lm_quant_toolkit.utils.hub import resolve_models
 
 
 def get_parser_args():
@@ -365,23 +366,6 @@ def get_parser_args():
     return parser, args
 
 
-def _resolve_models(model_args, model_list):
-    """Resolve --model values to HuggingFace model IDs.
-
-    Each value is treated as a numeric index into model_list when it is an
-    integer string (e.g. "0", "2"), preserving backward compatibility with
-    existing scripts.  Any value that cannot be parsed as an integer is used
-    directly as a HuggingFace model ID (e.g. "meta-llama/Llama-3.1-8B").
-    """
-    models = []
-    for m in model_args:
-        try:
-            models.append(model_list[int(m)])
-        except ValueError:
-            models.append(m)
-    return models
-
-
 def _get_configs(algos, config_names):
     algo_configs = {}
     for algo in algos:
@@ -482,7 +466,7 @@ def main_llm(args):
     #     print("When config is specified, you can only evaluate one algorithm")
     #     return
     configs = _get_configs(args.algo, args.config)
-    models = _resolve_models(args.model, ALL_MODELS)
+    models = resolve_models(args.model, ALL_MODELS)
     tasks = {algo: {"type": args.task, "configs": configs[algo]} for algo in args.algo}
     experiment_name = args.experiment_name
     if experiment_name is None or len(experiment_name) < 3:
@@ -513,7 +497,7 @@ def main_llm(args):
 
 def main_vit(args):
     configs = _get_vit_configs(args.algo, args.config)
-    models = _resolve_models(args.model, ALL_VIT_MODELS)
+    models = resolve_models(args.model, ALL_VIT_MODELS)
     tasks = {algo: {"type": args.task, "configs": configs[algo]} for algo in args.algo}
     experiment_name = args.experiment_name
     if experiment_name is None or len(experiment_name) < 3:
@@ -543,7 +527,7 @@ def main_dump(args):
     if args.type == "objective":
         budgets = args.budget
         csv_fp = args.output_file
-        models = _resolve_models(args.model, ALL_MODELS)
+        models = resolve_models(args.model, ALL_MODELS)
         dump_mxq_objectives(models, budgets, csv_fp=csv_fp)
     elif args.type == "quant_config":
         quant_dir = args.quant_snapshot_dir
@@ -558,7 +542,7 @@ def main_dump(args):
             ]
             algo = "mxq"
         csv_fp = args.output_file
-        models = _resolve_models(args.model, ALL_MODELS)
+        models = resolve_models(args.model, ALL_MODELS)
         dump_quant_allocation(
             quant_dir,
             models,
@@ -571,7 +555,7 @@ def main_dump(args):
         budgets = [bits for bits in [float(cfg) for cfg in args.budget]]
         algo = "mxq"
         csv_fp = args.output_file
-        models = _resolve_models(args.model, ALL_MODELS)
+        models = resolve_models(args.model, ALL_MODELS)
         dump_mxq_configs(
             models,
             budgets,

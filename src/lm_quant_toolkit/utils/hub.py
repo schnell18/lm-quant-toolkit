@@ -74,6 +74,23 @@ SENSITIVITY_MODELS = [
 ]
 
 
+def resolve_models(model_args, model_list):
+    """Resolve --model values to HuggingFace model IDs.
+
+    Each value is treated as a numeric index into model_list when it is an
+    integer string (e.g. "0", "2"), preserving backward compatibility with
+    existing scripts.  Any value that cannot be parsed as an integer is used
+    directly as a HuggingFace model ID (e.g. "meta-llama/Llama-3.1-8B").
+    """
+    models = []
+    for m in model_args:
+        try:
+            models.append(model_list[int(m)])
+        except ValueError:
+            models.append(m)
+    return models
+
+
 def get_hf_model_storge_base_dir(model_id, hf_hub_dir=None):
     model_id_x = model_id.replace("/", "--")
     cache_dir = hf_hub_dir if hf_hub_dir else HUGGINGFACE_HUB_CACHE

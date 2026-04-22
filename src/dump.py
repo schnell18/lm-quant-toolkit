@@ -11,6 +11,7 @@ from lm_quant_toolkit.prep.wdist import calculate_kurtosis_llm
 from lm_quant_toolkit.utils.hub import (
     LLAMA_MODELS,
     get_hf_model_storge_base_dir,
+    resolve_models,
 )
 
 
@@ -118,7 +119,7 @@ def main():
 
 def main_sensi(args):
     csv_fp = args.output_file
-    models = args.model
+    models = resolve_models(args.model, list(LLAMA_MODELS.keys()))
     cfgs = args.config
     calib_ds = args.calib_dataset
     quant_method = args.quant_method
@@ -129,7 +130,8 @@ def main_fnorm(args):
     if not args.model or len(args.model) < 1:
         raise ValueError("At least one model is required")
     output_dir = args.output_dir
-    for model_id in args.model:
+    models = resolve_models(args.model, list(LLAMA_MODELS.keys()))
+    for model_id in models:
         model = LLAMA_MODELS[model_id]
         if not model:
             raise ValueError(f"Unsupported model: {model_id}")
@@ -151,7 +153,8 @@ def main_kurt(args):
     if not args.model or len(args.model) < 1:
         raise ValueError("At least one model is required")
     output_dir = args.output_dir
-    for model_id in args.model:
+    models = resolve_models(args.model, list(LLAMA_MODELS.keys()))
+    for model_id in models:
         model = LLAMA_MODELS[model_id]
         if not model:
             raise ValueError(f"Unsupported model: {model_id}")
