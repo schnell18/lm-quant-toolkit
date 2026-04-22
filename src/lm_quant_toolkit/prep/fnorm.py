@@ -10,7 +10,6 @@ from lm_quant_toolkit.utils.hub import (
     QWEN35_MODELS,
     VIT_OPENCLIP_MODELS,
     get_hf_model_storge_base_dir,
-    get_model_meta,
 )
 from lm_quant_toolkit.utils.modules import iter_llm_quant_keys
 from lm_quant_toolkit.utils.safetensors import get_tensor
@@ -43,8 +42,7 @@ def calc_fnorm_vit(
         for gsize1 in gsizes1:
             for nbit2 in nbits2:
                 for gsize2 in gsizes2:
-                    wq_hqq = quant_hqq(
-                        w, nbits=nbit1, group_size=gsize1, optimize=True)
+                    wq_hqq = quant_hqq(w, nbits=nbit1, group_size=gsize1, optimize=True)
                     norm_hqq = torch.norm(w - wq_hqq).item()
                     bpp = nbit1 + 2 * nbit2 / gsize1 + 32 / (gsize1 * gsize2)
                     memmb = bpp * params / 8 / (1024**2)
@@ -63,9 +61,7 @@ def calc_fnorm_vit(
     return dikts
 
 
-def calc_fnorm(
-    base_dir, layer, module, matrix_name, nbits1, gsizes1, nbits2, gsizes2
-):
+def calc_fnorm(base_dir, layer, module, matrix_name, nbits1, gsizes1, nbits2, gsizes2):
     dikts = []
     w = get_tensor(matrix_name, base_dir)
     params = w.numel()
@@ -73,8 +69,7 @@ def calc_fnorm(
         for gsize1 in gsizes1:
             for nbit2 in nbits2:
                 for gsize2 in gsizes2:
-                    wq_hqq = quant_hqq(
-                        w, nbits=nbit1, group_size=gsize1, optimize=True)
+                    wq_hqq = quant_hqq(w, nbits=nbit1, group_size=gsize1, optimize=True)
                     norm_hqq = torch.norm(w - wq_hqq).item()
                     bpp = nbit1 + 2 * nbit2 / gsize1 + 32 / (gsize1 * gsize2)
                     memmb = bpp * params / 8 / (1024**2)
@@ -230,7 +225,7 @@ def main():
 
 def join_kurtosis():
     registries = (
-        ("llama", LLAMA_MODELS),
+        # ("llama", LLAMA_MODELS),
         ("qwen35", QWEN35_MODELS),
     )
     for family, registry in registries:
@@ -272,8 +267,7 @@ def _join_kurtosis_one(model_id):
             "params",
         ]
     ]
-    df_fnorm = pd.merge(df_fnorm, df_wdist, how="inner",
-                        on=["module", "layer"])
+    df_fnorm = pd.merge(df_fnorm, df_wdist, how="inner", on=["module", "layer"])
     df_fnorm = df_fnorm[
         [
             "layer",

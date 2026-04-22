@@ -29,7 +29,6 @@ for BOOST_STOP in $BOOST_STOPS; do
         mkdir -p $RESULT_DIR/${EXP_NAME}_ppl
         mkdir -p $RESULT_DIR/$EXP_BASE_NAME/data/{ppl,stor}/mxq/$ATTEMPT
 
-        # MODELS="0"
         EXP_NAME="${ATTEMPT}"
         echo "=========Run perplexity evaluation========="
         python ../../src/cli.py llm \
