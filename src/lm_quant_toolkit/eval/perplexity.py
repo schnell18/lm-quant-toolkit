@@ -77,7 +77,10 @@ def eval_ppl(
     tokenizer.padding_side = "right"
     tokenizer.add_eos_token = False
 
-    encodings = tokenizer("\n\n".join(dataset[text_column]), return_tensors="pt")
+    encodings = tokenizer(
+        "\n\n".join(dataset[text_column]),
+        return_tensors="pt",
+    )
 
     encodings["input_ids"] = encodings["input_ids"].to("cuda")
 

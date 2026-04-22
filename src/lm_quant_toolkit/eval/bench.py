@@ -62,54 +62,117 @@ BNB_CONFIGS = [
 ]
 
 
-AUTOAWQ_CONFIGS = [
-    ("b4g32", {"w_bit": 4, "q_group_size": 32, "zero_point": True, "version": "GEMM"}),
-    ("b4g64", {"w_bit": 4, "q_group_size": 64, "zero_point": True, "version": "GEMM"}),
+AWQ_CONFIGS = [
+    (
+        "b4g32",
+        {
+            "w_bit": 4,
+            "q_group_size": 32,
+            "zero_point": True,
+            "version": "GEMM",
+        },
+    ),
+    (
+        "b4g64",
+        {
+            "w_bit": 4,
+            "q_group_size": 64,
+            "zero_point": True,
+            "version": "GEMM",
+        },
+    ),
     (
         "b4g128",
-        {"w_bit": 4, "q_group_size": 128, "zero_point": True, "version": "GEMM"},
+        {
+            "w_bit": 4,
+            "q_group_size": 128,
+            "zero_point": True,
+            "version": "GEMM",
+        },
     ),
-    # 3-bit not supported by AutoAWQ right now
-    # ("b3g64", {"w_bit": 3, "q_group_size": 64, "zero_point": True, 'version':'gemv_fast'}),
-    # ("b3g128", {"w_bit": 3, "q_group_size": 128, "zero_point": True, 'version':'gemv_fast'}),
 ]
 
 GPTQ_CONFIGS = [
     (
         "b8g32",
-        GPTQQuantConfig(bits=8, group_size=32, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(
+            bits=8,
+            group_size=32,
+            damp_percent=0.01,
+            desc_act=False,
+        ),
     ),
     (
         "b8g64",
-        GPTQQuantConfig(bits=8, group_size=64, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(
+            bits=8,
+            group_size=64,
+            damp_percent=0.01,
+            desc_act=False,
+        ),
     ),
     (
         "b8g128",
-        GPTQQuantConfig(bits=8, group_size=128, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(
+            bits=8,
+            group_size=128,
+            damp_percent=0.01,
+            desc_act=False,
+        ),
     ),
     (
         "b4g32",
-        GPTQQuantConfig(bits=4, group_size=32, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(
+            bits=4,
+            group_size=32,
+            damp_percent=0.01,
+            desc_act=False,
+        ),
     ),
     (
         "b4g64",
-        GPTQQuantConfig(bits=4, group_size=64, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(
+            bits=4,
+            group_size=64,
+            damp_percent=0.01,
+            desc_act=False,
+        ),
     ),
     (
         "b4g128",
-        GPTQQuantConfig(bits=4, group_size=128, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(
+            bits=4,
+            group_size=128,
+            damp_percent=0.01,
+            desc_act=False,
+        ),
     ),
     (
         "b3g32",
-        GPTQQuantConfig(bits=3, group_size=32, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(
+            bits=3,
+            group_size=32,
+            damp_percent=0.01,
+            desc_act=False,
+        ),
     ),
     (
         "b3g64",
-        GPTQQuantConfig(bits=3, group_size=64, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(
+            bits=3,
+            group_size=64,
+            damp_percent=0.01,
+            desc_act=False,
+        ),
     ),
     (
         "b3g128",
-        GPTQQuantConfig(bits=3, group_size=128, damp_percent=0.01, desc_act=False),
+        GPTQQuantConfig(
+            bits=3,
+            group_size=128,
+            damp_percent=0.01,
+            desc_act=False,
+        ),
     ),
 ]
 
@@ -242,13 +305,9 @@ def do_expermient(
         elif task_type == "eval_ppl":
             print(f"Evaluating {algo} PPL on {model_id} w/ config: {cfg}...")
         elif task_type in LLM_PERF_TASKS:
-            print(f"Evaluating {algo} benchmarks on {model_id} w/ config: {cfg}...")
+            print(f"Benchmarking {algo} on {model_id} w/ config: {cfg}...")
         else:
-            print(
-                f"Evaluating {algo} model storage metrics on {model_id} w/ config: {
-                    cfg
-                }..."
-            )
+            print(f"Measuring {algo} storage on {model_id} w/ cfg: {cfg}...")
         print("*" * 72)
 
         if track_cuda_memory:
@@ -282,7 +341,9 @@ def do_expermient(
         elif task_type == "eval_ppl":
             # Evaluate the quantized model
             metric = eval_ppls(model, tokenizer, metric)
-            metric["ppl_mem_allot"], metric["ppl_mem_reserved"] = get_memory_metrics()
+            mem_allot, mem_reserved = get_memory_metrics()
+            metric["ppl_mem_allot"] = mem_allot
+            metric["ppl_mem_reserved"] = mem_reserved
         elif task_type in LLM_PERF_TASKS:
             # Wrap the model into HFLM
             model = HFLM(pretrained=model)
@@ -294,15 +355,28 @@ def do_expermient(
                 metric,
                 result_dir,
             )
-            metric[f"{task_type}_mem_allot"], metric[f"{task_type}_mem_reserved"] = (
-                get_memory_metrics()
-            )
+
+            mem_allot, mem_reserved = get_memory_metrics()
+            metric[f"{task_type}_mem_allot"] = mem_allot
+            metric[f"{task_type}_mem_reserved"] = mem_reserved
         else:
             raise ValueError(f"Invalid task_type: {task_type}")
         cleanup(model)
         if track_cuda_memory:
-            _dump_cuda_mem_snapshot(experiment_name, model_id, algo, result_dir)
-        save_partial_metric(experiment_name, algo, model_id, cfg, metric, result_dir)
+            _dump_cuda_mem_snapshot(
+                experiment_name,
+                model_id,
+                algo,
+                result_dir,
+            )
+        save_partial_metric(
+            experiment_name,
+            algo,
+            model_id,
+            cfg,
+            metric,
+            result_dir,
+        )
         df_all.loc[
             (df_all["model"] == model_id)
             & (df_all["cfg"] == cfg)
