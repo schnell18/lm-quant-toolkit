@@ -11,6 +11,7 @@ from lm_quant_toolkit.eval.bench import (
     AWQ_CONFIGS,
     BNB_CONFIGS,
     GPTQ_CONFIGS,
+    MXQ_CONFIGS,
     do_expermient,
 )
 from lm_quant_toolkit.eval.bench_vit import ALL_MODELS as ALL_VIT_MODELS
@@ -379,17 +380,21 @@ def _get_configs(algos, config_names):
                     algo_configs[algo] = [
                         cfg for cfg in HQQ_CONFIGS if cfg[0] in config_names
                     ]
-            # case "mxq":
-            #     if config_names is None:
-            #         algo_configs[algo] = MXQ_CONFIGS
-            #     else:
-            #         algo_configs[algo] = [
-            #             (
-            #                 f"{bits:.2f}".replace(".", "_"),
-            #                 HQQQuantConfig(mixed=True, budget=bits, quant_scale=True),
-            #             )
-            #             for bits in [float(cfg) for cfg in config_names]
-            #         ]
+            case "mxq":
+                if config_names is None:
+                    algo_configs[algo] = MXQ_CONFIGS
+                else:
+                    algo_configs[algo] = [
+                        (
+                            f"{bits:.2f}".replace(".", "_"),
+                            HQQQuantConfig(
+                                mixed=True,
+                                budget=bits,
+                                quant_scale=True,
+                            ),
+                        )
+                        for bits in [float(cfg) for cfg in config_names]
+                    ]
             case "awq":
                 if config_names is None:
                     algo_configs[algo] = AWQ_CONFIGS
