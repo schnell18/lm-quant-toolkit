@@ -6,6 +6,7 @@ quantise() {
       --task quant \
       --model $MODELS \
       --algo mxq \
+      --ablation \
       --weight-algo $weight_algo \
       --boost-stop $BOOST_STOP \
       --top-m-layer $BOOST_TOP_M \
@@ -110,9 +111,9 @@ plot_results() {
 }
 
 BUDGETS="3.13 3.25 3.51 4.13 4.25 4.51"
-LOG_DIR="/fdata/llm/ieee-tai/logs4"
-RESULT_DIR="/fdata/llm/ieee-tai/results4"
-QUANT_SNAPSHOT_DIR="/fdata/llm/ieee-tai/snapshots4"
+LOG_DIR="/fdata/llm/ieee-tai/logs5"
+RESULT_DIR="/fdata/llm/ieee-tai/results5"
+QUANT_SNAPSHOT_DIR="/fdata/llm/ieee-tai/snapshots5"
 
 # Use cached dataset to speedup wikitext, c4 ppl evaluation
 # export HF_DATASETS_OFFLINE=1
@@ -143,8 +144,8 @@ for BOOST_STOP in $BOOST_STOPS; do
         log_file="$LOG_DIR/bench-${ATTEMPT}-$(date +%Y%m%d%H%M%S).log"
 
         quantise
-        # eval_stor
-        # dump_qnt_cfg
+        eval_stor
+        dump_qnt_cfg
         # eval_ppl
 
     done

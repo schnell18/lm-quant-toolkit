@@ -340,7 +340,7 @@ def dump_quant_allocation(
     quant_dir, model_ids, confs, csv_fp="mxq-allot.csv", attempts=None, algo="mxq"
 ):
     dikt = []
-    pat = re.compile(r"model\.layers\.(\d+)\.(.+)")
+    pat = re.compile(r"model(?:\.language_model)\.layers\.(\d+)\.(.+)")
     pat2 = re.compile(r"b(\d+)g(\d+)")
     loops = ["mxq1"] if attempts is None else attempts
     for attempt in loops:
