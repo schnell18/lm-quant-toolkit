@@ -44,6 +44,7 @@ dump_latex_table <- function(df, experiment, latex_file = "table.tex") {
       format = "latex",
       booktabs = TRUE,
       linesep = "",
+      escape = FALSE,
       align = c("cccccccccccc"),
       caption = paste0("PPL results of ", experiment),
       label = "tab:experiment-result",
@@ -96,20 +97,60 @@ dump_latex_table <- function(df, experiment, latex_file = "table.tex") {
   writeLines(out, fh)
   close(fh)
 }
-process_dataframe <- function(df, algo_levels, algo_labels) {
+shorten_attempt <- function(attempt) {
+  # Map kurt-boost-X-Y to KBXY; fall back to attempt unchanged otherwise.
+  if (is.na(attempt)) {
+    return(NA_character_)
+  }
+  m <- regmatches(
+    attempt,
+    regexec("^kurt-boost-([0-9]+)-([0-9]+)$", attempt)
+  )[[1]]
+  if (length(m) == 3) {
+    return(paste0("KB", m[2], m[3]))
+  }
+  return(attempt)
+}
+
+mark_best_second <- function(x) {
+  # Within a group, bold the min, underline the 2nd-min.
+  # Ties at the min keep all tied entries bold (rank 1, ties.method = "min").
+  fmt <- ifelse(is.na(x), NA_character_, sprintf("%.2f", x))
+  r <- rank(x, ties.method = "min", na.last = "keep")
+  best <- !is.na(r) & r == 1
+  second <- !is.na(r) & r == 2
+  fmt[best] <- cell_spec(fmt[best], format = "latex", bold = TRUE)
+  fmt[second] <- cell_spec(fmt[second], format = "latex", underline = TRUE)
+  fmt
+}
+
+process_dataframe <- function(df, method_levels, method_labels) {
   all_cols <- c(
-    "model", "algo", "config",
+    "model", "method", "config",
     "bpp", "ppl_wikitext", "ppl_c4",
     "memory"
   )
   latex_cols <- c(
-    "algo", "config", "bpp",
+    "method", "config", "bpp",
     "ppl_wikitext_Qwen3.5-2B", "ppl_c4_Qwen3.5-2B", "memory_Qwen3.5-2B",
     "ppl_wikitext_Qwen3.5-4B", "ppl_c4_Qwen3.5-4B", "memory_Qwen3.5-4B",
     "ppl_wikitext_Qwen3.5-9B", "ppl_c4_Qwen3.5-9B", "memory_Qwen3.5-9B"
   )
+  ppl_cols <- c(
+    "ppl_wikitext_Qwen3.5-2B", "ppl_c4_Qwen3.5-2B",
+    "ppl_wikitext_Qwen3.5-4B", "ppl_c4_Qwen3.5-4B",
+    "ppl_wikitext_Qwen3.5-9B", "ppl_c4_Qwen3.5-9B"
+  )
+  mem_cols <- c(
+    "memory_Qwen3.5-2B", "memory_Qwen3.5-4B", "memory_Qwen3.5-9B"
+  )
   df_latex <- df |>
     mutate(
+      method = ifelse(
+        algo == "mxq",
+        sapply(attempt, shorten_attempt),
+        toupper(algo)
+      ),
       config = ifelse(algo == "mxq", sapply(bpp, budget_to_cfg), config)
     ) |>
     mutate(
@@ -118,10 +159,10 @@ process_dataframe <- function(df, algo_levels, algo_labels) {
       memory = round(load_mem_allot, digits = 2)
     ) |>
     mutate(
-      algo = factor(
-        algo,
-        levels = algo_levels,
-        labels = algo_labels
+      method = factor(
+        method,
+        levels = method_levels,
+        labels = method_labels
       ),
       config = factor(
         config,
@@ -133,14 +174,20 @@ process_dataframe <- function(df, algo_levels, algo_labels) {
         )
       )
     ) |>
+    filter(!is.na(method), !is.na(config)) |>
     select(all_of(all_cols)) |>
     pivot_wider(
       names_from = model,
       values_from = c(ppl_wikitext, ppl_c4, memory),
       names_vary = "slowest"
     ) |>
+    group_by(config) |>
+    mutate(across(all_of(ppl_cols), mark_best_second)) |>
+    ungroup() |>
+    mutate(across(all_of(mem_cols),
+      ~ ifelse(is.na(.x), NA_character_, sprintf("%.2f", .x)))) |>
     select(all_of(latex_cols)) |>
-    arrange(config, algo, desc(bpp))
+    arrange(config, method, desc(bpp))
 
   return(df_latex)
 }
@@ -172,9 +219,15 @@ if (is.null(args$attempt)) {
 }
 
 df_all <- read_csv(csv_fp)
-# levels <- c("mxq", "hqq", "fp16", "awq", "gptq", "bnb")
-# labels <- c("MXQ", "HQQ", "FP16", "AWQ", "GPTQ", "BnB")
-levels <- c("fp16", "hqq", "awq", "gptq", "bnb")
-labels <- c("FP16", "HQQ", "AWQ", "GPTQ", "BnB")
-df_latex <- process_dataframe(df_all, levels, labels)
+method_levels <- c(
+  "FP16", "HQQ", "AWQ", "GPTQ", "BNB",
+  "KB20", "KB21", "KB22", "KB23",
+  "KB30", "KB31", "KB32", "KB33"
+)
+method_labels <- c(
+  "FP16", "HQQ", "AWQ", "GPTQ", "BnB",
+  "KB20", "KB21", "KB22", "KB23",
+  "KB30", "KB31", "KB32", "KB33"
+)
+df_latex <- process_dataframe(df_all, method_levels, method_labels)
 dump_latex_table(df_latex, the_attempt)
