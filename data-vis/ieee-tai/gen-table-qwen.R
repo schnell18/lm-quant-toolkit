@@ -7,6 +7,36 @@ library(kableExtra)
 library(optparse)
 library(this.path)
 
+budget_to_cfg <- function(budget) {
+  if (budget == 3.13) {
+    return("b3g128")
+  } else if (budget == 3.25) {
+    return("b3g64")
+  } else if (budget == 3.51) {
+    return("b3g32")
+  } else if (budget == 4.13) {
+    return("b4g128")
+  } else if (budget == 4.25) {
+    return("b4g64")
+  } else if (budget == 4.51) {
+    return("b4g32")
+  } else if (budget == 8.13) {
+    return("b8g128")
+  } else if (budget == 8.25) {
+    return("b8g64")
+  } else if (budget == 8.51) {
+    return("b8g32")
+  } else if (budget == 2.13) {
+    return("b2g128")
+  } else if (budget == 2.25) {
+    return("b2g64")
+  } else if (budget == 2.51) {
+    return("b2g32")
+  } else {
+    return(budget)
+  }
+}
+
 dump_latex_table <- function(df, experiment, latex_file = "table.tex") {
   options(knitr.kable.NA = "-")
   tabular <- df |>

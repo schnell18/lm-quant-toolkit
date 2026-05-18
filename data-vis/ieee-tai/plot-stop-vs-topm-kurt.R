@@ -5,7 +5,7 @@ library(dplyr)
 library(tidyverse)
 library(readr)
 
-combined_csv_fp <- "boost/data/combined.csv"
+combined_csv_fp <- "data/combined.csv"
 
 df_kb <- read_csv(combined_csv_fp) |>
   filter(
@@ -23,8 +23,8 @@ df_kb <- read_csv(combined_csv_fp) |>
   mutate(
     model = factor(
       model,
-      levels = c("Qwen3.5-2B", "Qwen3.5-4B", "Qwen3.5-9B",),
-      labels = c("Qwen3.5-2B", "Qwen3.5-4B", "Qwen3.5-9B",)
+      levels = c("Qwen3.5-2B", "Qwen3.5-4B", "Qwen3.5-9B"),
+      labels = c("Qwen3.5-2B", "Qwen3.5-4B", "Qwen3.5-9B")
     ),
     stop = factor(
       stop,
