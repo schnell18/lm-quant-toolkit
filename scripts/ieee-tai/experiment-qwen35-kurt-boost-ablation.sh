@@ -146,7 +146,7 @@ for BOOST_STOP in $BOOST_STOPS; do
         quantise
         eval_stor
         dump_qnt_cfg
-        # eval_ppl
+        eval_ppl
 
     done
 done
