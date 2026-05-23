@@ -25,7 +25,7 @@ from lm_quant_toolkit.adapter.hqq import create_hqq_model, quantize_hqq_model
 from lm_quant_toolkit.adapter.mxq import create_mxq_model, quantize_mxq_model
 from lm_quant_toolkit.eval.common import (
     _dump_cuda_mem_snapshot,
-    _reset_peak_memory_stats,
+    _release_gpu_memory,
     cleanup,
     combine_metrics,
     get_memory_metrics,
@@ -321,7 +321,7 @@ def do_expermient(
 
         if track_cuda_memory:
             torch.cuda.memory._record_memory_history()
-        _reset_peak_memory_stats()
+        _release_gpu_memory()
 
         # create model for perplexity or downstream task eval
         create_fn = spec["create_fn"]

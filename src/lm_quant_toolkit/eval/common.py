@@ -88,8 +88,12 @@ def get_mxq_bits(reduction_pcts=[3, 5, 8]):
     return sorted(list(set(nbits)), reverse=True)
 
 
-def _reset_peak_memory_stats():
-    return torch.cuda.reset_peak_memory_stats()
+def _release_gpu_memory():
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
 
 
 def get_memory_metrics():

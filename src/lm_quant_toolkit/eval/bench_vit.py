@@ -15,7 +15,7 @@ from lm_quant_toolkit.eval.clipbenchmark import (
 from lm_quant_toolkit.eval.common import (
     HQQ_CONFIGS,
     _dump_cuda_mem_snapshot,
-    _reset_peak_memory_stats,
+    _release_gpu_memory,
     calc_bits,
     combine_metrics,
     get_memory_metrics,
@@ -143,7 +143,7 @@ def do_expermient(
 
         if track_cuda_memory:
             torch.cuda.memory._record_memory_history()
-        _reset_peak_memory_stats()
+        _release_gpu_memory()
 
         quant_config = None
         if algo != "fp16":
