@@ -45,9 +45,11 @@ read_one <- function(path, attempt) {
     )
 }
 
-baseline_csvs <- c(
-  "baselines/result-baseline-fp16-20260523120744.csv",
-  "baselines/result-baseline-hqq-20260523132926.csv"
+baseline_dir <- "baselines"
+baseline_csvs <- list.files(
+  baseline_dir,
+  pattern = "^result-baseline-.*\\.csv$",
+  full.names = TRUE
 )
 
 kb_dir <- "kurtboost"

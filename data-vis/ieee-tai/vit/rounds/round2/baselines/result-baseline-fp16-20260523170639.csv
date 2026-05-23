@@ -1,0 +1,4 @@
+model,algo,config,config_detail,quant_duration,load_mem_allot,load_mem_reserved,zeroshot_mem_allot,zeroshot_mem_reserved,linear_probe_mem_allot,linear_probe_mem_reserved,acc1_zeroshot_cls,acc5_zeroshot_cls,recall_zeroshot_cls,duration_zeroshot_cls,acc1_linear_probe,acc5_linear_probe,recall_linear_probe,duration_linear_probe
+CLIP-ViT-L-14-laion2B-s32B-b82K,fp16,base,{},0,0,0,2767487488,3026190336,0,0,0.7526,0.94258,0.75252,109.50478219985962,0,0,0,0
+CLIP-ViT-B-32-laion2B-s34B-b79K,fp16,base,{},0,0,0,894178304,977272832,0,0,0.66532,0.89882,0.6654800000000001,54.06568670272827,0,0,0,0
+CLIP-ViT-H-14-laion2B-s32B-b79K,fp16,base,{},0,0,0,5825982464,6048186368,0,0,0.77952,0.9523,0.7793000000000001,213.8021674156189,0,0,0,0

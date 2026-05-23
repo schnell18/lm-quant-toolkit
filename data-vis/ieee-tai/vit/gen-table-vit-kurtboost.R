@@ -77,6 +77,7 @@ dump_latex_table <- function(df, experiment, latex_file = "vit-kurtboost.tex") {
     kable(
       format = "latex",
       booktabs = TRUE,
+      longtable = TRUE,
       linesep = "",
       escape = FALSE,
       align = c("cccccccccccc"),
@@ -89,29 +90,25 @@ dump_latex_table <- function(df, experiment, latex_file = "vit-kurtboost.tex") {
         "Acc@1", "Acc@5", "MEM"
       )
     ) |>
-    kable_styling(latex_options = c("hold_position")) |>
+    kable_styling(
+      latex_options = c("repeat_header"),
+      font_size = 8,
+      repeat_header_method = "replace",
+      repeat_header_continued = "\\textit{(continued on next page)}"
+    ) |>
     add_header_above(
       c(" " = 3, "CLIP-ViT-B-32" = 3, "CLIP-ViT-L-14" = 3, "CLIP-ViT-H-14" = 3)
     ) |>
-    collapse_rows(columns = 2, latex_hline = "major")
-
-  tabular <- gsub(
-    "\\begin{tabular}",
-    "\\begin{adjustbox}{width=\\textwidth,keepaspectratio}\n\\begin{tabular}",
-    tabular,
-    fixed = TRUE
-  )
-  tabular <- gsub(
-    "\\end{tabular}",
-    "\\end{tabular}\n\\end{adjustbox}",
-    tabular,
-    fixed = TRUE
-  )
+    collapse_rows(
+      columns = 2,
+      latex_hline = "major",
+      longtable_clean_cut = TRUE
+    )
 
   head <- r"(
 \documentclass{article}
 \usepackage{booktabs,makecell,multirow,threeparttable}
-\usepackage{adjustbox}
+\usepackage{longtable,array,caption}
 
 \begin{document}
 
