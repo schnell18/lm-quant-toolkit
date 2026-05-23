@@ -45,9 +45,9 @@ MXQ_CONFIGS = [
         3.51,
         3.25,
         3.13,
+        3.02,
         2.51,
         2.25,
-        2.13,
         # 7.80,
         # 7.72,
         # 7.64,
@@ -385,36 +385,6 @@ def experiment_eval_mxq_358_memory_saving():
     }
     do_expermient_fdata("eval_lp_mxq_358_memory_saving4", models, linear_probe_tasks)
     do_expermient_fdata("eval_zs_mxq_358_memory_saving5", models, tasks)
-
-
-def experiment_eval_mxq_comprehensive():
-    models = ALL_MODELS
-    zeroshot_tasks = {
-        "mxq": {
-            "type": "eval_zeroshot_cls",
-            "configs": MXQ_CONFIGS,
-        },
-    }
-    linear_probe_tasks = {
-        "mxq": {
-            "type": "eval_linear_probe",
-            "configs": MXQ_CONFIGS,
-        },
-    }
-    do_expermient_fdata("eval_zs_mxq_comprehensive2", models, zeroshot_tasks)
-    do_expermient_fdata("eval_lp_mxq_comprehensive2", models, linear_probe_tasks)
-
-
-def experiment_zeroshot_eval_mxq():
-    models = ALL_MODELS
-    type = "eval_zeroshot_cls"
-    tasks = {
-        "mxq": {
-            "type": type,
-            "configs": MXQ_CONFIGS,
-        },
-    }
-    do_expermient_fdata(f"{type}_mxq", models, tasks)
 
 
 def experiment_eval_mxq_combined():

@@ -25,8 +25,7 @@ mkdir -p $SNAPSHOT_DIR
 
 for BOOST_STOP in $BOOST_STOPS; do
     for BOOST_TOP_M in $BOOST_TOP_MS; do
-        ATTEMPT="kurt-boost-${BOOST_STOP}-${BOOST_TOP_M}"
-        EXPERIMENT_NAME="${ATTEMPT}"
+        EXPERIMENT_NAME="kurt-boost-${BOOST_STOP}-${BOOST_TOP_M}"
         LOG_DIR="$BASE_DIR/${EXPERIMENT_NAME}/logs"
         RESULT_DIR="$BASE_DIR/${EXPERIMENT_NAME}/results"
 

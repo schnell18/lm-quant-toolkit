@@ -30,6 +30,8 @@ budget_to_cfg <- function(budget) {
     return("b2g64")
   } else if (budget == 2.51) {
     return("b2g32")
+  } else if (budget == 3.02) {
+    return("b2g16")
   } else {
     return(as.character(budget))
   }
@@ -97,7 +99,9 @@ dump_latex_table <- function(df, experiment, latex_file = "vit-kurtboost.tex") {
       repeat_header_continued = "\\textit{(continued on next page)}"
     ) |>
     add_header_above(
-      c(" " = 3, "CLIP-ViT-B-32" = 3, "CLIP-ViT-L-14" = 3, "CLIP-ViT-H-14" = 3)
+      c(" " = 3, "CLIP-ViT-B-32" = 3, "CLIP-ViT-L-14" = 3, "CLIP-ViT-H-14" = 3),
+      include_empty = TRUE,
+      line_sep = 0
     ) |>
     collapse_rows(
       columns = 2,
