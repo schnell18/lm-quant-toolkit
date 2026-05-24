@@ -21,7 +21,11 @@ extract_attempt <- function(path) {
   base <- basename(path)
   m <- regmatches(
     base,
-    regexec("result-(kurt-boost-[0-9]+-[0-9]+)-[0-9]+\\.csv$", base)
+    regexec(
+      "result-(kurt-boost(?:-ablation)?-[0-9]+-[0-9]+)-[0-9]+\\.csv$",
+      base,
+      perl = TRUE
+    )
   )[[1]]
   if (length(m) == 2) {
     return(m[2])
@@ -55,14 +59,22 @@ baseline_csvs <- list.files(
 kb_dir <- "kurtboost"
 kb_csvs <- list.files(
   kb_dir,
-  pattern = "^result-kurt-boost-.*\\.csv$",
+  pattern = "^result-kurt-boost-[0-9]+-[0-9]+-.*\\.csv$",
+  full.names = TRUE
+)
+
+abl_dir <- "ablation"
+abl_csvs <- list.files(
+  abl_dir,
+  pattern = "^result-kurt-boost-ablation-[0-9]+-[0-9]+-.*\\.csv$",
   full.names = TRUE
 )
 
 baseline_list <- lapply(baseline_csvs, read_one, attempt = "baseline")
 kb_list <- lapply(kb_csvs, function(p) read_one(p, attempt = extract_attempt(p)))
+abl_list <- lapply(abl_csvs, function(p) read_one(p, attempt = extract_attempt(p)))
 
-combined <- bind_rows(c(baseline_list, kb_list)) |>
+combined <- bind_rows(c(baseline_list, kb_list, abl_list)) |>
   mutate(bpp = sapply(config, calc_bpp)) |>
   relocate(attempt, .after = algo) |>
   relocate(bpp, .after = config) |>

@@ -43,6 +43,13 @@ shorten_attempt <- function(attempt) {
   }
   m <- regmatches(
     attempt,
+    regexec("^kurt-boost-ablation-([0-9]+)-([0-9]+)$", attempt)
+  )[[1]]
+  if (length(m) == 3) {
+    return(paste0("ABLKB", m[2], m[3]))
+  }
+  m <- regmatches(
+    attempt,
     regexec("^kurt-boost-([0-9]+)-([0-9]+)$", attempt)
   )[[1]]
   if (length(m) == 3) {
@@ -231,12 +238,16 @@ df_all <- read_csv(csv_fp, show_col_types = FALSE)
 method_levels <- c(
   "FP16", "HQQ",
   "KB11", "KB12", "KB13",
-  "KB21", "KB22", "KB23"
+  "KB21", "KB22", "KB23",
+  "ABLKB11", "ABLKB12", "ABLKB13",
+  "ABLKB21", "ABLKB22", "ABLKB23"
 )
 method_labels <- c(
   "FP16", "HQQ",
   "KB11", "KB12", "KB13",
-  "KB21", "KB22", "KB23"
+  "KB21", "KB22", "KB23",
+  "ABLKB11", "ABLKB12", "ABLKB13",
+  "ABLKB21", "ABLKB22", "ABLKB23"
 )
 df_latex <- process_dataframe(df_all, method_levels, method_labels)
 dump_latex_table(df_latex, the_attempt)
