@@ -158,6 +158,7 @@ def do_expermient(
                 quant_config["boost_stop"] = kwargs.get("boost_stop", None)
                 quant_config["decline_stop"] = kwargs.get("decline_stop", None)
                 quant_config["top_m_layer"] = kwargs.get("top_m_layer", None)
+                quant_config["ablation"] = kwargs.get("ablation", None)
         if task_type == "eval_zeroshot_cls":
             # avoid interventions between models
             metric = eval_zeroshot_classification(
