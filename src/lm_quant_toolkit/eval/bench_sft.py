@@ -110,10 +110,14 @@ def cleanup():
 
 def _full_name_to_key(name: str) -> str:
     """``model.layers.5.self_attn.q_proj`` -> ``5.self_attn.q_proj``.
+    Return empty string if no layer number is found.
 
     Matches the ``{layer}.{module}`` keys produced by lora_alloc.py.
     """
-    layer = next(p for p in name.split(".") if p.isnumeric())
+    nums = [p for p in name.split(".") if p.isnumeric()]
+    if len(nums) == 0:
+        return ""
+    layer = nums[0]
     return f"{layer}.{name_to_linear_tag(name)}"
 
 
@@ -140,6 +144,8 @@ def add_lora_per_layer(model, lora_configs, base_class=None, verbose=True):
 
     for name in tqdm(tmp_mapping, disable=not verbose):
         key = _full_name_to_key(name)
+        if key == "":
+            continue
         patch_param = lora_configs.get(key, None)
         setattr(
             find_parent(model, name),
