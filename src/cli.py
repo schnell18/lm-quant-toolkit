@@ -4,22 +4,10 @@
 import argparse
 import sys
 
-from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
-
-from lm_quant_toolkit.eval.bench import (
-    ALL_MODELS,
-    AWQ_CONFIGS,
-    BNB_CONFIGS,
-    GPTQ_CONFIGS,
-    MXQ_CONFIGS,
-    do_expermient,
-)
-from lm_quant_toolkit.eval.bench_vit import ALL_MODELS as ALL_VIT_MODELS
-from lm_quant_toolkit.eval.bench_vit import MXQ_CONFIGS as VIT_MXQ_CONFIGS
-from lm_quant_toolkit.eval.bench_vit import do_expermient as do_expermient_vit
-from lm_quant_toolkit.eval.common import HQQ_CONFIGS
-from lm_quant_toolkit.misc.quant_sim import dump_mxq_configs, dump_mxq_objectives
-from lm_quant_toolkit.misc.qweight import dump_quant_allocation
+# Only the lightweight model-id resolver is imported eagerly. The heavy
+# per-command stacks (hqq, gptqmodel, lm_eval, trl, torch) are imported lazily
+# inside each sub-command's handler so that running one sub-command does not pay
+# the import cost of the others.
 from lm_quant_toolkit.utils.hub import resolve_models
 
 
@@ -363,11 +351,81 @@ def get_parser_args():
         help="calibration dataset(s) to use",
     )
 
+    parser_sft = subparsers.add_parser(
+        "sft", help="HQQ+ SFT with KurtBoost-guided LoRA allocation"
+    )
+    parser_sft.set_defaults(which="sft")
+    parser_sft.add_argument(
+        "--model",
+        type=str,
+        nargs="+",
+        default="1",
+        help="Model index into the 3 KurtBoost llama models, or HF model id",
+    )
+    parser_sft.add_argument(
+        "--nbits",
+        type=int,
+        nargs="+",
+        default=[1, 2],
+        help="Backbone bit-widths to recover via HQQ+ (default: 1 2)",
+    )
+    parser_sft.add_argument(
+        "--group-size",
+        type=int,
+        default=8,
+        help="HQQ backbone group size (default: 8)",
+    )
+    parser_sft.add_argument(
+        "--variant",
+        type=str,
+        nargs="+",
+        choices=["uniform", "kurtboost"],
+        default=["uniform", "kurtboost"],
+        help="LoRA allocation variant(s): uniform control and/or kurtboost",
+    )
+    parser_sft.add_argument(
+        "--boost-stop",
+        type=int,
+        default=1,
+        help="Rungs a sensitive (layer, module) climbs up the LoRA ladder",
+    )
+    parser_sft.add_argument(
+        "--top-m-layer",
+        type=int,
+        default=1,
+        help="Top m sensitive layers per module to boost. 0 means all.",
+    )
+    parser_sft.add_argument(
+        "--result-dir",
+        default="results",
+        type=str,
+        help="directory to where evaluation results are stored",
+    )
+    parser_sft.add_argument(
+        "--experiment-name",
+        default=None,
+        type=str,
+        help="name of the experiment",
+    )
+    parser_sft.add_argument("--lr", type=float, default=1e-5)
+    parser_sft.add_argument("--n-epochs", type=int, default=2)
+    parser_sft.add_argument("--max-tokens", type=int, default=1024)
+    parser_sft.add_argument("--batch-size", type=int, default=1)
+
     args = parser.parse_args()
     return parser, args
 
 
 def _get_configs(algos, config_names):
+    from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
+    from lm_quant_toolkit.eval.bench import (
+        AWQ_CONFIGS,
+        BNB_CONFIGS,
+        GPTQ_CONFIGS,
+        MXQ_CONFIGS,
+    )
+    from lm_quant_toolkit.eval.common import HQQ_CONFIGS
+
     algo_configs = {}
     for algo in algos:
         match algo:
@@ -421,6 +479,10 @@ def _get_configs(algos, config_names):
 
 
 def _get_vit_configs(algos, config_names):
+    from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
+    from lm_quant_toolkit.eval.bench_vit import MXQ_CONFIGS as VIT_MXQ_CONFIGS
+    from lm_quant_toolkit.eval.common import HQQ_CONFIGS
+
     algo_configs = {}
     for algo in algos:
         match algo:
@@ -440,7 +502,8 @@ def _get_vit_configs(algos, config_names):
                     algo_configs[algo] = [
                         (
                             f"{bits:.2f}".replace(".", "_"),
-                            HQQQuantConfig(mixed=True, budget=bits, quant_scale=True),
+                            HQQQuantConfig(
+                                mixed=True, budget=bits, quant_scale=True),
                         )
                         for bits in [float(cfg) for cfg in config_names]
                     ]
@@ -460,6 +523,8 @@ def main():
             main_vit(base)
         elif base.which == "dump":
             main_dump(base)
+        elif base.which == "sft":
+            main_sft(base)
     except Exception as e:
         print(e)
         return 1
@@ -470,9 +535,12 @@ def main_llm(args):
     # if len(args.algo) > 1 and args.config is not None:
     #     print("When config is specified, you can only evaluate one algorithm")
     #     return
+    from lm_quant_toolkit.eval.bench import ALL_MODELS, do_expermient
+
     configs = _get_configs(args.algo, args.config)
     models = resolve_models(args.model, ALL_MODELS)
-    tasks = {algo: {"type": args.task, "configs": configs[algo]} for algo in args.algo}
+    tasks = {algo: {"type": args.task,
+                    "configs": configs[algo]} for algo in args.algo}
     experiment_name = args.experiment_name
     if experiment_name is None or len(experiment_name) < 3:
         algo_str = "-".join(args.algo)
@@ -501,9 +569,13 @@ def main_llm(args):
 
 
 def main_vit(args):
+    from lm_quant_toolkit.eval.bench_vit import ALL_MODELS as ALL_VIT_MODELS
+    from lm_quant_toolkit.eval.bench_vit import do_expermient as do_expermient_vit
+
     configs = _get_vit_configs(args.algo, args.config)
     models = resolve_models(args.model, ALL_VIT_MODELS)
-    tasks = {algo: {"type": args.task, "configs": configs[algo]} for algo in args.algo}
+    tasks = {algo: {"type": args.task,
+                    "configs": configs[algo]} for algo in args.algo}
     experiment_name = args.experiment_name
     if experiment_name is None or len(experiment_name) < 3:
         algo_str = "-".join(args.algo)
@@ -528,7 +600,41 @@ def main_vit(args):
     )
 
 
+def main_sft(args):
+    # Imported lazily so the heavy SFT stack (trl, transformers, hqq peft) is
+    # only loaded for the `sft` sub-command, not for llm/vit/dump.
+    from lm_quant_toolkit.eval.bench_sft import ALL_MODELS as SFT_ALL_MODELS
+    from lm_quant_toolkit.eval.bench_sft import do_experiment as do_experiment_sft
+
+    models = resolve_models(args.model, SFT_ALL_MODELS)
+    backbones = [(b, args.group_size) for b in args.nbits]
+    experiment_name = args.experiment_name
+    if experiment_name is None or len(experiment_name) < 3:
+        variant_str = "-".join(args.variant)
+        experiment_name = f"hqq-plus-sft-{variant_str}"
+    sft_kwargs = {
+        "lr": args.lr,
+        "n_epochs": args.n_epochs,
+        "max_tokens": args.max_tokens,
+        "batch_size": args.batch_size,
+    }
+    do_experiment_sft(
+        experiment_name,
+        models,
+        backbones,
+        args.variant,
+        boost_stop=args.boost_stop,
+        top_m=args.top_m_layer,
+        result_dir=args.result_dir,
+        sft_kwargs=sft_kwargs,
+    )
+
+
 def main_dump(args):
+    from lm_quant_toolkit.eval.bench import ALL_MODELS
+    from lm_quant_toolkit.misc.quant_sim import dump_mxq_configs, dump_mxq_objectives
+    from lm_quant_toolkit.misc.qweight import dump_quant_allocation
+
     if args.type == "objective":
         budgets = args.budget
         csv_fp = args.output_file
