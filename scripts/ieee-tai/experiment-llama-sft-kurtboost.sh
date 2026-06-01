@@ -12,8 +12,11 @@
 set -u
 
 # --- configuration ----------------------------------------------------------
-RESULT_DIR="${RESULT_DIR:-results}"
-LOG_DIR="${LOG_DIR:-logs}"
+#
+
+BASE_DIR="/fdata/llm/ieee-tai/hqqplus"
+RESULT_DIR="$BASE_DIR/results"
+LOG_DIR="$BASE_DIR/logs"
 
 NBITS="${NBITS:-1 2}"          # backbone bit-widths (include 1-bit)
 GROUP_SIZE="${GROUP_SIZE:-8}"
@@ -34,6 +37,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 export PYTHONPATH="$REPO_DIR/src:${PYTHONPATH:-}"
 
+mkdir -p "$RESULT_DIR"
 mkdir -p "$LOG_DIR"
 
 run_bench() {
@@ -50,7 +54,7 @@ run_bench() {
         --lr "$LR" \
         --n-epochs "$N_EPOCHS" \
         --max-tokens "$MAX_TOKENS" \
-        --result-dir "$RESULT_DIR" \
+        --result-dir "$RESULT_DIR/$exp_name" \
         "$@" \
         2>&1 | tee -a "$log_file"
     local exit_code=${PIPESTATUS[0]}
@@ -66,7 +70,7 @@ run_bench "hqq-plus-sft-uniform" uniform
 # --- KurtBoost sweep --------------------------------------------------------
 for BOOST_STOP in $BOOST_STOPS; do
     for BOOST_TOP_M in $BOOST_TOP_MS; do
-        EXP_NAME="hqq-plus-sft-kurtboost-${BOOST_STOP}-${BOOST_TOP_M}"
+        EXP_NAME="kurtboost-${BOOST_STOP}-${BOOST_TOP_M}"
         run_bench "$EXP_NAME" kurtboost \
             --boost-stop "$BOOST_STOP" \
             --top-m-layer "$BOOST_TOP_M"
