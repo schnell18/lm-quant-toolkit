@@ -11,8 +11,10 @@ LoRA capacity should improve the SFT'd model.
 
 Mechanism (mirrors ``boost_cfg(budget, stop)`` in the optimizer): a (layer, module)
 pair flagged sensitive climbs ``boost_stop`` rungs up a discrete LoRA capacity
-ladder; everyone else stays at the per-module-type base rung taken from
-``hqq_plus.py`` (attention r=32, MLP r=8). The ladder uses ``alpha = 2 * r``.
+ladder; everyone else stays at the per-module-type base rung. The ladder uses
+``alpha = r``, and the base rungs are taken from ``hqq_plus.py`` (attention
+r=32/alpha=32, MLP r=8/alpha=8), so the kurtboost base matches the HQQ+ baseline
+exactly and boosting only adds capacity on top.
 """
 
 import pandas as pd
@@ -23,15 +25,15 @@ import torch
 from hqq.utils.optimizer import identify_sensitive_modules
 
 # LoRA capacity ladder (ascending capacity). Each entry is (r, lora_alpha) with
-# alpha = 2 * r. The ladder is the LoRA analogue of ``budget_map`` in
-# ``_allocate_boost_decline_configs`` of hqq/utils/optimizer.py.
+# alpha = r (matching hqq_plus.py). The ladder is the LoRA analogue of
+# ``budget_map`` in ``_allocate_boost_decline_configs`` of hqq/utils/optimizer.py.
 LORA_LADDER = [
-    (4, 8),     # 0
-    (8, 16),    # 1
-    (16, 32),   # 2
-    (32, 64),   # 3
-    (64, 128),  # 4
-    (128, 256),  # 5
+    (4, 4),      # 0
+    (8, 8),      # 1
+    (16, 16),    # 2
+    (32, 32),    # 3
+    (64, 64),    # 4
+    (128, 128),  # 5
 ]
 
 ATTN_MODULES = {
@@ -46,9 +48,9 @@ MLP_MODULES = {
     "mlp.down_proj",
 }
 
-# Base rungs, matching the uniform allocation in hqq_plus.py.
-ATTN_BASE_R = 32  # ladder index 3 -> (32, 64)
-MLP_BASE_R = 8    # ladder index 1 -> (8, 16)
+# Base rungs, matching the uniform allocation in hqq_plus.py (the HQQ+ baseline).
+ATTN_BASE_R = 32  # ladder index 3 -> (32, 32)
+MLP_BASE_R = 8    # ladder index 1 -> (8, 8)
 
 
 def _ladder_index_for_r(r: int) -> int:
@@ -81,34 +83,6 @@ def _peft_config(r, lora_alpha, dropout, train_dtype, train_bias):
         "train_dtype": train_dtype,
         "train_bias": train_bias,
     }
-
-
-def hqqplus_lora_configs(
-    metric_fp,
-    attn_base_r=ATTN_BASE_R,
-    mlp_base_r=MLP_BASE_R,
-    dropout=0.05,
-    train_dtype=torch.float32,
-    train_bias=True,
-):
-    """Per-(layer, module) LoRA config with the uniform hqq_plus allocation.
-
-    Returns ``{ "{layer}.{module}": peft_config }`` so it can be applied with the
-    same per-layer patch path as the KurtBoost variant (the control group).
-    """
-    attn_r, attn_a = LORA_LADDER[_ladder_index_for_r(attn_base_r)]
-    mlp_r, mlp_a = LORA_LADDER[_ladder_index_for_r(mlp_base_r)]
-    df = pd.read_csv(metric_fp)
-    cfgs = {}
-    n_layers_per_mod = df.groupby(["module"]).layer.nunique().to_dict()
-    for module, n_layers in n_layers_per_mod.items():
-        is_attn = module in ATTN_MODULES
-        r, a = (attn_r, attn_a) if is_attn else (mlp_r, mlp_a)
-        for layer in range(n_layers):
-            cfgs[f"{layer}.{module}"] = _peft_config(
-                r, a, dropout, train_dtype, train_bias
-            )
-    return cfgs, {}
 
 
 def allocate_lora_configs(

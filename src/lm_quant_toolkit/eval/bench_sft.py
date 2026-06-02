@@ -52,10 +52,7 @@ from lm_quant_toolkit.eval.common import (
     persist_progress,
     save_partial_metric,
 )
-from lm_quant_toolkit.eval.lora_alloc import (
-    allocate_lora_configs,
-    hqqplus_lora_configs,
-)
+from lm_quant_toolkit.eval.lora_alloc import allocate_lora_configs
 
 logger = logging.getLogger(__name__)
 
@@ -161,17 +158,37 @@ def add_lora_per_layer(model, lora_configs, base_class=None, verbose=True):
     hqq_cleanup()
 
 
-def build_lora_configs(algorithm, metric_fp, boost_stop, top_m):
-    if algorithm == "HQQ+":
-        return hqqplus_lora_configs(metric_fp, train_dtype=TRAIN_DTYPE)
-    elif algorithm == "kurtboost":
-        return allocate_lora_configs(
-            metric_fp,
-            boost_stop=boost_stop,
-            top_m=top_m,
-            train_dtype=TRAIN_DTYPE,
-        )
-    raise ValueError(f"Invalid algorithm: {algorithm}")
+def hqqplus_lora_params():
+    """Uniform per module-type LoRA params, exactly as hqq/examples/hqq_plus.py.
+
+    Every layer of a given module-type gets the same params (attention r=32,
+    alpha=32; MLP r=8, alpha=8), applied with the stock ``PeftUtils.add_lora``.
+    """
+    attn = {
+        "lora_type": "default",
+        "r": 32,
+        "lora_alpha": 32,
+        "dropout": 0.05,
+        "train_dtype": TRAIN_DTYPE,
+        "train_bias": True,
+    }
+    mlp = {
+        "lora_type": "default",
+        "r": 8,
+        "lora_alpha": 8,
+        "dropout": 0.05,
+        "train_dtype": TRAIN_DTYPE,
+        "train_bias": True,
+    }
+    return {
+        "self_attn.q_proj": attn,
+        "self_attn.k_proj": attn,
+        "self_attn.v_proj": attn,
+        "self_attn.o_proj": attn,
+        "mlp.gate_proj": mlp,
+        "mlp.up_proj": mlp,
+        "mlp.down_proj": mlp,
+    }
 
 
 def _checkpoint_tag(model_id, nbits, gsize, algorithm, boost_stop, top_m):
@@ -288,10 +305,17 @@ def run_one(
     """Run one experiment cell and return its metrics.
 
     For ``algorithm == "fp16"`` the model is loaded and evaluated as-is:
-    quantization, LoRA and SFT are all skipped (upper-bound baseline). For the
-    HQQ+ algorithms (``HQQ+``/``kurtboost``) the backbone is quantized, LoRA
-    is attached per the chosen allocation, SFT-trained, and (optionally) the
-    LoRA weights are checkpointed under ``snapshot_dir``.
+    quantization, LoRA and SFT are all skipped (upper-bound baseline).
+
+    For ``algorithm == "HQQ+"`` the cell strictly follows
+    ``hqq/examples/hqq_plus.py``: the backbone is quantized, uniform per
+    module-type LoRA params (attn r=32, mlp r=8) are attached with the stock
+    ``PeftUtils.add_lora``, then SFT-trained.
+
+    For ``algorithm == "kurtboost"`` the LoRA capacity is allocated per
+    (layer, module) from the kurtosis metric and attached with the custom
+    per-layer patch. Both HQQ+ algorithms checkpoint their LoRA weights under
+    ``snapshot_dir`` when given.
     """
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
@@ -306,10 +330,6 @@ def run_one(
         # Baseline: no quantization, no SFT.
         model = model.to(DEVICE)
     else:
-        ok, metric_fp = get_mxq_quant_meta_data_file(model_id)
-        if not ok:
-            raise ValueError(f"Kurtosis metric file not found: {metric_fp}")
-
         quant_config = BaseQuantizeConfig(
             nbits=nbits,
             group_size=gsize,
@@ -324,18 +344,30 @@ def run_one(
             device=DEVICE,
         )
 
-        lora_configs, module_outliers = build_lora_configs(
-            algorithm, metric_fp, boost_stop, top_m
-        )
-        n_boosted = sum(len(v) for v in module_outliers.values())
-        logger.info(
-            "algorithm=%s boosted (layer,module) pairs=%d outliers=%s",
-            algorithm,
-            n_boosted,
-            module_outliers,
-        )
+        if algorithm == "HQQ+":
+            # Strictly follow hqq/examples/hqq_plus.py: uniform per module-type
+            # LoRA params, applied with the stock add_lora (same params for all
+            # layers).
+            PeftUtils.add_lora(model, hqqplus_lora_params())
+        else:  # kurtboost
+            ok, metric_fp = get_mxq_quant_meta_data_file(model_id)
+            if not ok:
+                raise ValueError(f"Kurtosis metric file not found: {metric_fp}")
+            lora_configs, module_outliers = allocate_lora_configs(
+                metric_fp,
+                boost_stop=boost_stop,
+                top_m=top_m,
+                train_dtype=TRAIN_DTYPE,
+            )
+            n_boosted = sum(len(v) for v in module_outliers.values())
+            logger.info(
+                "algorithm=%s boosted (layer,module) pairs=%d outliers=%s",
+                algorithm,
+                n_boosted,
+                module_outliers,
+            )
+            add_lora_per_layer(model, lora_configs)
 
-        add_lora_per_layer(model, lora_configs)
         HQQLinear.set_backend(HQQBackend.ATEN_BACKPROP)
         model.config.use_cache = False
 
