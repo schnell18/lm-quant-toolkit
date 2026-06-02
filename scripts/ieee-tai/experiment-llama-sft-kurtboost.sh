@@ -16,10 +16,13 @@
 set -u
 
 # --- configuration ----------------------------------------------------------
-RESULT_DIR="${RESULT_DIR:-results}"
-SNAPSHOT_DIR="${SNAPSHOT_DIR:-snapshots}"
-LOG_DIR="${LOG_DIR:-logs}"
-MODELS="${MODELS:-0 1 2}"      # indices into the 3 KurtBoost llama models
+BASE_DIR="/fdata/llm/ieee-tai/hqqplus/kurtboost"
+LOG_DIR="$BASE_DIR/logs"
+SNAPSHOT_DIR="$BASE_DIR/snapshot"
+
+# MODELS="${MODELS:-0 1 2}"   # indices into the 3 KurtBoost llama models
+MODELS="${MODELS:-0 2}"
+
 NBITS="${NBITS:-1 2}"          # backbone bit-widths (include 1-bit)
 GROUP_SIZE="${GROUP_SIZE:-8}"
 
@@ -36,18 +39,20 @@ export HF_DATASETS_OFFLINE=1
 
 # Resolve repo paths so the script works from any cwd.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 export PYTHONPATH="$REPO_DIR/src:${PYTHONPATH:-}"
 
-mkdir -p "$LOG_DIR" "$SNAPSHOT_DIR"
+mkdir -p $LOG_DIR
+mkdir -p $RESULT_DIR
+mkdir -p $SNAPSHOT_DIR
 
 for BOOST_STOP in $BOOST_STOPS; do
     for BOOST_TOP_M in $BOOST_TOP_MS; do
-        EXP_NAME="hqq-plus-sft-kurtboost-${BOOST_STOP}-${BOOST_TOP_M}"
-        log_file="$LOG_DIR/bench-sft-${EXP_NAME}-$(date +%Y%m%d%H%M%S).log"
-        echo "========= ${EXP_NAME} ========="
+        EXPERIMENT_NAME="kurtboost-hqq-plus-${BOOST_STOP}-${BOOST_TOP_M}"
+        log_file="$LOG_DIR/${EXPERIMENT_NAME}-$(date +%Y%m%d%H%M%S).log"
+        echo "========= ${EXPERIMENT_NAME} ========="
         python "$REPO_DIR/src/cli.py" sft \
-            --experiment-name "$EXP_NAME" \
+            --experiment-name "$EXPERIMENT_NAME" \
             --algorithm kurtboost \
             --model ${MODELS} \
             --nbits ${NBITS} \
@@ -62,7 +67,7 @@ for BOOST_STOP in $BOOST_STOPS; do
             2>&1 | tee -a "$log_file"
         exit_code=${PIPESTATUS[0]}
         if [ "$exit_code" -ne 0 ]; then
-            echo "Run ${EXP_NAME} failed (exit ${exit_code})!"
+            echo "Run ${EXPERIMENT_NAME} failed (exit ${exit_code})!"
             exit "$exit_code"
         fi
     done

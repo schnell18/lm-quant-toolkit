@@ -11,25 +11,31 @@
 set -u
 
 # --- configuration ----------------------------------------------------------
-RESULT_DIR="${RESULT_DIR:-results}"
-SNAPSHOT_DIR="${SNAPSHOT_DIR:-snapshots}"
-LOG_DIR="${LOG_DIR:-logs}"
-MODELS="${MODELS:-0 1 2}"   # indices into the 3 KurtBoost llama models
+EXPERIMENT_NAME="baseline-fp16"
+BASE_DIR="/fdata/llm/ieee-tai/hqqplus/$EXPERIMENT_NAME"
+RESULT_DIR="$BASE_DIR/results"
+LOG_DIR="$BASE_DIR/logs"
+SNAPSHOT_DIR="$BASE_DIR/snapshot"
+
+# MODELS="${MODELS:-0 1 2}"   # indices into the 3 KurtBoost llama models
+MODELS="${MODELS:-0 2}"
 
 # Use cached dataset to speed up wikitext loading.
 export HF_DATASETS_OFFLINE=1
 
 # Resolve repo paths so the script works from any cwd.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 export PYTHONPATH="$REPO_DIR/src:${PYTHONPATH:-}"
 
-mkdir -p "$LOG_DIR" "$SNAPSHOT_DIR"
+mkdir -p $LOG_DIR
+mkdir -p $RESULT_DIR
+mkdir -p $SNAPSHOT_DIR
 
-log_file="$LOG_DIR/bench-sft-fp16-$(date +%Y%m%d%H%M%S).log"
+log_file="$LOG_DIR/$EXPERIMENT_NAME-$(date +%Y%m%d%H%M%S).log"
 echo "========= FP16 baseline ========="
 python "$REPO_DIR/src/cli.py" sft \
-    --experiment-name "hqq-plus-sft-fp16" \
+    --experiment-name $EXPERIMENT_NAME \
     --algorithm fp16 \
     --model ${MODELS} \
     --result-dir "$RESULT_DIR" \

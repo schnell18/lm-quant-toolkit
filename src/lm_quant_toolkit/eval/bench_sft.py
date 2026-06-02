@@ -32,10 +32,6 @@ import numpy as np
 import pandas as pd
 import torch
 from datasets import load_dataset
-from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from trl import SFTConfig, SFTTrainer
-
 from hqq.core.peft import (
     PeftUtils,
     autoname_modules,
@@ -45,6 +41,9 @@ from hqq.core.quantize import BaseQuantizeConfig, HQQBackend, HQQLinear
 from hqq.core.utils import cleanup as hqq_cleanup
 from hqq.models.base import _QUANT_LAYERS, find_parent, name_to_linear_tag
 from hqq.models.hf.base import AutoHQQHFModel
+from tqdm import tqdm
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from trl import SFTConfig, SFTTrainer
 
 from lm_quant_toolkit.eval.common import (
     combine_metrics,
@@ -207,7 +206,9 @@ def eval_wikitext2(model, tokenizer, max_length=1024, stride=512, verbose=True):
     encodings["input_ids"] = encodings["input_ids"].to(DEVICE)
 
     lls, t = [], []
-    for i in tqdm(range(0, encodings["input_ids"].size(1), stride), disable=not verbose):
+    for i in tqdm(
+        range(0, encodings["input_ids"].size(1), stride), disable=not verbose
+    ):
         begin_loc = max(i + stride - max_length, 0)
         end_loc = min(i + stride, encodings["input_ids"].size(1))
         trg_len = end_loc - i
@@ -310,7 +311,11 @@ def run_one(
             raise ValueError(f"Kurtosis metric file not found: {metric_fp}")
 
         quant_config = BaseQuantizeConfig(
-            nbits=nbits, group_size=gsize, quant_scale=False, quant_zero=False, axis=0
+            nbits=nbits,
+            group_size=gsize,
+            quant_scale=False,
+            quant_zero=False,
+            axis=0,
         )
         AutoHQQHFModel.quantize_model(
             model,
@@ -403,13 +408,26 @@ def gen_experiment_items(models, backbones, algorithms):
     return pd.DataFrame(dikts)
 
 
-def _load_todo_tasks(result_dir, experiment_name, models, backbones, algorithms):
+def _load_todo_tasks(
+    result_dir,
+    experiment_name,
+    models,
+    backbones,
+    algorithms,
+):
     df_all = gen_experiment_items(models, backbones, algorithms)
     progress_path = os.path.join(result_dir, experiment_name, "progress.csv")
     if Path(progress_path).exists():
         df_saved = pd.read_csv(progress_path)
         df_all = df_all.merge(
-            df_saved, how="left", on=["model", "nbits", "group_size", "algorithm"]
+            df_saved,
+            how="left",
+            on=[
+                "model",
+                "nbits",
+                "group_size",
+                "algorithm",
+            ],
         )
         df_todo = df_all.query("status != status or status != 1")
     else:

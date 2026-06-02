@@ -11,10 +11,15 @@
 set -u
 
 # --- configuration ----------------------------------------------------------
-RESULT_DIR="${RESULT_DIR:-results}"
-SNAPSHOT_DIR="${SNAPSHOT_DIR:-snapshots}"
-LOG_DIR="${LOG_DIR:-logs}"
-MODELS="${MODELS:-0 1 2}"      # indices into the 3 KurtBoost llama models
+EXPERIMENT_NAME="baseline-hqq-plus"
+BASE_DIR="/fdata/llm/ieee-tai/hqqplus/$EXPERIMENT_NAME"
+RESULT_DIR="$BASE_DIR/results"
+LOG_DIR="$BASE_DIR/logs"
+SNAPSHOT_DIR="$BASE_DIR/snapshot"
+
+# MODELS="${MODELS:-0 1 2}"   # indices into the 3 KurtBoost llama models
+MODELS="${MODELS:-0 2}"
+
 NBITS="${NBITS:-1 2}"          # backbone bit-widths (include 1-bit)
 GROUP_SIZE="${GROUP_SIZE:-8}"
 
@@ -28,15 +33,18 @@ export HF_DATASETS_OFFLINE=1
 
 # Resolve repo paths so the script works from any cwd.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 export PYTHONPATH="$REPO_DIR/src:${PYTHONPATH:-}"
 
-mkdir -p "$LOG_DIR" "$SNAPSHOT_DIR"
+mkdir -p $LOG_DIR
+mkdir -p $RESULT_DIR
+mkdir -p $SNAPSHOT_DIR
+
 
 log_file="$LOG_DIR/bench-sft-hqqplus-$(date +%Y%m%d%H%M%S).log"
 echo "========= HQQ+ SFT baseline (uniform LoRA) ========="
 python "$REPO_DIR/src/cli.py" sft \
-    --experiment-name "hqq-plus-sft-hqqplus" \
+    --experiment-name $EXPERIMENT_NAME \
     --algorithm "HQQ+" \
     --model ${MODELS} \
     --nbits ${NBITS} \
