@@ -7,14 +7,18 @@ hqq_plus.py.
 
 For each of the three KurtBoost llama models, the backbone is quantized at 1-bit
 and 2-bit (group_size=8), then LoRA adapters are attached and SFT-trained on
-wikitext-2 train. Two LoRA-allocation variants are compared per model/backbone:
+wikitext-2 train. Three algorithms can be benchmarked per model/backbone:
 
-* ``uniform``   - the fixed hqq_plus allocation (attn r=32, mlp r=8); the control.
-* ``kurtboost`` - more adaptation capacity (LoRA r, alpha) given to layers/modules
-                  flagged sensitive by weight kurtosis (see ``lora_alloc.py``).
+* ``fp16``      - the un-quantized model, evaluated as-is; quantization and SFT
+                  are skipped altogether. The upper-bound baseline.
+* ``HQQ+``      - HQQ+ with the fixed hqq_plus allocation (attn r=32, mlp r=8);
+                  the quantized-and-recovered control.
+* ``kurtboost`` - HQQ+ with more adaptation capacity (LoRA r, alpha) given to
+                  layers/modules flagged sensitive by weight kurtosis (see
+                  ``lora_alloc.py``); the proposed method.
 
 The model's kurtosis metric file (``src/data/fnorm-<model>.csv``, which carries a
-``kurtosis`` column) guides the allocation.
+``kurtosis`` column) guides the kurtboost allocation.
 """
 
 import gc
@@ -51,7 +55,7 @@ from lm_quant_toolkit.eval.common import (
 )
 from lm_quant_toolkit.eval.lora_alloc import (
     allocate_lora_configs,
-    uniform_lora_configs,
+    hqqplus_lora_configs,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,7 +75,7 @@ BACKBONE_CONFIGS = [
     (2, 8),
 ]
 
-VARIANTS = ["uniform", "kurtboost"]
+ALGORITHMS = ["fp16", "HQQ+", "kurtboost"]
 
 COMPUTE_DTYPE = torch.bfloat16
 TRAIN_DTYPE = torch.float32
@@ -158,17 +162,37 @@ def add_lora_per_layer(model, lora_configs, base_class=None, verbose=True):
     hqq_cleanup()
 
 
-def build_lora_configs(variant, metric_fp, boost_stop, top_m):
-    if variant == "uniform":
-        return uniform_lora_configs(metric_fp, train_dtype=TRAIN_DTYPE)
-    elif variant == "kurtboost":
+def build_lora_configs(algorithm, metric_fp, boost_stop, top_m):
+    if algorithm == "HQQ+":
+        return hqqplus_lora_configs(metric_fp, train_dtype=TRAIN_DTYPE)
+    elif algorithm == "kurtboost":
         return allocate_lora_configs(
             metric_fp,
             boost_stop=boost_stop,
             top_m=top_m,
             train_dtype=TRAIN_DTYPE,
         )
-    raise ValueError(f"Invalid variant: {variant}")
+    raise ValueError(f"Invalid algorithm: {algorithm}")
+
+
+def _checkpoint_tag(model_id, nbits, gsize, algorithm, boost_stop, top_m):
+    short = model_id.split("/")[1]
+    tag = f"{short}-{nbits}b_g{gsize}-{algorithm}"
+    if algorithm == "kurtboost":
+        tag += f"-bs{boost_stop}-tm{top_m}"
+    return tag
+
+
+def _save_checkpoint(
+    model, snapshot_dir, model_id, nbits, gsize, algorithm, boost_stop, top_m
+):
+    """Persist the trained LoRA weights (+ peft config) for this cell."""
+    Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
+    tag = _checkpoint_tag(model_id, nbits, gsize, algorithm, boost_stop, top_m)
+    fp = os.path.join(snapshot_dir, f"{tag}.lora.pt")
+    PeftUtils.save_lora_weights(model, fp)
+    logger.info("Saved LoRA checkpoint to %s", fp)
+    return fp
 
 
 # Adapted from hqq_plus.py / huggingface transformers v4.2.2 perplexity recipe.
@@ -250,12 +274,24 @@ def _train_sft(model, tokenizer, sft_kwargs):
     return time.time() - t1
 
 
-def run_one(model_id, nbits, gsize, variant, boost_stop, top_m, sft_kwargs):
-    """Quantize -> attach LoRA -> SFT -> eval one experiment cell."""
-    ok, metric_fp = get_mxq_quant_meta_data_file(model_id)
-    if not ok:
-        raise ValueError(f"Kurtosis metric file not found: {metric_fp}")
+def run_one(
+    model_id,
+    nbits,
+    gsize,
+    algorithm,
+    boost_stop,
+    top_m,
+    sft_kwargs,
+    snapshot_dir=None,
+):
+    """Run one experiment cell and return its metrics.
 
+    For ``algorithm == "fp16"`` the model is loaded and evaluated as-is:
+    quantization, LoRA and SFT are all skipped (upper-bound baseline). For the
+    HQQ+ algorithms (``HQQ+``/``kurtboost``) the backbone is quantized, LoRA
+    is attached per the chosen allocation, SFT-trained, and (optionally) the
+    LoRA weights are checkpointed under ``snapshot_dir``.
+    """
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         torch_dtype=COMPUTE_DTYPE,
@@ -263,44 +299,69 @@ def run_one(model_id, nbits, gsize, variant, boost_stop, top_m, sft_kwargs):
     )
     tokenizer = AutoTokenizer.from_pretrained(model_id)
 
-    quant_config = BaseQuantizeConfig(
-        nbits=nbits, group_size=gsize, quant_scale=False, quant_zero=False, axis=0
-    )
-    AutoHQQHFModel.quantize_model(
-        model, quant_config=quant_config, compute_dtype=COMPUTE_DTYPE, device=DEVICE
-    )
+    n_boosted = 0
+    train_duration = 0.0
+    if algorithm == "fp16":
+        # Baseline: no quantization, no SFT.
+        model = model.to(DEVICE)
+    else:
+        ok, metric_fp = get_mxq_quant_meta_data_file(model_id)
+        if not ok:
+            raise ValueError(f"Kurtosis metric file not found: {metric_fp}")
 
-    lora_configs, module_outliers = build_lora_configs(
-        variant, metric_fp, boost_stop, top_m
-    )
-    n_boosted = sum(len(v) for v in module_outliers.values())
-    logger.info(
-        "variant=%s boosted (layer,module) pairs=%d outliers=%s",
-        variant,
-        n_boosted,
-        module_outliers,
-    )
+        quant_config = BaseQuantizeConfig(
+            nbits=nbits, group_size=gsize, quant_scale=False, quant_zero=False, axis=0
+        )
+        AutoHQQHFModel.quantize_model(
+            model,
+            quant_config=quant_config,
+            compute_dtype=COMPUTE_DTYPE,
+            device=DEVICE,
+        )
 
-    add_lora_per_layer(model, lora_configs)
-    HQQLinear.set_backend(HQQBackend.ATEN_BACKPROP)
-    model.config.use_cache = False
+        lora_configs, module_outliers = build_lora_configs(
+            algorithm, metric_fp, boost_stop, top_m
+        )
+        n_boosted = sum(len(v) for v in module_outliers.values())
+        logger.info(
+            "algorithm=%s boosted (layer,module) pairs=%d outliers=%s",
+            algorithm,
+            n_boosted,
+            module_outliers,
+        )
 
-    train_duration = _train_sft(model, tokenizer, sft_kwargs)
+        add_lora_per_layer(model, lora_configs)
+        HQQLinear.set_backend(HQQBackend.ATEN_BACKPROP)
+        model.config.use_cache = False
 
-    tokenizer.add_bos_token = True
-    tokenizer.add_eos_token = False
-    PeftUtils.cast_lora_weights(model, dtype=COMPUTE_DTYPE)
+        train_duration = _train_sft(model, tokenizer, sft_kwargs)
+
+        tokenizer.add_bos_token = True
+        tokenizer.add_eos_token = False
+        PeftUtils.cast_lora_weights(model, dtype=COMPUTE_DTYPE)
+
+        if snapshot_dir:
+            _save_checkpoint(
+                model,
+                snapshot_dir,
+                model_id,
+                nbits,
+                gsize,
+                algorithm,
+                boost_stop,
+                top_m,
+            )
 
     ppl_res = eval_wikitext2(model, tokenizer)
     mem_allot, mem_reserved = get_memory_metrics()
 
     metric = {
         "model": model_id.split("/")[1],
-        "variant": variant,
-        "nbits": nbits,
-        "group_size": gsize,
-        "boost_stop": boost_stop if variant == "kurtboost" else "",
-        "top_m": top_m if variant == "kurtboost" else "",
+        "algorithm": algorithm,
+        "nbits": nbits if algorithm != "fp16" else "",
+        "group_size": gsize if algorithm != "fp16" else "",
+        "boost_stop": boost_stop if algorithm == "kurtboost" else "",
+        "top_m": top_m if algorithm == "kurtboost" else "",
         "n_boosted_pairs": n_boosted,
         "ppl_wikitext": ppl_res["perplexity"],
         "pred_time_wikitext": ppl_res["prediction_time"],
@@ -314,29 +375,41 @@ def run_one(model_id, nbits, gsize, variant, boost_stop, top_m, sft_kwargs):
     return metric
 
 
-def gen_experiment_items(models, backbones, variants):
+def gen_experiment_items(models, backbones, algorithms):
     dikts = []
     for model_id in models:
-        for nbits, gsize in backbones:
-            for variant in variants:
+        for algorithm in algorithms:
+            if algorithm == "fp16":
+                # fp16 is independent of the quantization backbone, so it is
+                # evaluated once per model (nbits/group_size are unused: 0).
                 dikts.append(
                     {
                         "model": model_id,
-                        "nbits": nbits,
-                        "group_size": gsize,
-                        "variant": variant,
+                        "nbits": 0,
+                        "group_size": 0,
+                        "algorithm": algorithm,
                     }
                 )
+            else:
+                for nbits, gsize in backbones:
+                    dikts.append(
+                        {
+                            "model": model_id,
+                            "nbits": nbits,
+                            "group_size": gsize,
+                            "algorithm": algorithm,
+                        }
+                    )
     return pd.DataFrame(dikts)
 
 
-def _load_todo_tasks(result_dir, experiment_name, models, backbones, variants):
-    df_all = gen_experiment_items(models, backbones, variants)
+def _load_todo_tasks(result_dir, experiment_name, models, backbones, algorithms):
+    df_all = gen_experiment_items(models, backbones, algorithms)
     progress_path = os.path.join(result_dir, experiment_name, "progress.csv")
     if Path(progress_path).exists():
         df_saved = pd.read_csv(progress_path)
         df_all = df_all.merge(
-            df_saved, how="left", on=["model", "nbits", "group_size", "variant"]
+            df_saved, how="left", on=["model", "nbits", "group_size", "algorithm"]
         )
         df_todo = df_all.query("status != status or status != 1")
     else:
@@ -355,15 +428,16 @@ def do_experiment(
     experiment_name,
     models,
     backbones,
-    variants,
+    algorithms,
     boost_stop=1,
     top_m=1,
     result_dir="results",
+    snapshot_dir=None,
     sft_kwargs=None,
 ):
     sft_kwargs = sft_kwargs or {}
     df_all, df_todo, progress_path = _load_todo_tasks(
-        result_dir, experiment_name, models, backbones, variants
+        result_dir, experiment_name, models, backbones, algorithms
     )
     if len(df_todo) == 0:
         print("Tasks completed!")
@@ -371,19 +445,27 @@ def do_experiment(
 
     for _, row in df_todo.iterrows():
         model_id = row["model"]
-        nbits, gsize, variant = row["nbits"], row["group_size"], row["variant"]
+        nbits, gsize, algorithm = row["nbits"], row["group_size"], row["algorithm"]
         print("*" * 72)
-        print(
-            f"HQQ+ SFT: {model_id} backbone={nbits}b/g{gsize} variant={variant}"
-        )
+        if algorithm == "fp16":
+            print(f"FP16 baseline: {model_id}")
+            cfg = "fp16"
+        else:
+            print(f"HQQ+ SFT: {model_id} backbone={nbits}b/g{gsize} algo={algorithm}")
+            cfg = f"{int(nbits)}b_g{int(gsize)}_{algorithm}"
         print("*" * 72)
         _release_gpu()
 
         metric = run_one(
-            model_id, int(nbits), int(
-                gsize), variant, boost_stop, top_m, sft_kwargs
+            model_id,
+            int(nbits),
+            int(gsize),
+            algorithm,
+            boost_stop,
+            top_m,
+            sft_kwargs,
+            snapshot_dir=snapshot_dir,
         )
-        cfg = f"{int(nbits)}b_g{int(gsize)}_{variant}"
         save_partial_metric(
             experiment_name, "hqq_plus", model_id, cfg, metric, result_dir
         )
@@ -391,7 +473,7 @@ def do_experiment(
             (df_all["model"] == model_id)
             & (df_all["nbits"] == nbits)
             & (df_all["group_size"] == gsize)
-            & (df_all["variant"] == variant),
+            & (df_all["algorithm"] == algorithm),
             ["status", "completion_time"],
         ] = 1, datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         persist_progress(df_all, progress_path)

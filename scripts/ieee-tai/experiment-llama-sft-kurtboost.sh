@@ -1,27 +1,29 @@
 #!/bin/bash
 #
-# HQQ+ SFT benchmark with KurtBoost-guided LoRA allocation.
+# HQQ+ SFT with KurtBoost-guided LoRA allocation (the proposed method).
 #
 # Sweeps the LoRA boost_stop (rungs climbed up the capacity ladder by sensitive
 # layers) and top_m (sensitive layers per module), over 1-bit and 2-bit HQQ
-# backbones, for the three KurtBoost llama models. The uniform-LoRA control does
-# not depend on boost_stop/top_m, so it is run once up front.
+# backbones, for the three KurtBoost llama models. Trained LoRA checkpoints are
+# saved under SNAPSHOT_DIR.
 #
-# Runs the standalone harness src/lm_quant_toolkit/eval/bench_sft.py (not cli.py).
+# The fp16 and HQQ+ baselines live in separate scripts:
+#   experiment-llama-sft-fp16.sh
+#   experiment-llama-sft-hqqplus.sh
+#
+# Runs the `sft` sub-command of src/cli.py.
 
 set -u
 
 # --- configuration ----------------------------------------------------------
-#
-
-BASE_DIR="/fdata/llm/ieee-tai/hqqplus"
-RESULT_DIR="$BASE_DIR/results"
-LOG_DIR="$BASE_DIR/logs"
-
+RESULT_DIR="${RESULT_DIR:-results}"
+SNAPSHOT_DIR="${SNAPSHOT_DIR:-snapshots}"
+LOG_DIR="${LOG_DIR:-logs}"
+MODELS="${MODELS:-0 1 2}"      # indices into the 3 KurtBoost llama models
 NBITS="${NBITS:-1 2}"          # backbone bit-widths (include 1-bit)
 GROUP_SIZE="${GROUP_SIZE:-8}"
 
-BOOST_STOPS="${BOOST_STOPS:-1 2}"
+BOOST_STOPS="${BOOST_STOPS:-1 2 3}"
 BOOST_TOP_MS="${BOOST_TOP_MS:-1}"
 
 # SFT hyper-parameters (defaults mirror hqq_plus.py)
@@ -34,47 +36,36 @@ export HF_DATASETS_OFFLINE=1
 
 # Resolve repo paths so the script works from any cwd.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 export PYTHONPATH="$REPO_DIR/src:${PYTHONPATH:-}"
 
-mkdir -p "$RESULT_DIR"
-mkdir -p "$LOG_DIR"
+mkdir -p "$LOG_DIR" "$SNAPSHOT_DIR"
 
-run_bench() {
-    # args: experiment_name variant [extra args...]
-    local exp_name="$1"; shift
-    local variant="$1"; shift
-    local log_file="$LOG_DIR/bench-sft-${exp_name}-$(date +%Y%m%d%H%M%S).log"
-    echo "========= ${exp_name} (variant=${variant}) ========="
-    python "$REPO_DIR/src/cli.py" sft \
-        --experiment-name "$exp_name" \
-        --variant "$variant" \
-        --nbits ${NBITS} \
-        --group-size "$GROUP_SIZE" \
-        --lr "$LR" \
-        --n-epochs "$N_EPOCHS" \
-        --max-tokens "$MAX_TOKENS" \
-        --result-dir "$RESULT_DIR/$exp_name" \
-        "$@" \
-        2>&1 | tee -a "$log_file"
-    local exit_code=${PIPESTATUS[0]}
-    if [ "$exit_code" -ne 0 ]; then
-        echo "Run ${exp_name} failed (exit ${exit_code})!"
-        exit "$exit_code"
-    fi
-}
-
-# --- uniform control (boost_stop-independent) -------------------------------
-run_bench "hqq-plus-sft-uniform" uniform
-
-# --- KurtBoost sweep --------------------------------------------------------
 for BOOST_STOP in $BOOST_STOPS; do
     for BOOST_TOP_M in $BOOST_TOP_MS; do
-        EXP_NAME="kurtboost-${BOOST_STOP}-${BOOST_TOP_M}"
-        run_bench "$EXP_NAME" kurtboost \
+        EXP_NAME="hqq-plus-sft-kurtboost-${BOOST_STOP}-${BOOST_TOP_M}"
+        log_file="$LOG_DIR/bench-sft-${EXP_NAME}-$(date +%Y%m%d%H%M%S).log"
+        echo "========= ${EXP_NAME} ========="
+        python "$REPO_DIR/src/cli.py" sft \
+            --experiment-name "$EXP_NAME" \
+            --algorithm kurtboost \
+            --model ${MODELS} \
+            --nbits ${NBITS} \
+            --group-size "$GROUP_SIZE" \
             --boost-stop "$BOOST_STOP" \
-            --top-m-layer "$BOOST_TOP_M"
+            --top-m-layer "$BOOST_TOP_M" \
+            --lr "$LR" \
+            --n-epochs "$N_EPOCHS" \
+            --max-tokens "$MAX_TOKENS" \
+            --result-dir "$RESULT_DIR" \
+            --snapshot-dir "$SNAPSHOT_DIR" \
+            2>&1 | tee -a "$log_file"
+        exit_code=${PIPESTATUS[0]}
+        if [ "$exit_code" -ne 0 ]; then
+            echo "Run ${EXP_NAME} failed (exit ${exit_code})!"
+            exit "$exit_code"
+        fi
     done
 done
 
-echo "========= All HQQ+ SFT runs complete. Results under ${RESULT_DIR} ========="
+echo "========= All KurtBoost runs complete. Results under ${RESULT_DIR} ========="

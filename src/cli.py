@@ -6,8 +6,8 @@ import sys
 
 # Only the lightweight model-id resolver is imported eagerly. The heavy
 # per-command stacks (hqq, gptqmodel, lm_eval, trl, torch) are imported lazily
-# inside each sub-command's handler so that running one sub-command does not pay
-# the import cost of the others.
+# inside each sub-command's handler so that running one sub-command does not
+# pay the import cost of the others.
 from lm_quant_toolkit.utils.hub import resolve_models
 
 
@@ -352,7 +352,8 @@ def get_parser_args():
     )
 
     parser_sft = subparsers.add_parser(
-        "sft", help="HQQ+ SFT with KurtBoost-guided LoRA allocation"
+        "sft",
+        help="HQQ+ SFT benchmark (fp16 / HQQ+ / kurtboost LoRA allocation)",
     )
     parser_sft.set_defaults(which="sft")
     parser_sft.add_argument(
@@ -376,12 +377,13 @@ def get_parser_args():
         help="HQQ backbone group size (default: 8)",
     )
     parser_sft.add_argument(
-        "--variant",
+        "--algorithm",
         type=str,
         nargs="+",
-        choices=["uniform", "kurtboost"],
-        default=["uniform", "kurtboost"],
-        help="LoRA allocation variant(s): uniform control and/or kurtboost",
+        choices=["fp16", "HQQ+", "kurtboost"],
+        default=["fp16", "HQQ+", "kurtboost"],
+        help="Method(s) to benchmark: fp16 baseline, HQQ+ uniform-LoRA control, "
+        "and/or kurtboost HQQ+",
     )
     parser_sft.add_argument(
         "--boost-stop",
@@ -402,6 +404,12 @@ def get_parser_args():
         help="directory to where evaluation results are stored",
     )
     parser_sft.add_argument(
+        "--snapshot-dir",
+        default=None,
+        type=str,
+        help="directory to save trained LoRA checkpoints (skipped if unset)",
+    )
+    parser_sft.add_argument(
         "--experiment-name",
         default=None,
         type=str,
@@ -418,6 +426,7 @@ def get_parser_args():
 
 def _get_configs(algos, config_names):
     from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
+
     from lm_quant_toolkit.eval.bench import (
         AWQ_CONFIGS,
         BNB_CONFIGS,
@@ -480,6 +489,7 @@ def _get_configs(algos, config_names):
 
 def _get_vit_configs(algos, config_names):
     from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
+
     from lm_quant_toolkit.eval.bench_vit import MXQ_CONFIGS as VIT_MXQ_CONFIGS
     from lm_quant_toolkit.eval.common import HQQ_CONFIGS
 
@@ -502,8 +512,7 @@ def _get_vit_configs(algos, config_names):
                     algo_configs[algo] = [
                         (
                             f"{bits:.2f}".replace(".", "_"),
-                            HQQQuantConfig(
-                                mixed=True, budget=bits, quant_scale=True),
+                            HQQQuantConfig(mixed=True, budget=bits, quant_scale=True),
                         )
                         for bits in [float(cfg) for cfg in config_names]
                     ]
@@ -539,8 +548,7 @@ def main_llm(args):
 
     configs = _get_configs(args.algo, args.config)
     models = resolve_models(args.model, ALL_MODELS)
-    tasks = {algo: {"type": args.task,
-                    "configs": configs[algo]} for algo in args.algo}
+    tasks = {algo: {"type": args.task, "configs": configs[algo]} for algo in args.algo}
     experiment_name = args.experiment_name
     if experiment_name is None or len(experiment_name) < 3:
         algo_str = "-".join(args.algo)
@@ -574,8 +582,7 @@ def main_vit(args):
 
     configs = _get_vit_configs(args.algo, args.config)
     models = resolve_models(args.model, ALL_VIT_MODELS)
-    tasks = {algo: {"type": args.task,
-                    "configs": configs[algo]} for algo in args.algo}
+    tasks = {algo: {"type": args.task, "configs": configs[algo]} for algo in args.algo}
     experiment_name = args.experiment_name
     if experiment_name is None or len(experiment_name) < 3:
         algo_str = "-".join(args.algo)
@@ -610,8 +617,8 @@ def main_sft(args):
     backbones = [(b, args.group_size) for b in args.nbits]
     experiment_name = args.experiment_name
     if experiment_name is None or len(experiment_name) < 3:
-        variant_str = "-".join(args.variant)
-        experiment_name = f"hqq-plus-sft-{variant_str}"
+        algo_str = "-".join(args.algorithm)
+        experiment_name = f"hqq-plus-sft-{algo_str}"
     sft_kwargs = {
         "lr": args.lr,
         "n_epochs": args.n_epochs,
@@ -622,10 +629,11 @@ def main_sft(args):
         experiment_name,
         models,
         backbones,
-        args.variant,
+        args.algorithm,
         boost_stop=args.boost_stop,
         top_m=args.top_m_layer,
         result_dir=args.result_dir,
+        snapshot_dir=args.snapshot_dir,
         sft_kwargs=sft_kwargs,
     )
 

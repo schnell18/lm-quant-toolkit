@@ -83,7 +83,7 @@ def _peft_config(r, lora_alpha, dropout, train_dtype, train_bias):
     }
 
 
-def uniform_lora_configs(
+def hqqplus_lora_configs(
     metric_fp,
     attn_base_r=ATTN_BASE_R,
     mlp_base_r=MLP_BASE_R,
