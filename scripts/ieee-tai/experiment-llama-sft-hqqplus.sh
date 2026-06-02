@@ -11,7 +11,7 @@
 set -u
 
 # --- configuration ----------------------------------------------------------
-EXPERIMENT_NAME="baseline-hqq-plus"
+EXPERIMENT_NAME="baseline-hqq-plus2"
 BASE_DIR="/fdata/llm/ieee-tai/hqqplus/$EXPERIMENT_NAME"
 RESULT_DIR="$BASE_DIR/results"
 LOG_DIR="$BASE_DIR/logs"

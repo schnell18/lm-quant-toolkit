@@ -16,9 +16,6 @@
 set -u
 
 # --- configuration ----------------------------------------------------------
-BASE_DIR="/fdata/llm/ieee-tai/hqqplus/kurtboost"
-LOG_DIR="$BASE_DIR/logs"
-SNAPSHOT_DIR="$BASE_DIR/snapshot"
 
 # MODELS="${MODELS:-0 1 2}"   # indices into the 3 KurtBoost llama models
 MODELS="${MODELS:-0 2}"
@@ -26,8 +23,8 @@ MODELS="${MODELS:-0 2}"
 NBITS="${NBITS:-1 2}"          # backbone bit-widths (include 1-bit)
 GROUP_SIZE="${GROUP_SIZE:-8}"
 
-BOOST_STOPS="${BOOST_STOPS:-1 2 3}"
-BOOST_TOP_MS="${BOOST_TOP_MS:-1}"
+BOOST_STOPS="${BOOST_STOPS:-1 2}"
+BOOST_TOP_MS="${BOOST_TOP_MS:-2}"
 
 # SFT hyper-parameters (defaults mirror hqq_plus.py)
 LR="${LR:-1e-5}"
@@ -42,14 +39,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 export PYTHONPATH="$REPO_DIR/src:${PYTHONPATH:-}"
 
-mkdir -p $LOG_DIR
-mkdir -p $RESULT_DIR
-mkdir -p $SNAPSHOT_DIR
-
 for BOOST_STOP in $BOOST_STOPS; do
     for BOOST_TOP_M in $BOOST_TOP_MS; do
         EXPERIMENT_NAME="kurtboost-hqq-plus-${BOOST_STOP}-${BOOST_TOP_M}"
-        log_file="$LOG_DIR/${EXPERIMENT_NAME}-$(date +%Y%m%d%H%M%S).log"
+        BASE_DIR="/fdata/llm/ieee-tai/hqqplus/$EXPERIMENT_NAME"
+        RESULT_DIR="$BASE_DIR/results"
+        LOG_DIR="$BASE_DIR/logs"
+        SNAPSHOT_DIR="$BASE_DIR/snapshot"
+
+        mkdir -p $RESULT_DIR
+        mkdir -p $LOG_DIR
+        mkdir -p $SNAPSHOT_DIR
+
+        log_file="$LOG_DIR/$(date +%Y%m%d%H%M%S).log"
         echo "========= ${EXPERIMENT_NAME} ========="
         python "$REPO_DIR/src/cli.py" sft \
             --experiment-name "$EXPERIMENT_NAME" \
