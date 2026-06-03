@@ -18,7 +18,7 @@ set -u
 # --- configuration ----------------------------------------------------------
 
 # MODELS="${MODELS:-0 1 2}"   # indices into the 3 KurtBoost llama models
-MODELS="${MODELS:-0 2}"
+MODELS="${MODELS:-1}"
 
 NBITS="${NBITS:-1 2}"          # backbone bit-widths (include 1-bit)
 GROUP_SIZE="${GROUP_SIZE:-8}"

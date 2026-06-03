@@ -11,14 +11,14 @@
 set -u
 
 # --- configuration ----------------------------------------------------------
-EXPERIMENT_NAME="baseline-hqq-plus2"
+EXPERIMENT_NAME="baseline-hqq-plus3"
 BASE_DIR="/fdata/llm/ieee-tai/hqqplus/$EXPERIMENT_NAME"
 RESULT_DIR="$BASE_DIR/results"
 LOG_DIR="$BASE_DIR/logs"
 SNAPSHOT_DIR="$BASE_DIR/snapshot"
 
 # MODELS="${MODELS:-0 1 2}"   # indices into the 3 KurtBoost llama models
-MODELS="${MODELS:-0 2}"
+MODELS="${MODELS:-1}"
 
 NBITS="${NBITS:-1 2}"          # backbone bit-widths (include 1-bit)
 GROUP_SIZE="${GROUP_SIZE:-8}"
