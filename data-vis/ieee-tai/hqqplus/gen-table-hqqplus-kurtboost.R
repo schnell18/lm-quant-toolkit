@@ -17,7 +17,7 @@ shorten_model <- function(model) {
 # Within a group, bold the min, underline the 2nd-min (lower PPL is better).
 # Ties at the min keep all tied entries bold (rank 1, ties.method = "min").
 mark_best_second <- function(x) {
-  fmt <- ifelse(is.na(x), NA_character_, sprintf("%.2f", x))
+  fmt <- ifelse(is.na(x), NA_character_, sprintf("%.4f", x))
   r <- rank(x, ties.method = "min", na.last = "keep")
   best <- !is.na(r) & r == 1
   second <- !is.na(r) & r == 2
@@ -110,7 +110,7 @@ process_dataframe <- function(df, method_levels, config_levels) {
   build_skeleton(models) |>
     left_join(df_short, join_by(method, config, model)) |>
     mutate(
-      ppl_wikitext = round(ppl_wikitext, digits = 2),
+      ppl_wikitext = round(ppl_wikitext, digits = 4),
       method = factor(method, levels = method_levels),
       config = factor(config, levels = config_levels)
     ) |>
@@ -139,14 +139,14 @@ parser <- add_option(
   metavar = "character"
 )
 parser <- add_option(
-  parser, c("--attempt"),
+  parser, c("--caption"),
   type = "character",
   help = "Caption label",
   metavar = "character"
 )
 args <- parse_args(parser)
 
-csv_fp <- if (is.null(args$csv_file)) "combined-kurtboost.csv" else args$csv_file
+csv_fp <- if (is.null(args$csv_file)) "combined.csv" else args$csv_file
 the_attempt <- if (is.null(args$attempt)) "HQQ+ vs. KurtBoost" else args$attempt
 
 df_all <- read_csv(csv_fp, show_col_types = FALSE)
