@@ -1,0 +1,5 @@
+model,algorithm,nbits,group_size,boost_stop,top_m,n_boosted_pairs,ppl_wikitext,pred_time_wikitext,train_duration,ppl_mem_allot,ppl_mem_reserved
+Meta-Llama-3-8B,HQQ+,2,8,,,0,7.3713,0.169,2838.63,9733267968,10552868864
+Llama-2-7b-hf,HQQ+,2,8,,,0,5.5207,0.145,2801.01,6672679936,7465861120
+Meta-Llama-3-8B,HQQ+,1,8,,,0,22.7165,0.167,2791.3,8892834304,9676259328
+Llama-2-7b-hf,HQQ+,1,8,,,0,12.3362,0.142,2756.93,5877597184,6570377216

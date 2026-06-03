@@ -24,7 +24,8 @@ NBITS="${NBITS:-1 2}"          # backbone bit-widths (include 1-bit)
 GROUP_SIZE="${GROUP_SIZE:-8}"
 
 BOOST_STOPS="${BOOST_STOPS:-1 2}"
-BOOST_TOP_MS="${BOOST_TOP_MS:-2}"
+# BOOST_TOP_MS="${BOOST_TOP_MS:-1 2}"
+BOOST_TOP_MS="${BOOST_TOP_MS:-1}"
 
 # SFT hyper-parameters (defaults mirror hqq_plus.py)
 LR="${LR:-1e-5}"
