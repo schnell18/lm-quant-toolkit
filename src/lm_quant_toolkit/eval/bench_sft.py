@@ -300,7 +300,6 @@ def run_one(
     boost_stop,
     top_m,
     sft_kwargs,
-    snapshot_dir=None,
 ):
     """Run one experiment cell and return its metrics.
 
@@ -315,7 +314,7 @@ def run_one(
     For ``algorithm == "kurtboost"`` the LoRA capacity is allocated per
     (layer, module) from the kurtosis metric and attached with the custom
     per-layer patch. Both HQQ+ algorithms checkpoint their LoRA weights under
-    ``snapshot_dir`` when given.
+    ``output_dir`` when given.
     """
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
@@ -377,6 +376,7 @@ def run_one(
         tokenizer.add_eos_token = False
         PeftUtils.cast_lora_weights(model, dtype=COMPUTE_DTYPE)
 
+        snapshot_dir = sft_kwargs.get("output_dir", None)
         if snapshot_dir:
             _save_checkpoint(
                 model,
@@ -482,7 +482,6 @@ def do_experiment(
     boost_stop=1,
     top_m=1,
     result_dir="results",
-    snapshot_dir=None,
     sft_kwargs=None,
 ):
     sft_kwargs = sft_kwargs or {}
@@ -514,7 +513,6 @@ def do_experiment(
             boost_stop,
             top_m,
             sft_kwargs,
-            snapshot_dir=snapshot_dir,
         )
         save_partial_metric(
             experiment_name, "hqq_plus", model_id, cfg, metric, result_dir

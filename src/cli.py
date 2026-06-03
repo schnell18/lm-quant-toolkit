@@ -624,6 +624,7 @@ def main_sft(args):
         "n_epochs": args.n_epochs,
         "max_tokens": args.max_tokens,
         "batch_size": args.batch_size,
+        "output_dir": args.snapshot_dir,
     }
     do_experiment_sft(
         experiment_name,
@@ -633,7 +634,6 @@ def main_sft(args):
         boost_stop=args.boost_stop,
         top_m=args.top_m_layer,
         result_dir=args.result_dir,
-        snapshot_dir=args.snapshot_dir,
         sft_kwargs=sft_kwargs,
     )
 
