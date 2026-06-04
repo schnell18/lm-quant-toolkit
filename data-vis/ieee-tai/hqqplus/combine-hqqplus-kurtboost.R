@@ -67,7 +67,7 @@ parser <- add_option(
 args <- parse_args(parser)
 
 round_dir <- if (is.null(args$round_dir)) "rounds/round1" else args$round_dir
-out_fp <- if (is.null(args$output)) "combined-kurtboost.csv" else args$output
+out_fp <- if (is.null(args$output)) "combined.csv" else args$output
 
 csvs <- list.files(
   c(file.path(round_dir, "baselines"), file.path(round_dir, "kurtboost")),

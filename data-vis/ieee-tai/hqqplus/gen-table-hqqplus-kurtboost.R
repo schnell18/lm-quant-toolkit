@@ -5,9 +5,14 @@ library(knitr)
 library(kableExtra)
 library(optparse)
 
+# Column-group order of the report. Llama-2 sizes grouped, then Llama-3.
+REPORT_MODELS <- c("Llama-2-7B", "Llama-2-13B", "Llama-3-8B")
+
 shorten_model <- function(model) {
   if (str_detect(model, "Llama-2-7b")) {
     return("Llama-2-7B")
+  } else if (str_detect(model, "Llama-2-13b")) {
+    return("Llama-2-13B")
   } else if (str_detect(model, "Llama-3-8B")) {
     return("Llama-3-8B")
   }
@@ -38,8 +43,12 @@ build_skeleton <- function(models) {
     crossing(model = models)
 }
 
-dump_latex_table <- function(df, experiment, latex_file = "hqqplus-kurtboost.tex") {
+dump_latex_table <- function(df, experiment, models,
+                             latex_file = "hqqplus-kurtboost.tex") {
   options(knitr.kable.NA = "-")
+  # One {WikiText2, MEM} pair per model, after the Method/Config columns.
+  header_above <- c(2, rep(2, length(models)))
+  names(header_above) <- c(" ", models)
   tabular <- df |>
     kable(
       format = "latex",
@@ -47,13 +56,12 @@ dump_latex_table <- function(df, experiment, latex_file = "hqqplus-kurtboost.tex
       longtable = TRUE,
       linesep = "",
       escape = FALSE,
-      align = c("cccccc"),
+      align = strrep("c", 2 + 2 * length(models)),
       caption = paste0("Perplexity (WikiText2) and memory of ", experiment),
       label = "tab:hqqplus-kurtboost-result",
       col.names = c(
         "Method", "Config",
-        "WikiText2", "MEM",
-        "WikiText2", "MEM"
+        rep(c("WikiText2", "MEM"), length(models))
       )
     ) |>
     kable_styling(
@@ -63,7 +71,7 @@ dump_latex_table <- function(df, experiment, latex_file = "hqqplus-kurtboost.tex
       repeat_header_continued = "\\textit{(continued on next page)}"
     ) |>
     add_header_above(
-      c(" " = 2, "Llama-2-7B" = 2, "Llama-3-8B" = 2),
+      header_above,
       include_empty = TRUE,
       line_sep = 0
     ) |>
@@ -93,14 +101,13 @@ dump_latex_table <- function(df, experiment, latex_file = "hqqplus-kurtboost.tex
   close(fh)
 }
 
-process_dataframe <- function(df, method_levels, config_levels) {
-  models <- c("Llama-2-7B", "Llama-3-8B")
+process_dataframe <- function(df, models, method_levels, config_levels) {
   ppl_cols <- paste0("ppl_wikitext_", models)
   mem_cols <- paste0("memory_", models)
+  # Interleave ppl/mem per model: ppl_m1, mem_m1, ppl_m2, mem_m2, ...
   latex_cols <- c(
     "method", "config",
-    "ppl_wikitext_Llama-2-7B", "memory_Llama-2-7B",
-    "ppl_wikitext_Llama-3-8B", "memory_Llama-3-8B"
+    as.vector(rbind(ppl_cols, mem_cols))
   )
 
   df_short <- df |>
@@ -147,11 +154,11 @@ parser <- add_option(
 args <- parse_args(parser)
 
 csv_fp <- if (is.null(args$csv_file)) "combined.csv" else args$csv_file
-the_attempt <- if (is.null(args$attempt)) "HQQ+ vs. KurtBoost" else args$attempt
+the_caption <- if (is.null(args$caption)) "HQQ+ vs. KurtBoost" else args$caption
 
 df_all <- read_csv(csv_fp, show_col_types = FALSE)
 method_levels <- c("FP16", "HQQ+", "KB11", "KB12", "KB21", "KB22")
 config_levels <- c("base", "b1g8", "b2g8")
 
-df_latex <- process_dataframe(df_all, method_levels, config_levels)
-dump_latex_table(df_latex, the_attempt)
+df_latex <- process_dataframe(df_all, REPORT_MODELS, method_levels, config_levels)
+dump_latex_table(df_latex, the_caption, REPORT_MODELS)
