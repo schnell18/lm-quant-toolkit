@@ -1,4 +1,14 @@
 model,method,config,bpp,ppl_wikitext,memory
+Llama-2-13b-hf,HQQ+,b1g8,3.03,9.2214,9.71
+Llama-2-13b-hf,KB11,b1g8,3.03,9.1528,9.74
+Llama-2-13b-hf,KB12,b1g8,3.03,9.0857,9.76
+Llama-2-13b-hf,KB21,b1g8,3.03,9.2896,9.78
+Llama-2-13b-hf,KB22,b1g8,3.03,9.1713,9.85
+Llama-2-13b-hf,HQQ+,b2g8,4.03,4.9308,11.19
+Llama-2-13b-hf,KB11,b2g8,4.03,4.9358,11.21
+Llama-2-13b-hf,KB12,b2g8,4.03,4.9298,11.23
+Llama-2-13b-hf,KB21,b2g8,4.03,4.9338,11.26
+Llama-2-13b-hf,KB22,b2g8,4.03,4.935,11.32
 Llama-2-7b-hf,HQQ+,b1g8,3.03,12.3362,5.47
 Llama-2-7b-hf,KB11,b1g8,3.03,12.4651,5.49
 Llama-2-7b-hf,KB12,b1g8,3.03,12.1005,5.51
