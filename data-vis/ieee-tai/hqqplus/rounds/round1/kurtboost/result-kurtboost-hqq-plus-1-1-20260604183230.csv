@@ -1,5 +1,7 @@
 model,algorithm,nbits,group_size,boost_stop,top_m,n_boosted_pairs,ppl_wikitext,pred_time_wikitext,train_duration,ppl_mem_allot,ppl_mem_reserved
+Llama-2-13b-hf,kurtboost,1,8,1,1,7,9.1528,0.274,5158.83,10453441024,11463032832
 Meta-Llama-3-8B,kurtboost,2,8,1,1,4,7.3684,0.169,2836.57,9742115328,10563354624
+Llama-2-13b-hf,kurtboost,2,8,1,1,7,4.9358,0.279,5247.44,12039150080,13172211712
 Llama-2-7b-hf,kurtboost,2,8,1,1,7,5.5378,0.145,2799.09,6692434944,7484735488
 Meta-Llama-3-8B,kurtboost,1,8,1,1,4,22.5055,0.167,2789.79,8901681664,9686745088
 Llama-2-7b-hf,kurtboost,1,8,1,1,7,12.4651,0.142,2756.56,5897352192,6597640192
