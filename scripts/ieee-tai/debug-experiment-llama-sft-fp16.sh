@@ -11,13 +11,14 @@
 set -u
 
 # --- configuration ----------------------------------------------------------
-EXPERIMENT_NAME="baseline-fp16-2"
+EXPERIMENT_NAME="baseline-fp16"
 BASE_DIR="/fdata/llm/ieee-tai/hqqplus/$EXPERIMENT_NAME"
 RESULT_DIR="$BASE_DIR/results"
 LOG_DIR="$BASE_DIR/logs"
 SNAPSHOT_DIR="$BASE_DIR/snapshot"
 
-MODELS="${MODELS:-0 1 2}"   # indices into the 3 KurtBoost llama models
+# MODELS="${MODELS:-0 1 2}"   # indices into the 3 KurtBoost llama models
+MODELS="${MODELS:-1}"
 
 # Use cached dataset to speed up wikitext loading.
 export HF_DATASETS_OFFLINE=1
@@ -33,7 +34,7 @@ mkdir -p $SNAPSHOT_DIR
 
 log_file="$LOG_DIR/$EXPERIMENT_NAME-$(date +%Y%m%d%H%M%S).log"
 echo "========= FP16 baseline ========="
-python "$REPO_DIR/src/cli.py" sft \
+python -m pdb "$REPO_DIR/src/cli.py" sft \
     --experiment-name $EXPERIMENT_NAME \
     --algorithm fp16 \
     --model ${MODELS} \

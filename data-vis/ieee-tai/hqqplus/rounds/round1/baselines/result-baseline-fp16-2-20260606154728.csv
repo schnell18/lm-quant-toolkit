@@ -1,0 +1,4 @@
+model,algorithm,nbits,group_size,boost_stop,top_m,n_boosted_pairs,ppl_wikitext,pred_time_wikitext,train_duration,ppl_mem_allot,ppl_mem_reserved
+Llama-2-13b-hf,fp16,,,,,0,4.6293,0.577,0.0,22517339648,22875734016
+Llama-2-7b-hf,fp16,,,,,0,5.1842,0.103,0.0,14363479040,14633926656
+Meta-Llama-3-8B,fp16,,,,,0,5.8116,0.113,0.0,17530341888,17947426816

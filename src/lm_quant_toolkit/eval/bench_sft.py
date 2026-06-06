@@ -73,7 +73,7 @@ BACKBONE_CONFIGS = [
 
 ALGORITHMS = ["fp16", "HQQ+", "kurtboost"]
 
-COMPUTE_DTYPE = torch.bfloat16
+COMPUTE_DTYPE = torch.float16
 TRAIN_DTYPE = torch.float32
 DEVICE = "cuda:0"
 
@@ -316,19 +316,24 @@ def run_one(
     per-layer patch. Both HQQ+ algorithms checkpoint their LoRA weights under
     ``output_dir`` when given.
     """
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        torch_dtype=COMPUTE_DTYPE,
-        attn_implementation="sdpa",
-    )
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
 
     n_boosted = 0
     train_duration = 0.0
     if algorithm == "fp16":
         # Baseline: no quantization, no SFT.
-        model = model.to(DEVICE)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            device_map="auto",
+            torch_dtype=COMPUTE_DTYPE,
+        )
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
     else:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            torch_dtype=COMPUTE_DTYPE,
+            attn_implementation="sdpa",
+        )
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
         quant_config = BaseQuantizeConfig(
             nbits=nbits,
             group_size=gsize,

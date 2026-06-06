@@ -53,7 +53,7 @@ dump_latex_table <- function(df, experiment, models,
     kable(
       format = "latex",
       booktabs = TRUE,
-      longtable = TRUE,
+      longtable = FALSE,
       linesep = "",
       escape = FALSE,
       align = strrep("c", 2 + 2 * length(models)),
@@ -65,10 +65,8 @@ dump_latex_table <- function(df, experiment, models,
       )
     ) |>
     kable_styling(
-      latex_options = c("repeat_header"),
-      font_size = 8,
-      repeat_header_method = "replace",
-      repeat_header_continued = "\\textit{(continued on next page)}"
+      # latex_options = c("HOLD_position"),
+      font_size = 8
     ) |>
     add_header_above(
       header_above,
@@ -77,14 +75,23 @@ dump_latex_table <- function(df, experiment, models,
     ) |>
     collapse_rows(
       columns = 2,
-      latex_hline = "major",
-      longtable_clean_cut = TRUE
+      latex_hline = "major"
+    ) |>
+    footnote(
+      general = paste(
+        "Best PPL per config in \\textbf{bold}, second best",
+        "\\underline{underlined}. MEM reported in GiB."
+      ),
+      general_title = "Note:",
+      footnote_as_chunk = TRUE,
+      escape = FALSE,
+      threeparttable = TRUE
     )
 
   head <- r"(
 \documentclass{article}
 \usepackage{booktabs,makecell,multirow,threeparttable}
-\usepackage{longtable,array,caption}
+\usepackage{array,caption}
 
 \begin{document}
 

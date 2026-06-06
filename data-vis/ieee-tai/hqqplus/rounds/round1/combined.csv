@@ -9,6 +9,7 @@ Llama-2-13b-hf,KB11,b2g8,4.03,4.9358,11.21
 Llama-2-13b-hf,KB12,b2g8,4.03,4.9298,11.23
 Llama-2-13b-hf,KB21,b2g8,4.03,4.9338,11.26
 Llama-2-13b-hf,KB22,b2g8,4.03,4.935,11.32
+Llama-2-13b-hf,FP16,base,16,4.6293,20.97
 Llama-2-7b-hf,HQQ+,b1g8,3.03,12.3362,5.47
 Llama-2-7b-hf,KB11,b1g8,3.03,12.4651,5.49
 Llama-2-7b-hf,KB12,b1g8,3.03,12.1005,5.51
@@ -19,7 +20,7 @@ Llama-2-7b-hf,KB11,b2g8,4.03,5.5378,6.23
 Llama-2-7b-hf,KB12,b2g8,4.03,5.5268,6.25
 Llama-2-7b-hf,KB21,b2g8,4.03,5.5105,6.27
 Llama-2-7b-hf,KB22,b2g8,4.03,5.5177,6.33
-Llama-2-7b-hf,FP16,base,16,5.1861,13.38
+Llama-2-7b-hf,FP16,base,16,5.1842,13.38
 Meta-Llama-3-8B,HQQ+,b1g8,3.03,22.7165,8.28
 Meta-Llama-3-8B,KB11,b1g8,3.03,22.5055,8.29
 Meta-Llama-3-8B,KB12,b1g8,3.03,22.685,8.29
@@ -30,4 +31,4 @@ Meta-Llama-3-8B,KB11,b2g8,4.03,7.3684,9.07
 Meta-Llama-3-8B,KB12,b2g8,4.03,7.3682,9.08
 Meta-Llama-3-8B,KB21,b2g8,4.03,7.3614,9.09
 Meta-Llama-3-8B,KB22,b2g8,4.03,7.372,9.11
-Meta-Llama-3-8B,FP16,base,16,5.8147,16.33
+Meta-Llama-3-8B,FP16,base,16,5.8116,16.33
