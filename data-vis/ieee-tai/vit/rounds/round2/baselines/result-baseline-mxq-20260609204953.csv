@@ -1,0 +1,7 @@
+model,algo,config,config_detail,quant_duration,load_mem_allot,load_mem_reserved,zeroshot_mem_allot,zeroshot_mem_reserved,linear_probe_mem_allot,linear_probe_mem_reserved,acc1_zeroshot_cls,acc5_zeroshot_cls,recall_zeroshot_cls,duration_zeroshot_cls,acc1_linear_probe,acc5_linear_probe,recall_linear_probe,duration_linear_probe
+CLIP-ViT-L-14-laion2B-s32B-b82K,mxq,4_13,"{'offload_meta': False, 'mixed': True, 'budget': 4.13}",0,0,0,1201739264,1644167168,0,0,0.7485,0.9392,0.74854,117.68804550170898,0,0,0,0
+CLIP-ViT-H-14-laion2B-s32B-b79K,mxq,4_13,"{'offload_meta': False, 'mixed': True, 'budget': 4.13}",0,0,0,2259888640,2835349504,0,0,0.7765,0.95116,0.77652,234.0390660762787,0,0,0,0
+CLIP-ViT-L-14-laion2B-s32B-b82K,mxq,4_25,"{'offload_meta': False, 'mixed': True, 'budget': 4.25}",0,0,0,1206294016,1644167168,0,0,0.74918,0.94108,0.7493,117.20202040672302,0,0,0,0
+CLIP-ViT-H-14-laion2B-s32B-b79K,mxq,4_25,"{'offload_meta': False, 'mixed': True, 'budget': 4.25}",0,0,0,2270161408,2845835264,0,0,0.77686,0.95106,0.77656,232.34528875350952,0,0,0,0
+CLIP-ViT-H-14-laion2B-s32B-b79K,mxq,4_51,"{'offload_meta': False, 'mixed': True, 'budget': 4.51}",0,0,0,2304567808,2879389696,0,0,0.77814,0.95144,0.7782,233.959468126297,0,0,0,0
+CLIP-ViT-L-14-laion2B-s32B-b82K,mxq,4_51,"{'offload_meta': False, 'mixed': True, 'budget': 4.51}",0,0,0,1222690304,1658847232,0,0,0.75094,0.94214,0.75068,116.97899413108826,0,0,0,0
