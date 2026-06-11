@@ -15,7 +15,7 @@ python -m pdb ../../src/cli.py llm \
     --model Qwen/Qwen3.5-2B \
     --algo awq \
     --config b4g64 \
-    --experiment-name debug-eval_ppl-qwen35-awq \
+    --experiment-name debug-eval_ppl-qwen35-awq2 \
     --quant-snapshot-dir="$EXP_RESULT_BASE_DIR/snapshots3" \
     --result-dir="$EXP_RESULT_BASE_DIR/results" \
     2>&1 \

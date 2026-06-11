@@ -8,7 +8,6 @@ import pandas as pd
 import torch
 from gptqmodel import QuantizeConfig as GPTQQuantConfig
 from hqq.core.quantize import BaseQuantizeConfig as HQQQuantConfig
-from lm_eval.models.huggingface import HFLM
 from transformers import BitsAndBytesConfig
 
 from lm_quant_toolkit.adapter.awq import (
@@ -33,7 +32,8 @@ from lm_quant_toolkit.eval.common import (
     persist_progress,
     save_partial_metric,
 )
-from lm_quant_toolkit.eval.lmeval import eval_llm_perf
+
+# from lm_quant_toolkit.eval.lmeval import eval_llm_perf
 from lm_quant_toolkit.eval.perplexity import eval_ppls
 
 ALL_MODELS = [
@@ -353,21 +353,21 @@ def do_expermient(
             mem_allot, mem_reserved = get_memory_metrics()
             metric["ppl_mem_allot"] = mem_allot
             metric["ppl_mem_reserved"] = mem_reserved
-        elif task_type in LLM_PERF_TASKS:
-            # Wrap the model into HFLM
-            model = HFLM(pretrained=model)
-            task = task_type.split("_", 1)[1]
-            metric = eval_llm_perf(
-                experiment_name,
-                task,
-                model,
-                metric,
-                result_dir,
-            )
-
-            mem_allot, mem_reserved = get_memory_metrics()
-            metric[f"{task_type}_mem_allot"] = mem_allot
-            metric[f"{task_type}_mem_reserved"] = mem_reserved
+        # elif task_type in LLM_PERF_TASKS:
+        #     # Wrap the model into HFLM
+        #     model = HFLM(pretrained=model)
+        #     task = task_type.split("_", 1)[1]
+        #     metric = eval_llm_perf(
+        #         experiment_name,
+        #         task,
+        #         model,
+        #         metric,
+        #         result_dir,
+        #     )
+        #
+        #     mem_allot, mem_reserved = get_memory_metrics()
+        #     metric[f"{task_type}_mem_allot"] = mem_allot
+        #     metric[f"{task_type}_mem_reserved"] = mem_reserved
         else:
             raise ValueError(f"Invalid task_type: {task_type}")
         cleanup(model)
